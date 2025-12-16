@@ -1,6 +1,13 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ArrowRight, Sparkles, TrendingUp, Zap, Brain, LineChart } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  Brain,
+  LineChart,
+} from "lucide-react";
 
 interface BlogPost {
   id: string;
@@ -20,7 +27,8 @@ const featuredPosts: BlogPost[] = [
     excerpt:
       "Discover how artificial intelligence is revolutionizing industries and creating new opportunities for growth and innovation.",
     category: "AI",
-    image: "https://images.unsplash.com/photo-1677442d019cecf8b13f1d4d04a5fc033?w=800&h=400&fit=crop",
+    image:
+      "https://images.unsplash.com/photo-1677442d019cecf8b13f1d4d04a5fc033?w=800&h=400&fit=crop",
     date: "Today",
     author: "Sarah Chen",
     readTime: "8 min read",
@@ -31,7 +39,8 @@ const featuredPosts: BlogPost[] = [
     excerpt:
       "Stay ahead of the competition with the latest SEO strategies and best practices for improving your online visibility.",
     category: "Marketing",
-    image: "https://images.unsplash.com/photo-1460925895917-adf4e565db57?w=800&h=400&fit=crop",
+    image:
+      "https://images.unsplash.com/photo-1460925895917-adf4e565db57?w=800&h=400&fit=crop",
     date: "Yesterday",
     author: "Marcus Johnson",
     readTime: "6 min read",
@@ -42,7 +51,8 @@ const featuredPosts: BlogPost[] = [
     excerpt:
       "Learn the secrets from successful entrepreneurs about building scalable products and sustainable business models.",
     category: "Business",
-    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop",
+    image:
+      "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop",
     date: "2 days ago",
     author: "Emma Rodriguez",
     readTime: "10 min read",
@@ -110,8 +120,11 @@ export default function Index() {
                 Your daily source for the latest news and insights on{" "}
                 <span className="font-semibold text-primary">technology</span>,{" "}
                 <span className="font-semibold text-secondary">AI</span>,{" "}
-                <span className="font-semibold text-primary">business</span>, and{" "}
-                <span className="font-semibold text-secondary">digital marketing</span>
+                <span className="font-semibold text-primary">business</span>,
+                and{" "}
+                <span className="font-semibold text-secondary">
+                  digital marketing
+                </span>
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -216,11 +229,10 @@ export default function Index() {
               {categoryCards.map((cat, index) => {
                 const Icon = cat.icon;
                 return (
-                  <div
-                    key={index}
-                    className="relative group cursor-pointer"
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} rounded-xl blur-xl transition-all group-hover:blur-2xl`} />
+                  <div key={index} className="relative group cursor-pointer">
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br ${cat.color} rounded-xl blur-xl transition-all group-hover:blur-2xl`}
+                    />
                     <div className="relative border border-border bg-card rounded-xl p-8 hover:border-secondary transition-all hover:shadow-xl">
                       <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center mb-4">
                         <Icon className="w-6 h-6 text-primary-foreground" />
@@ -228,7 +240,9 @@ export default function Index() {
                       <h3 className="text-2xl font-bold text-foreground mb-2">
                         {cat.title}
                       </h3>
-                      <p className="text-foreground/60 mb-4">{cat.description}</p>
+                      <p className="text-foreground/60 mb-4">
+                        {cat.description}
+                      </p>
                       <div className="flex items-center justify-between pt-4 border-t border-border">
                         <span className="text-sm text-secondary font-semibold">
                           {cat.count}
@@ -251,7 +265,8 @@ export default function Index() {
                 Stay Updated Daily
               </h2>
               <p className="text-lg text-foreground/60 mb-8">
-                Get the latest articles delivered straight to your inbox. No spam, just quality content.
+                Get the latest articles delivered straight to your inbox. No
+                spam, just quality content.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -297,13 +312,33 @@ export default function Index() {
                   </div>
                   <div className="p-5">
                     <div className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded mb-3">
-                      {["Technology", "AI", "Business", "Marketing", "Startup", "SEO"][i % 6]}
+                      {
+                        [
+                          "Technology",
+                          "AI",
+                          "Business",
+                          "Marketing",
+                          "Startup",
+                          "SEO",
+                        ][i % 6]
+                      }
                     </div>
                     <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                      Amazing Article Title About {["Tech", "AI", "Business", "SEO", "Marketing", "Innovation"][i % 6]}
+                      Amazing Article Title About{" "}
+                      {
+                        [
+                          "Tech",
+                          "AI",
+                          "Business",
+                          "SEO",
+                          "Marketing",
+                          "Innovation",
+                        ][i % 6]
+                      }
                     </h3>
                     <p className="text-sm text-foreground/60 line-clamp-2 mb-4">
-                      Discover insights and best practices for your digital success.
+                      Discover insights and best practices for your digital
+                      success.
                     </p>
                     <div className="flex items-center justify-between text-xs text-foreground/50">
                       <span>5 min read</span>
