@@ -1,7 +1,17 @@
 import { Link } from "react-router-dom";
 
-export function Footer() {
+import { buildPath, type Language, type Translation } from "@/lib/i18n";
+
+interface FooterProps {
+  lang: Language;
+  t: Translation;
+}
+
+export function Footer({ lang, t }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const homePath = buildPath(lang, "home");
+  const toolsPath = buildPath(lang, "tools");
+  const authPath = buildPath(lang, "auth");
 
   return (
     <footer className="bg-primary text-primary-foreground py-12">
@@ -14,89 +24,79 @@ export function Footer() {
               </div>
               <h3 className="font-bold text-lg">seommerce.shop</h3>
             </div>
-            <p className="text-sm opacity-80">
-              Daily insights on technology, AI, business, and digital marketing.
-            </p>
+            <p className="text-sm opacity-80">{t.footer.tagline}</p>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Categories</h4>
+            <h4 className="font-semibold mb-4">{t.footer.sectionsTitle}</h4>
             <ul className="space-y-2 text-sm opacity-80">
               <li>
-                <a
-                  href="#technology"
+                <Link
+                  to={homePath}
                   className="hover:text-secondary transition-colors"
                 >
-                  Technology
-                </a>
+                  {t.nav.home}
+                </Link>
               </li>
               <li>
-                <a
-                  href="#ai"
+                <Link
+                  to={{ pathname: homePath, hash: "#featured" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  Artificial Intelligence
-                </a>
+                  {t.featured.title}
+                </Link>
               </li>
               <li>
-                <a
-                  href="#business"
+                <Link
+                  to={{ pathname: homePath, hash: "#topics" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  Business
-                </a>
+                  {t.categories.title}
+                </Link>
               </li>
               <li>
-                <a
-                  href="#marketing"
+                <Link
+                  to={{ pathname: homePath, hash: "#newsletter" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  Marketing & SEO
-                </a>
+                  {t.newsletter.title}
+                </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
+            <h4 className="font-semibold mb-4">{t.footer.resourcesTitle}</h4>
             <ul className="space-y-2 text-sm opacity-80">
               <li>
-                <a
-                  href="#about"
+                <Link
+                  to={toolsPath}
                   className="hover:text-secondary transition-colors"
                 >
-                  About Us
-                </a>
+                  {t.nav.tools}
+                </Link>
               </li>
               <li>
-                <a
-                  href="#contact"
+                <Link
+                  to={`${authPath}?tab=login`}
                   className="hover:text-secondary transition-colors"
                 >
-                  Contact
-                </a>
+                  {t.nav.login}
+                </Link>
               </li>
               <li>
-                <a
-                  href="#privacy"
+                <Link
+                  to={`${authPath}?tab=signup`}
                   className="hover:text-secondary transition-colors"
                 >
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#terms"
-                  className="hover:text-secondary transition-colors"
-                >
-                  Terms of Service
-                </a>
+                  {t.nav.signup}
+                </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Follow Us</h4>
+            <h4 className="font-semibold mb-4">{t.footer.followTitle}</h4>
             <div className="flex gap-4">
               <a
                 href="https://twitter.com"
@@ -146,12 +146,9 @@ export function Footer() {
 
         <div className="border-t border-primary-foreground/20 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm opacity-80">
-            © {currentYear} seommerce.shop. All rights reserved.
+            {t.footer.copyright.replace("{year}", String(currentYear))}
           </p>
-          <p className="text-sm opacity-80">
-            Crafted with passion | Daily insights on tech, AI, business &
-            marketing
-          </p>
+          <p className="text-sm opacity-80">{t.footer.bottomLine}</p>
         </div>
       </div>
     </footer>
