@@ -35,6 +35,11 @@ export const pageSlugs = {
     en: "access",
     es: "acceso",
   },
+  admin: {
+    pt: "admin",
+    en: "admin",
+    es: "admin",
+  },
 } as const;
 
 export type PageKey = keyof typeof pageSlugs;
@@ -116,6 +121,10 @@ export interface Translation {
       description: string;
     };
     auth: {
+      title: string;
+      description: string;
+    };
+    admin: {
       title: string;
       description: string;
     };
@@ -222,6 +231,59 @@ export interface Translation {
     errorTitle: string;
     errorDescription: string;
   };
+  admin: {
+    title: string;
+    subtitle: string;
+    notice: string;
+    listTitle: string;
+    listSubtitle: string;
+    searchPlaceholder: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    confirmDelete: string;
+    sectionBasics: string;
+    sectionContent: string;
+    sectionMedia: string;
+    sectionSeo: string;
+    actions: {
+      edit: string;
+      close: string;
+      save: string;
+      cancel: string;
+      delete: string;
+    };
+    fields: {
+      id: string;
+      title: string;
+      slug: string;
+      category: string;
+      featured: string;
+      excerpt: string;
+      description: string;
+      content: string;
+      contentHtml: string;
+      image: string;
+      imageAlt: string;
+      imageThumb: string;
+      images: string;
+      tags: string;
+      date: string;
+      author: string;
+      readTime: string;
+      metaTitle: string;
+      metaDescription: string;
+      metaTags: string;
+    };
+    hints: {
+      category: string;
+      tags: string;
+      images: string;
+      metaTags: string;
+    };
+    errors: {
+      metaTags: string;
+    };
+  };
   post: {
     loading: string;
     notFoundTitle: string;
@@ -262,6 +324,11 @@ export const translations: Record<Language, Translation> = {
         title: "Acesso | seommerce.shop",
         description:
           "Entre ou crie sua conta para acessar ferramentas e publicar conteúdos.",
+      },
+      admin: {
+        title: "Administração do Blog | seommerce.shop",
+        description:
+          "Gerencie posts, edite conteúdos e organize categorias do blog.",
       },
       notFound: {
         title: "Página não encontrada | seommerce.shop",
@@ -413,6 +480,61 @@ export const translations: Record<Language, Translation> = {
       errorTitle: "Não foi possível enviar",
       errorDescription: "Tente novamente em instantes.",
     },
+    admin: {
+      title: "Administração do Blog",
+      subtitle:
+        "Gerencie todos os posts, edite campos e organize as categorias.",
+      notice:
+        "Alterações feitas aqui são locais e não são enviadas ao servidor.",
+      listTitle: "Posts cadastrados",
+      listSubtitle: "Edite ou remova posts rapidamente.",
+      searchPlaceholder: "Buscar por título, autor ou categoria...",
+      emptyTitle: "Nenhum post encontrado",
+      emptyDescription: "Assim que houver posts, eles aparecerão aqui.",
+      confirmDelete: "Tem certeza que deseja excluir este post?",
+      sectionBasics: "Dados principais",
+      sectionContent: "Conteúdo",
+      sectionMedia: "Mídia",
+      sectionSeo: "SEO",
+      actions: {
+        edit: "Editar",
+        close: "Fechar",
+        save: "Salvar",
+        cancel: "Cancelar",
+        delete: "Excluir",
+      },
+      fields: {
+        id: "ID",
+        title: "Título",
+        slug: "Slug",
+        category: "Categoria",
+        featured: "Destaque",
+        excerpt: "Resumo",
+        description: "Descrição",
+        content: "Conteúdo",
+        contentHtml: "Conteúdo (HTML)",
+        image: "Imagem principal",
+        imageAlt: "Texto alternativo da imagem",
+        imageThumb: "Miniatura",
+        images: "Galeria de imagens",
+        tags: "Tags",
+        date: "Data",
+        author: "Autor",
+        readTime: "Tempo de leitura",
+        metaTitle: "Meta title",
+        metaDescription: "Meta description",
+        metaTags: "Meta tags (JSON)",
+      },
+      hints: {
+        category: "Use: ia, tech, marketing/seo ou business.",
+        tags: "Separe por vírgula.",
+        images: "Separe por vírgula.",
+        metaTags: 'Exemplo: [{"name":"description","content":"..."}]',
+      },
+      errors: {
+        metaTags: "JSON inválido para meta tags.",
+      },
+    },
     post: {
       loading: "Carregando post...",
       notFoundTitle: "Post não encontrado",
@@ -451,6 +573,11 @@ export const translations: Record<Language, Translation> = {
         title: "Access | seommerce.shop",
         description:
           "Sign in or create your account to access tools and publish content.",
+      },
+      admin: {
+        title: "Blog Admin | seommerce.shop",
+        description:
+          "Manage posts, edit content, and organize blog categories.",
       },
       notFound: {
         title: "Page not found | seommerce.shop",
@@ -598,6 +725,59 @@ export const translations: Record<Language, Translation> = {
       errorTitle: "Unable to send",
       errorDescription: "Please try again in a moment.",
     },
+    admin: {
+      title: "Blog Admin",
+      subtitle: "Manage every post, edit fields, and organize categories.",
+      notice: "Changes here are local and are not sent to the server.",
+      listTitle: "All posts",
+      listSubtitle: "Edit or remove posts quickly.",
+      searchPlaceholder: "Search by title, author, or category...",
+      emptyTitle: "No posts found",
+      emptyDescription: "Posts will appear here once available.",
+      confirmDelete: "Are you sure you want to delete this post?",
+      sectionBasics: "Basics",
+      sectionContent: "Content",
+      sectionMedia: "Media",
+      sectionSeo: "SEO",
+      actions: {
+        edit: "Edit",
+        close: "Close",
+        save: "Save",
+        cancel: "Cancel",
+        delete: "Delete",
+      },
+      fields: {
+        id: "ID",
+        title: "Title",
+        slug: "Slug",
+        category: "Category",
+        featured: "Featured",
+        excerpt: "Excerpt",
+        description: "Description",
+        content: "Content",
+        contentHtml: "Content (HTML)",
+        image: "Main image",
+        imageAlt: "Image alt text",
+        imageThumb: "Thumbnail",
+        images: "Image gallery",
+        tags: "Tags",
+        date: "Date",
+        author: "Author",
+        readTime: "Read time",
+        metaTitle: "Meta title",
+        metaDescription: "Meta description",
+        metaTags: "Meta tags (JSON)",
+      },
+      hints: {
+        category: "Use: ia, tech, marketing/seo, or business.",
+        tags: "Comma-separated.",
+        images: "Comma-separated.",
+        metaTags: 'Example: [{"name":"description","content":"..."}]',
+      },
+      errors: {
+        metaTags: "Invalid JSON for meta tags.",
+      },
+    },
     post: {
       loading: "Loading post...",
       notFoundTitle: "Post not found",
@@ -636,6 +816,11 @@ export const translations: Record<Language, Translation> = {
         title: "Acceso | seommerce.shop",
         description:
           "Inicia sesión o crea tu cuenta para acceder a herramientas y publicar contenidos.",
+      },
+      admin: {
+        title: "Administración del Blog | seommerce.shop",
+        description:
+          "Gestiona posts, edita contenidos y organiza categorías del blog.",
       },
       notFound: {
         title: "Página no encontrada | seommerce.shop",
@@ -784,6 +969,59 @@ export const translations: Record<Language, Translation> = {
         "Tu cuenta fue enviada para revisión. Te contactaremos pronto.",
       errorTitle: "No se pudo enviar",
       errorDescription: "Intenta nuevamente en unos momentos.",
+    },
+    admin: {
+      title: "Administrador del Blog",
+      subtitle: "Gestiona los posts, edita campos y organiza categorías.",
+      notice: "Los cambios aquí son locales y no se envían al servidor.",
+      listTitle: "Posts registrados",
+      listSubtitle: "Edita o elimina posts rápidamente.",
+      searchPlaceholder: "Buscar por título, autor o categoría...",
+      emptyTitle: "No hay posts",
+      emptyDescription: "Cuando existan posts, aparecerán aquí.",
+      confirmDelete: "¿Seguro que quieres eliminar este post?",
+      sectionBasics: "Datos principales",
+      sectionContent: "Contenido",
+      sectionMedia: "Media",
+      sectionSeo: "SEO",
+      actions: {
+        edit: "Editar",
+        close: "Cerrar",
+        save: "Guardar",
+        cancel: "Cancelar",
+        delete: "Eliminar",
+      },
+      fields: {
+        id: "ID",
+        title: "Título",
+        slug: "Slug",
+        category: "Categoría",
+        featured: "Destacado",
+        excerpt: "Resumen",
+        description: "Descripción",
+        content: "Contenido",
+        contentHtml: "Contenido (HTML)",
+        image: "Imagen principal",
+        imageAlt: "Texto alternativo de la imagen",
+        imageThumb: "Miniatura",
+        images: "Galería de imágenes",
+        tags: "Etiquetas",
+        date: "Fecha",
+        author: "Autor",
+        readTime: "Tiempo de lectura",
+        metaTitle: "Meta title",
+        metaDescription: "Meta description",
+        metaTags: "Meta tags (JSON)",
+      },
+      hints: {
+        category: "Usa: ia, tech, marketing/seo o business.",
+        tags: "Separadas por coma.",
+        images: "Separadas por coma.",
+        metaTags: 'Ejemplo: [{"name":"description","content":"..."}]',
+      },
+      errors: {
+        metaTags: "JSON inválido para meta tags.",
+      },
     },
     post: {
       loading: "Cargando publicación...",

@@ -14,6 +14,7 @@ import Auth from "@/pages/Auth";
 import Post from "@/pages/Post";
 import Articles from "@/pages/Articles";
 import Latest from "@/pages/Latest";
+import Admin from "@/pages/Admin";
 import { defaultLang, languages, pageSlugs, postRouteSegment } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,13 @@ const App = () => (
               key={`${lang}-auth`}
               path={`/${lang}/${pageSlugs.auth[lang]}`}
               element={<Auth lang={lang} />}
+            />
+          ))}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-admin`}
+              path={`/${lang}/${pageSlugs.admin[lang]}`}
+              element={<Admin lang={lang} />}
             />
           ))}
           {languages.map((lang) => (
