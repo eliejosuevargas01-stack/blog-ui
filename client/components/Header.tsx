@@ -31,7 +31,6 @@ export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
   const alternates = languagePaths ?? buildAlternatePaths(pageKey);
   const homePath = buildPath(lang, "home");
   const toolsPath = buildPath(lang, "tools");
-  const authPath = buildPath(lang, "auth");
 
   const handleLanguageChange = (nextLang: Language) => {
     const targetPath = alternates[nextLang] ?? buildPath(nextLang, pageKey);
@@ -87,28 +86,6 @@ export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-secondary group-hover:w-full transition-all duration-300" />
               </Link>
             </nav>
-
-            <Link
-              to={`${authPath}?tab=login`}
-              className="sm:hidden px-3 py-2 text-sm font-semibold border border-secondary text-secondary rounded-lg hover:bg-secondary hover:text-secondary-foreground transition-all"
-            >
-              {t.nav.login}
-            </Link>
-
-            <div className="hidden sm:flex items-center gap-2">
-              <Link
-                to={`${authPath}?tab=login`}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                {t.nav.login}
-              </Link>
-              <Link
-                to={`${authPath}?tab=signup`}
-                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:shadow-lg transition-all hover:shadow-secondary/20 hover:scale-105"
-              >
-                {t.nav.signup}
-              </Link>
-            </div>
 
             <Select
               value={lang}

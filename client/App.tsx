@@ -10,13 +10,11 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import Tools from "@/pages/Tools";
-import Auth from "@/pages/Auth";
 import Post from "@/pages/Post";
 import Articles from "@/pages/Articles";
 import Latest from "@/pages/Latest";
 import Admin from "@/pages/Admin";
 import Topic from "@/pages/Topic";
-import VerifyEmail from "@/pages/VerifyEmail";
 import { defaultLang, languages, pageSlugs, postRouteSegment } from "@/lib/i18n";
 import { TOPICS } from "@/lib/topics";
 
@@ -84,23 +82,9 @@ const App = () => (
           ))}
           {languages.map((lang) => (
             <Route
-              key={`${lang}-auth`}
-              path={`/${lang}/${pageSlugs.auth[lang]}`}
-              element={<Auth lang={lang} />}
-            />
-          ))}
-          {languages.map((lang) => (
-            <Route
               key={`${lang}-admin`}
               path={`/${lang}/${pageSlugs.admin[lang]}`}
               element={<Admin lang={lang} />}
-            />
-          ))}
-          {languages.map((lang) => (
-            <Route
-              key={`${lang}-verify-email`}
-              path={`/${lang}/${pageSlugs.verifyEmail[lang]}`}
-              element={<VerifyEmail lang={lang} />}
             />
           ))}
           {languages.flatMap((lang) =>

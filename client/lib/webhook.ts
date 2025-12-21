@@ -9,7 +9,7 @@ export type WebhookAction =
   | "get_posts"
   | "edit_post"
   | "delete_post"
-  | "email_verification";
+  | "newsletter_subscribe";
 
 type MetaTag = { name?: string; property?: string; content: string };
 
@@ -59,10 +59,9 @@ export type WebhookPayload =
       token?: string;
     }
   | {
-      action: "email_verification";
-      user_id: string;
-      verification_code: string;
-      purpose: "email_verification";
+      action: "newsletter_subscribe";
+      email: string;
+      lang: Language;
     };
 
 export async function sendWebhook(payload: WebhookPayload) {

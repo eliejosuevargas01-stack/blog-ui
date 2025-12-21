@@ -40,11 +40,6 @@ export const pageSlugs = {
     en: "admin",
     es: "admin",
   },
-  verifyEmail: {
-    pt: "verificar-email",
-    en: "verify-email",
-    es: "verificar-correo",
-  },
 } as const;
 
 export type PageKey = keyof typeof pageSlugs;
@@ -133,10 +128,6 @@ export interface Translation {
       title: string;
       description: string;
     };
-    verifyEmail: {
-      title: string;
-      description: string;
-    };
     notFound: {
       title: string;
       description: string;
@@ -197,6 +188,10 @@ export interface Translation {
     placeholder: string;
     button: string;
     note: string;
+    successTitle: string;
+    successDescription: string;
+    errorTitle: string;
+    errorDescription: string;
   };
   latest: {
     title: string;
@@ -303,18 +298,6 @@ export interface Translation {
       notAuthorized: string;
     };
   };
-  verifyEmail: {
-    title: string;
-    subtitle: string;
-    userIdLabel: string;
-    codeLabel: string;
-    hint: string;
-    button: string;
-    successTitle: string;
-    successDescription: string;
-    errorTitle: string;
-    errorDescription: string;
-  };
   topic: {
     title: string;
     subtitle: string;
@@ -368,11 +351,6 @@ export const translations: Record<Language, Translation> = {
         title: "Administração do Blog | seommerce.shop",
         description:
           "Gerencie posts, edite conteúdos e organize categorias do blog.",
-      },
-      verifyEmail: {
-        title: "Verificar email | seommerce.shop",
-        description:
-          "Informe seu código de verificação para confirmar o email.",
       },
       notFound: {
         title: "Página não encontrada | seommerce.shop",
@@ -458,6 +436,10 @@ export const translations: Record<Language, Translation> = {
       placeholder: "seu@email.com",
       button: "Assinar",
       note: "Respeitamos sua privacidade. Cancele quando quiser.",
+      successTitle: "Inscrição confirmada",
+      successDescription: "Você receberá os próximos artigos por email.",
+      errorTitle: "Não foi possível assinar",
+      errorDescription: "Confira o email e tente novamente.",
     },
     latest: {
       title: "Últimos do blog",
@@ -589,18 +571,6 @@ export const translations: Record<Language, Translation> = {
         notAuthorized: "Seu usuário não tem permissão de administrador.",
       },
     },
-    verifyEmail: {
-      title: "Verifique seu email",
-      subtitle: "Insira o código enviado para confirmar o cadastro.",
-      userIdLabel: "ID do usuário",
-      codeLabel: "Código de verificação",
-      hint: "Use o código recebido por email para confirmar o acesso.",
-      button: "Verificar email",
-      successTitle: "Email verificado",
-      successDescription: "Seu email foi confirmado com sucesso.",
-      errorTitle: "Não foi possível verificar",
-      errorDescription: "Confira os dados e tente novamente.",
-    },
     topic: {
       title: "Tópico",
       subtitle: "Conteúdos sobre {topic}",
@@ -653,10 +623,6 @@ export const translations: Record<Language, Translation> = {
         title: "Blog Admin | seommerce.shop",
         description:
           "Manage posts, edit content, and organize blog categories.",
-      },
-      verifyEmail: {
-        title: "Verify email | seommerce.shop",
-        description: "Enter your verification code to confirm your email.",
       },
       notFound: {
         title: "Page not found | seommerce.shop",
@@ -741,6 +707,10 @@ export const translations: Record<Language, Translation> = {
       placeholder: "your@email.com",
       button: "Subscribe",
       note: "We respect your privacy. Unsubscribe anytime.",
+      successTitle: "Subscription confirmed",
+      successDescription: "You'll receive the next articles by email.",
+      errorTitle: "Unable to subscribe",
+      errorDescription: "Please check the email and try again.",
     },
     latest: {
       title: "Latest from the blog",
@@ -867,18 +837,6 @@ export const translations: Record<Language, Translation> = {
         notAuthorized: "Your account does not have admin access.",
       },
     },
-    verifyEmail: {
-      title: "Verify your email",
-      subtitle: "Enter the code you received to confirm your account.",
-      userIdLabel: "User ID",
-      codeLabel: "Verification code",
-      hint: "Use the code from your email to complete verification.",
-      button: "Verify email",
-      successTitle: "Email verified",
-      successDescription: "Your email has been confirmed successfully.",
-      errorTitle: "Unable to verify",
-      errorDescription: "Please check the details and try again.",
-    },
     topic: {
       title: "Topic",
       subtitle: "Content about {topic}",
@@ -930,11 +888,6 @@ export const translations: Record<Language, Translation> = {
         title: "Administración del Blog | seommerce.shop",
         description:
           "Gestiona posts, edita contenidos y organiza categorías del blog.",
-      },
-      verifyEmail: {
-        title: "Verificar correo | seommerce.shop",
-        description:
-          "Introduce tu código de verificación para confirmar el correo.",
       },
       notFound: {
         title: "Página no encontrada | seommerce.shop",
@@ -1019,6 +972,10 @@ export const translations: Record<Language, Translation> = {
       placeholder: "tu@email.com",
       button: "Suscribirme",
       note: "Respetamos tu privacidad. Cancela cuando quieras.",
+      successTitle: "Suscripción confirmada",
+      successDescription: "Recibirás los próximos artículos por email.",
+      errorTitle: "No se pudo suscribir",
+      errorDescription: "Revisa el email e inténtalo de nuevo.",
     },
     latest: {
       title: "Lo último del blog",
@@ -1146,18 +1103,6 @@ export const translations: Record<Language, Translation> = {
         metaTags: "JSON inválido para meta tags.",
         notAuthorized: "Tu cuenta no tiene permisos de administrador.",
       },
-    },
-    verifyEmail: {
-      title: "Verifica tu correo",
-      subtitle: "Introduce el código enviado para confirmar tu cuenta.",
-      userIdLabel: "ID de usuario",
-      codeLabel: "Código de verificación",
-      hint: "Usa el código recibido por email para completar la verificación.",
-      button: "Verificar correo",
-      successTitle: "Correo verificado",
-      successDescription: "Tu correo se confirmó correctamente.",
-      errorTitle: "No se pudo verificar",
-      errorDescription: "Revisa los datos e inténtalo de nuevo.",
     },
     topic: {
       title: "Tema",

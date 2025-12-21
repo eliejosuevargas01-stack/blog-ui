@@ -11,7 +11,6 @@ export function Footer({ lang, t }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const homePath = buildPath(lang, "home");
   const toolsPath = buildPath(lang, "tools");
-  const authPath = buildPath(lang, "auth");
 
   return (
     <footer className="bg-primary text-primary-foreground py-12">
@@ -74,22 +73,6 @@ export function Footer({ lang, t }: FooterProps) {
                   className="hover:text-secondary transition-colors"
                 >
                   {t.nav.tools}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to={`${authPath}?tab=login`}
-                  className="hover:text-secondary transition-colors"
-                >
-                  {t.nav.login}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to={`${authPath}?tab=signup`}
-                  className="hover:text-secondary transition-colors"
-                >
-                  {t.nav.signup}
                 </Link>
               </li>
             </ul>

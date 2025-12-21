@@ -27,7 +27,7 @@ interface ToolsProps {
 
 export default function Tools({ lang }: ToolsProps) {
   const t = translations[lang];
-  const authPath = buildPath(lang, "auth");
+  const homePath = buildPath(lang, "home");
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -63,7 +63,7 @@ export default function Tools({ lang }: ToolsProps) {
               </p>
 
               <Link
-                to={`${authPath}?tab=signup`}
+                to={{ pathname: homePath, hash: "#newsletter" }}
                 className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:shadow-xl hover:shadow-primary/20 transition-all hover:scale-105"
               >
                 {t.tools.ctaButton}
@@ -127,7 +127,7 @@ export default function Tools({ lang }: ToolsProps) {
                   {t.tools.ctaSubtitle}
                 </p>
                 <Link
-                  to={`${authPath}?tab=signup`}
+                  to={{ pathname: homePath, hash: "#newsletter" }}
                   className="inline-flex items-center gap-2 px-6 py-3 border-2 border-secondary text-secondary rounded-lg font-semibold hover:bg-secondary hover:text-secondary-foreground transition-all"
                 >
                   {t.tools.ctaButton}

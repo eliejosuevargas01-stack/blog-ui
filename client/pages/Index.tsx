@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -12,6 +12,7 @@ import {
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/hooks/use-toast";
 import {
   buildPath,
   buildPostPath,
@@ -19,6 +20,7 @@ import {
   type Language,
 } from "@/lib/i18n";
 import { fetchPosts, type BlogPost } from "@/lib/posts";
+import { sendWebhook } from "@/lib/webhook";
 import { TOPICS, buildTopicPath, normalizeTopicKey } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 
@@ -63,7 +65,7 @@ const parseDateValue = (value: string | undefined) => {
 
 export default function Index({ lang }: IndexProps) {
   const t = translations[lang];
-  const authPath = buildPath(lang, "auth");
+  const { toast } = useToast();
   const homePath = buildPath(lang, "home");
   const articlesPath = buildPath(lang, "articles");
   const latestPath = buildPath(lang, "latest");
@@ -71,6 +73,8 @@ export default function Index({ lang }: IndexProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -150,6 +154,38 @@ export default function Index({ lang }: IndexProps) {
   const showError = status === "error";
   const showEmpty = status === "idle" && posts.length === 0;
 
+  const handleNewsletterSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!email) {
+      return;
+    }
+    setNewsletterLoading(true);
+    try {
+      await sendWebhook({
+        action: "newsletter_subscribe",
+        email,
+        lang,
+      });
+      toast({
+        title: t.newsletter.successTitle,
+        description: t.newsletter.successDescription,
+      });
+      setNewsletterEmail("");
+    } catch (error) {
+      toast({
+        title: t.newsletter.errorTitle,
+        description:
+          error instanceof Error ? error.message : t.newsletter.errorDescription,
+        variant: "destructive",
+      });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Seo
@@ -202,7 +238,7 @@ export default function Index({ lang }: IndexProps) {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 <Link
-                  to={`${authPath}?tab=signup`}
+                  to={{ pathname: homePath, hash: "#newsletter" }}
                   className="px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:shadow-xl hover:shadow-primary/20 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
                 >
                   {t.hero.ctaPrimary}
@@ -423,16 +459,29 @@ export default function Index({ lang }: IndexProps) {
                 {t.newsletter.subtitle}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <form
+                className="flex flex-col sm:flex-row gap-4"
+                onSubmit={handleNewsletterSubmit}
+              >
                 <input
                   type="email"
                   placeholder={t.newsletter.placeholder}
+                  value={newsletterEmail}
+                  onChange={(event) => setNewsletterEmail(event.target.value)}
+                  autoComplete="email"
+                  required
                   className="flex-1 px-6 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
-                <button className="px-8 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:shadow-lg hover:shadow-secondary/20 transition-all hover:scale-105 whitespace-nowrap">
-                  {t.newsletter.button}
+                <button
+                  type="submit"
+                  className="px-8 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:shadow-lg hover:shadow-secondary/20 transition-all hover:scale-105 whitespace-nowrap disabled:opacity-70 disabled:hover:shadow-none disabled:hover:scale-100"
+                  disabled={newsletterLoading}
+                >
+                  {newsletterLoading
+                    ? `${t.newsletter.button}...`
+                    : t.newsletter.button}
                 </button>
-              </div>
+              </form>
 
               <p className="text-xs text-foreground/50 mt-4">
                 {t.newsletter.note}
