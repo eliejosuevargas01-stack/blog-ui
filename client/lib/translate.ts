@@ -95,7 +95,6 @@ export async function translatePosts(
           description,
           content,
           contentHtml,
-          category,
           metaTitle,
           metaDescription,
         ] = await Promise.all([
@@ -104,7 +103,6 @@ export async function translatePosts(
           translateValue(post.description, lang, "text"),
           translateValue(post.content, lang, contentFormat),
           translateValue(post.contentHtml, lang, "html"),
-          translateValue(post.category, lang, "text"),
           translateValue(post.metaTitle, lang, "text"),
           translateValue(post.metaDescription, lang, "text"),
         ]);
@@ -116,7 +114,7 @@ export async function translatePosts(
           description: description ?? post.description,
           content: content ?? post.content,
           contentHtml: contentHtml ?? post.contentHtml,
-          category: category ?? post.category,
+          category: post.category,
           metaTitle: metaTitle ?? post.metaTitle,
           metaDescription: metaDescription ?? post.metaDescription,
         };

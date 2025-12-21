@@ -235,6 +235,9 @@ export interface Translation {
     title: string;
     subtitle: string;
     notice: string;
+    loginTitle: string;
+    loginSubtitle: string;
+    logout: string;
     listTitle: string;
     listSubtitle: string;
     searchPlaceholder: string;
@@ -280,8 +283,15 @@ export interface Translation {
       images: string;
       metaTags: string;
     };
+    toast: {
+      saveSuccess: string;
+      saveError: string;
+      deleteSuccess: string;
+      deleteError: string;
+    };
     errors: {
       metaTags: string;
+      notAuthorized: string;
     };
   };
   post: {
@@ -485,7 +495,10 @@ export const translations: Record<Language, Translation> = {
       subtitle:
         "Gerencie todos os posts, edite campos e organize as categorias.",
       notice:
-        "Alterações feitas aqui são locais e não são enviadas ao servidor.",
+        "Edições e exclusões feitas aqui são enviadas para o servidor.",
+      loginTitle: "Acesso administrativo",
+      loginSubtitle: "Entre com seu usuário admin para gerenciar os posts.",
+      logout: "Sair",
       listTitle: "Posts cadastrados",
       listSubtitle: "Edite ou remova posts rapidamente.",
       searchPlaceholder: "Buscar por título, autor ou categoria...",
@@ -531,8 +544,15 @@ export const translations: Record<Language, Translation> = {
         images: "Separe por vírgula.",
         metaTags: 'Exemplo: [{"name":"description","content":"..."}]',
       },
+      toast: {
+        saveSuccess: "Post atualizado com sucesso.",
+        saveError: "Não foi possível salvar o post.",
+        deleteSuccess: "Post removido com sucesso.",
+        deleteError: "Não foi possível excluir o post.",
+      },
       errors: {
         metaTags: "JSON inválido para meta tags.",
+        notAuthorized: "Seu usuário não tem permissão de administrador.",
       },
     },
     post: {
@@ -728,7 +748,10 @@ export const translations: Record<Language, Translation> = {
     admin: {
       title: "Blog Admin",
       subtitle: "Manage every post, edit fields, and organize categories.",
-      notice: "Changes here are local and are not sent to the server.",
+      notice: "Edits and deletions here are sent to the server.",
+      loginTitle: "Admin access",
+      loginSubtitle: "Sign in with your admin account to manage posts.",
+      logout: "Sign out",
       listTitle: "All posts",
       listSubtitle: "Edit or remove posts quickly.",
       searchPlaceholder: "Search by title, author, or category...",
@@ -774,8 +797,15 @@ export const translations: Record<Language, Translation> = {
         images: "Comma-separated.",
         metaTags: 'Example: [{"name":"description","content":"..."}]',
       },
+      toast: {
+        saveSuccess: "Post updated successfully.",
+        saveError: "Unable to save the post.",
+        deleteSuccess: "Post deleted successfully.",
+        deleteError: "Unable to delete the post.",
+      },
       errors: {
         metaTags: "Invalid JSON for meta tags.",
+        notAuthorized: "Your account does not have admin access.",
       },
     },
     post: {
@@ -973,7 +1003,10 @@ export const translations: Record<Language, Translation> = {
     admin: {
       title: "Administrador del Blog",
       subtitle: "Gestiona los posts, edita campos y organiza categorías.",
-      notice: "Los cambios aquí son locales y no se envían al servidor.",
+      notice: "Las ediciones y eliminaciones se envían al servidor.",
+      loginTitle: "Acceso administrativo",
+      loginSubtitle: "Inicia sesión con tu cuenta admin para gestionar posts.",
+      logout: "Cerrar sesión",
       listTitle: "Posts registrados",
       listSubtitle: "Edita o elimina posts rápidamente.",
       searchPlaceholder: "Buscar por título, autor o categoría...",
@@ -1019,8 +1052,15 @@ export const translations: Record<Language, Translation> = {
         images: "Separadas por coma.",
         metaTags: 'Ejemplo: [{"name":"description","content":"..."}]',
       },
+      toast: {
+        saveSuccess: "Post actualizado correctamente.",
+        saveError: "No se pudo guardar el post.",
+        deleteSuccess: "Post eliminado correctamente.",
+        deleteError: "No se pudo eliminar el post.",
+      },
       errors: {
         metaTags: "JSON inválido para meta tags.",
+        notAuthorized: "Tu cuenta no tiene permisos de administrador.",
       },
     },
     post: {

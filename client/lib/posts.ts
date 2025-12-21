@@ -510,3 +510,51 @@ export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
   const { translatePosts } = await import("@/lib/translate");
   return translatePosts(posts, lang);
 }
+
+export async function editPost(
+  post: BlogPost,
+  lang: Language,
+  token?: string,
+) {
+  const categoria = post.category ?? undefined;
+  return sendWebhook({
+    action: "edit_post",
+    lang,
+    id: post.id,
+    title: post.title,
+    slug: post.slug ?? undefined,
+    excerpt: post.excerpt ?? undefined,
+    description: post.description ?? undefined,
+    content: post.content ?? undefined,
+    contentHtml: post.contentHtml ?? undefined,
+    categoria,
+    category: categoria,
+    image: post.image ?? undefined,
+    imageAlt: post.imageAlt ?? undefined,
+    imageThumb: post.imageThumb ?? undefined,
+    images: post.images ?? undefined,
+    tags: post.tags ?? undefined,
+    date: post.date ?? undefined,
+    author: post.author ?? undefined,
+    readTime: post.readTime ?? undefined,
+    featured: post.featured ?? undefined,
+    metaTitle: post.metaTitle ?? undefined,
+    metaDescription: post.metaDescription ?? undefined,
+    metaTags: post.metaTags ?? undefined,
+    token,
+  });
+}
+
+export async function deletePost(
+  post: BlogPost,
+  lang: Language,
+  token?: string,
+) {
+  return sendWebhook({
+    action: "delete_post",
+    lang,
+    id: post.id,
+    slug: post.slug ?? undefined,
+    token,
+  });
+}

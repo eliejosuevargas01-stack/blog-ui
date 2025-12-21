@@ -3,7 +3,14 @@ import type { Language } from "@/lib/i18n";
 export const WEBHOOK_URL =
   "https://myn8n.seommerce.shop/webhook/seommerce_blog";
 
-export type WebhookAction = "login" | "singin" | "get_posts";
+export type WebhookAction =
+  | "login"
+  | "singin"
+  | "get_posts"
+  | "edit_post"
+  | "delete_post";
+
+type MetaTag = { name?: string; property?: string; content: string };
 
 export type WebhookPayload =
   | {
@@ -16,6 +23,39 @@ export type WebhookPayload =
   | {
       action: "get_posts";
       lang: Language;
+    }
+  | {
+      action: "edit_post";
+      lang: Language;
+      id: string;
+      title: string;
+      slug?: string;
+      excerpt?: string;
+      description?: string;
+      content?: string;
+      contentHtml?: string;
+      categoria?: string;
+      category?: string;
+      image?: string;
+      imageAlt?: string;
+      imageThumb?: string;
+      images?: string[];
+      tags?: string[];
+      date?: string;
+      author?: string;
+      readTime?: string;
+      featured?: boolean;
+      metaTitle?: string;
+      metaDescription?: string;
+      metaTags?: MetaTag[];
+      token?: string;
+    }
+  | {
+      action: "delete_post";
+      lang: Language;
+      id: string;
+      slug?: string;
+      token?: string;
     };
 
 export async function sendWebhook(payload: WebhookPayload) {
