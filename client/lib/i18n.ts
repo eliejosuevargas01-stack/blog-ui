@@ -430,7 +430,7 @@ export const translations: Record<Language, Translation> = {
       subtitle: "Aprofunde-se nas categorias mais populares",
       cards: [
         {
-          title: "ia",
+          title: "IA",
           description: "Insights sobre inteligência artificial aplicada",
           count: "0 artigos",
         },
@@ -713,7 +713,7 @@ export const translations: Record<Language, Translation> = {
       subtitle: "Dive into our most popular categories",
       cards: [
         {
-          title: "ia",
+          title: "IA",
           description: "Insights on applied artificial intelligence",
           count: "0 articles",
         },
@@ -991,7 +991,7 @@ export const translations: Record<Language, Translation> = {
       subtitle: "Profundiza en nuestras categorías más populares",
       cards: [
         {
-          title: "ia",
+          title: "IA",
           description: "Insights sobre inteligencia artificial aplicada",
           count: "0 artículos",
         },
