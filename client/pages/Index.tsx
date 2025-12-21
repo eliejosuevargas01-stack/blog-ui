@@ -41,6 +41,8 @@ const categoryLabels = {
   es: { about: "Articulos sobre", singular: "articulo", plural: "articulos" },
 } as const;
 
+const TOPIC_KEYS = ["ia", "tech", "marketing/seo", "business"] as const;
+
 interface IndexProps {
   lang: Language;
 }
@@ -112,34 +114,33 @@ export default function Index({ lang }: IndexProps) {
   const categoryCards = useMemo(() => {
     const counts = new Map<string, number>();
     posts.forEach((post) => {
-      const primaryCategory = post.category?.trim();
-      const categories =
-        primaryCategory && primaryCategory.length > 0
-          ? [primaryCategory]
-          : post.tags?.length
-            ? post.tags
-            : [];
-      categories.forEach((name) => {
-        const trimmed = name.trim();
-        if (!trimmed) {
-          return;
-        }
-        counts.set(trimmed, (counts.get(trimmed) ?? 0) + 1);
-      });
+      const primaryCategory = post.category?.trim().toLowerCase();
+      if (!primaryCategory) {
+        return;
+      }
+      if (!TOPIC_KEYS.includes(primaryCategory as (typeof TOPIC_KEYS)[number])) {
+        return;
+      }
+      counts.set(primaryCategory, (counts.get(primaryCategory) ?? 0) + 1);
     });
 
-    if (counts.size === 0) {
-      return t.categories.cards;
-    }
-
     const labels = categoryLabels[lang] ?? categoryLabels.pt;
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([title, count]) => ({
+    const baseCards = new Map(
+      t.categories.cards.map((card) => [card.title.toLowerCase(), card]),
+    );
+    return TOPIC_KEYS.map((key) => {
+      const fallbackTitle = key;
+      const baseCard = baseCards.get(key);
+      const title = baseCard?.title ?? fallbackTitle;
+      const description =
+        baseCard?.description ?? `${labels.about} ${title}`;
+      const count = counts.get(key) ?? 0;
+      return {
         title,
-        description: `${labels.about} ${title}`,
+        description,
         count: `${count} ${count === 1 ? labels.singular : labels.plural}`,
-      }));
+      };
+    });
   }, [posts, t.categories.cards, lang]);
 
   const showLoading = status === "loading";
