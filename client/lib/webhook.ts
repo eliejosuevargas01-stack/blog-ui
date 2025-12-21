@@ -8,7 +8,8 @@ export type WebhookAction =
   | "singin"
   | "get_posts"
   | "edit_post"
-  | "delete_post";
+  | "delete_post"
+  | "email_verification";
 
 type MetaTag = { name?: string; property?: string; content: string };
 
@@ -56,6 +57,12 @@ export type WebhookPayload =
       id: string;
       slug?: string;
       token?: string;
+    }
+  | {
+      action: "email_verification";
+      user_id: string;
+      verification_code: string;
+      purpose: "email_verification";
     };
 
 export async function sendWebhook(payload: WebhookPayload) {

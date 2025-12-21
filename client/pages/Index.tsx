@@ -12,8 +12,14 @@ import {
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Seo } from "@/components/Seo";
-import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
+import {
+  buildPath,
+  buildPostPath,
+  translations,
+  type Language,
+} from "@/lib/i18n";
 import { fetchPosts, type BlogPost } from "@/lib/posts";
+import { TOPICS, buildTopicPath, normalizeTopicKey } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 
 const categoryVisuals = [
@@ -40,8 +46,6 @@ const categoryLabels = {
   en: { about: "Articles about", singular: "article", plural: "articles" },
   es: { about: "Articulos sobre", singular: "articulo", plural: "articulos" },
 } as const;
-
-const TOPIC_KEYS = ["ia", "tech", "marketing/seo", "business"] as const;
 
 interface IndexProps {
   lang: Language;
@@ -114,21 +118,19 @@ export default function Index({ lang }: IndexProps) {
   const categoryCards = useMemo(() => {
     const counts = new Map<string, number>();
     posts.forEach((post) => {
-      const primaryCategory = post.category?.trim().toLowerCase();
-      if (!primaryCategory) {
+      const topicKey = normalizeTopicKey(post.category);
+      if (!topicKey) {
         return;
       }
-      if (!TOPIC_KEYS.includes(primaryCategory as (typeof TOPIC_KEYS)[number])) {
-        return;
-      }
-      counts.set(primaryCategory, (counts.get(primaryCategory) ?? 0) + 1);
+      counts.set(topicKey, (counts.get(topicKey) ?? 0) + 1);
     });
 
     const labels = categoryLabels[lang] ?? categoryLabels.pt;
     const baseCards = new Map(
       t.categories.cards.map((card) => [card.title.toLowerCase(), card]),
     );
-    return TOPIC_KEYS.map((key) => {
+    return TOPICS.map((topic) => {
+      const key = topic.key;
       const fallbackTitle = key;
       const baseCard = baseCards.get(key);
       const title = baseCard?.title ?? fallbackTitle;
@@ -136,6 +138,7 @@ export default function Index({ lang }: IndexProps) {
         baseCard?.description ?? `${labels.about} ${title}`;
       const count = counts.get(key) ?? 0;
       return {
+        key,
         title,
         description,
         count: `${count} ${count === 1 ? labels.singular : labels.plural}`,
@@ -372,8 +375,13 @@ export default function Index({ lang }: IndexProps) {
               {categoryCards.map((cat, index) => {
                 const visual = categoryVisuals[index % categoryVisuals.length];
                 const Icon = visual.icon;
+                const topicPath = buildTopicPath(lang, cat.key);
                 return (
-                  <div key={cat.title} className="relative group cursor-pointer">
+                  <Link
+                    key={cat.key}
+                    to={topicPath}
+                    className="relative group"
+                  >
                     <div
                       className={`absolute inset-0 bg-gradient-to-br ${visual.color} rounded-xl blur-xl transition-all group-hover:blur-2xl`}
                     />
@@ -394,7 +402,7 @@ export default function Index({ lang }: IndexProps) {
                         <ArrowRight className="w-4 h-4 text-secondary group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

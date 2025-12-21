@@ -15,7 +15,10 @@ import Post from "@/pages/Post";
 import Articles from "@/pages/Articles";
 import Latest from "@/pages/Latest";
 import Admin from "@/pages/Admin";
+import Topic from "@/pages/Topic";
+import VerifyEmail from "@/pages/VerifyEmail";
 import { defaultLang, languages, pageSlugs, postRouteSegment } from "@/lib/i18n";
+import { TOPICS } from "@/lib/topics";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +96,22 @@ const App = () => (
               element={<Admin lang={lang} />}
             />
           ))}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-verify-email`}
+              path={`/${lang}/${pageSlugs.verifyEmail[lang]}`}
+              element={<VerifyEmail lang={lang} />}
+            />
+          ))}
+          {languages.flatMap((lang) =>
+            TOPICS.map((topic) => (
+              <Route
+                key={`${lang}-topic-${topic.slug}`}
+                path={`/${lang}/${topic.slug}`}
+                element={<Topic lang={lang} topic={topic.key} />}
+              />
+            )),
+          )}
           {languages.map((lang) => (
             <Route
               key={`${lang}-post`}
