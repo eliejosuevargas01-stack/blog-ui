@@ -786,7 +786,8 @@ export default function Admin({ lang }: AdminProps) {
                   const isSaving = savingId === post.id;
                   const isDeleting = deletingId === post.id;
                   const isBusy = isSaving || isDeleting;
-                  const previewSrc = post.imageThumb ?? post.image ?? "";
+                  const previewSrc =
+                    post.imageThumb ?? post.image ?? post.images?.[0] ?? "";
                   return (
                     <article
                       key={post.id}

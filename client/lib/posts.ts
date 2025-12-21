@@ -404,6 +404,17 @@ export function normalizePosts(payload: unknown): BlogPost[] {
         "cover_image",
         "coverImageUrl",
       ]);
+      const imageThumb = pickString(record, [
+        "imageThumb",
+        "image_thumb",
+        "thumbnailUrl",
+        "thumbnail_url",
+        "thumb",
+        "thumbUrl",
+        "thumb_url",
+        "imageThumbUrl",
+        "image_thumb_url",
+      ]);
       const imageAlt = pickString(record, [
         "imageAlt",
         "image_alt",
@@ -476,7 +487,9 @@ export function normalizePosts(payload: unknown): BlogPost[] {
       const normalizedImages = normalizeImageList(images);
       const coverImage = normalizedImage ?? normalizedImages?.[0] ?? null;
       const coverImageThumb =
-        normalizeImageThumbnailUrl(coverImage) ?? coverImage;
+        normalizeImageThumbnailUrl(imageThumb ?? coverImage) ??
+        normalizeImageUrl(imageThumb) ??
+        coverImage;
 
       return {
         id,
