@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -779,43 +779,58 @@ export default function Admin({ lang }: AdminProps) {
 
                 {!showLoading && !showError && !showEmpty && (
                   <div className="space-y-6">
-                    {filteredPosts.map((post) => {
-                      const isEditing = editingId === post.id;
-                      const draft = drafts[post.id] ?? buildDraft(post);
-                      const postDate = formatDate(post.date);
-                      const isSaving = savingId === post.id;
-                      const isDeleting = deletingId === post.id;
-                      const isBusy = isSaving || isDeleting;
-                      return (
-                        <article
-                          key={post.id}
-                          className="rounded-xl border border-border bg-card p-6 shadow-sm"
-                        >
+                {filteredPosts.map((post) => {
+                  const isEditing = editingId === post.id;
+                  const draft = drafts[post.id] ?? buildDraft(post);
+                  const postDate = formatDate(post.date);
+                  const isSaving = savingId === post.id;
+                  const isDeleting = deletingId === post.id;
+                  const isBusy = isSaving || isDeleting;
+                  const previewSrc = post.imageThumb ?? post.image ?? "";
+                  return (
+                    <article
+                      key={post.id}
+                      className="rounded-xl border border-border bg-card p-6 shadow-sm"
+                    >
                       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="text-xl font-semibold text-foreground">
-                              {post.title}
-                            </h3>
-                            {post.featured && (
-                              <Badge variant="secondary">
-                                {t.admin.fields.featured}
-                              </Badge>
-                            )}
-                            {post.category && (
-                              <Badge variant="outline">{post.category}</Badge>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <div className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 flex items-center justify-center">
+                            {previewSrc ? (
+                              <img
+                                src={previewSrc}
+                                alt={post.title}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <ImageIcon className="h-6 w-6 text-foreground/40" />
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
-                            {post.author && <span>{post.author}</span>}
-                            {postDate && <span>{postDate}</span>}
-                            {post.readTime && <span>{post.readTime}</span>}
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <h3 className="text-xl font-semibold text-foreground">
+                                {post.title}
+                              </h3>
+                              {post.featured && (
+                                <Badge variant="secondary">
+                                  {t.admin.fields.featured}
+                                </Badge>
+                              )}
+                              {post.category && (
+                                <Badge variant="outline">{post.category}</Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
+                              {post.author && <span>{post.author}</span>}
+                              {postDate && <span>{postDate}</span>}
+                              {post.readTime && <span>{post.readTime}</span>}
+                            </div>
+                            {(post.excerpt || post.description) && (
+                              <p className="text-sm text-foreground/70 max-w-3xl line-clamp-2">
+                                {post.excerpt ?? post.description}
+                              </p>
+                            )}
                           </div>
-                          {(post.excerpt || post.description) && (
-                            <p className="text-sm text-foreground/70 max-w-3xl line-clamp-2">
-                              {post.excerpt ?? post.description}
-                            </p>
-                          )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button
