@@ -555,7 +555,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Use: ia, tech, marketing/seo ou business.",
+        category: "Use uma categoria existente ou crie uma nova.",
         tags: "Separe por vírgula.",
         images: "Separe por vírgula.",
         metaTags: 'Exemplo: [{"name":"description","content":"..."}]',
@@ -821,7 +821,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Use: ia, tech, marketing/seo, or business.",
+        category: "Use an existing category or create a new one.",
         tags: "Comma-separated.",
         images: "Comma-separated.",
         metaTags: 'Example: [{"name":"description","content":"..."}]',
@@ -1088,7 +1088,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Usa: ia, tech, marketing/seo o business.",
+        category: "Usa una categoría existente o crea una nueva.",
         tags: "Separadas por coma.",
         images: "Separadas por coma.",
         metaTags: 'Ejemplo: [{"name":"description","content":"..."}]',

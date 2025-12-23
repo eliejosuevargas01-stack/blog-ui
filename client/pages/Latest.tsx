@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
 import { fetchPosts, type BlogPost } from "@/lib/posts";
@@ -215,6 +216,7 @@ export default function Latest({ lang }: LatestProps) {
             )}
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

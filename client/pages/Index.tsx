@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -12,7 +12,7 @@ import {
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Seo } from "@/components/Seo";
-import { useToast } from "@/hooks/use-toast";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import {
   buildPath,
   buildPostPath,
@@ -20,8 +20,11 @@ import {
   type Language,
 } from "@/lib/i18n";
 import { fetchPosts, type BlogPost } from "@/lib/posts";
-import { sendWebhook } from "@/lib/webhook";
-import { TOPICS, buildTopicPath, normalizeTopicKey } from "@/lib/topics";
+import {
+  buildTopicPath,
+  collectTopicSummaries,
+  normalizeTopicKey,
+} from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 
 const categoryVisuals = [
@@ -65,7 +68,6 @@ const parseDateValue = (value: string | undefined) => {
 
 export default function Index({ lang }: IndexProps) {
   const t = translations[lang];
-  const { toast } = useToast();
   const homePath = buildPath(lang, "home");
   const articlesPath = buildPath(lang, "articles");
   const latestPath = buildPath(lang, "latest");
@@ -73,8 +75,6 @@ export default function Index({ lang }: IndexProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterLoading, setNewsletterLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,71 +120,46 @@ export default function Index({ lang }: IndexProps) {
   }, [posts]);
 
   const categoryCards = useMemo(() => {
-    const counts = new Map<string, number>();
-    posts.forEach((post) => {
-      const topicKey = normalizeTopicKey(post.category);
-      if (!topicKey) {
-        return;
+    const summaries = collectTopicSummaries(posts);
+    const labels = categoryLabels[lang] ?? categoryLabels.pt;
+    const baseCards = new Map<string, (typeof t.categories.cards)[number]>();
+    t.categories.cards.forEach((card) => {
+      const key = normalizeTopicKey(card.title);
+      if (key) {
+        baseCards.set(key, card);
       }
-      counts.set(topicKey, (counts.get(topicKey) ?? 0) + 1);
     });
 
-    const labels = categoryLabels[lang] ?? categoryLabels.pt;
-    const baseCards = new Map(
-      t.categories.cards.map((card) => [card.title.toLowerCase(), card]),
-    );
-    return TOPICS.map((topic) => {
-      const key = topic.key;
-      const fallbackTitle = key;
-      const baseCard = baseCards.get(key);
-      const title = baseCard?.title ?? fallbackTitle;
+    const cards = summaries.map((summary) => {
+      const baseCard = baseCards.get(summary.slug);
+      const title = baseCard?.title ?? summary.title;
       const description =
         baseCard?.description ?? `${labels.about} ${title}`;
-      const count = counts.get(key) ?? 0;
       return {
-        key,
+        key: summary.slug,
         title,
         description,
-        count: `${count} ${count === 1 ? labels.singular : labels.plural}`,
+        count: summary.count,
       };
     });
+
+    cards.sort(
+      (a, b) => b.count - a.count || a.title.localeCompare(b.title),
+    );
+
+    return cards.map((card) => ({
+      key: card.key,
+      title: card.title,
+      description: card.description,
+      count: `${card.count} ${
+        card.count === 1 ? labels.singular : labels.plural
+      }`,
+    }));
   }, [posts, t.categories.cards, lang]);
 
   const showLoading = status === "loading";
   const showError = status === "error";
   const showEmpty = status === "idle" && posts.length === 0;
-
-  const handleNewsletterSubmit = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-    const email = newsletterEmail.trim();
-    if (!email) {
-      return;
-    }
-    setNewsletterLoading(true);
-    try {
-      await sendWebhook({
-        action: "newsletter_subscribe",
-        email,
-        lang,
-      });
-      toast({
-        title: t.newsletter.successTitle,
-        description: t.newsletter.successDescription,
-      });
-      setNewsletterEmail("");
-    } catch (error) {
-      toast({
-        title: t.newsletter.errorTitle,
-        description:
-          error instanceof Error ? error.message : t.newsletter.errorDescription,
-        variant: "destructive",
-      });
-    } finally {
-      setNewsletterLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -445,50 +420,7 @@ export default function Index({ lang }: IndexProps) {
           </div>
         </section>
 
-        {/* Newsletter Section */}
-        <section
-          id="newsletter"
-          className="scroll-mt-24 py-20 sm:py-32 border-b border-border bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5"
-        >
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto text-center">
-              <h2 className="text-5xl sm:text-6xl font-bold text-foreground mb-6">
-                {t.newsletter.title}
-              </h2>
-              <p className="text-xl text-foreground/60 mb-8">
-                {t.newsletter.subtitle}
-              </p>
-
-              <form
-                className="flex flex-col sm:flex-row gap-4"
-                onSubmit={handleNewsletterSubmit}
-              >
-                <input
-                  type="email"
-                  placeholder={t.newsletter.placeholder}
-                  value={newsletterEmail}
-                  onChange={(event) => setNewsletterEmail(event.target.value)}
-                  autoComplete="email"
-                  required
-                  className="flex-1 px-6 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-                <button
-                  type="submit"
-                  className="px-8 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:shadow-lg hover:shadow-secondary/20 transition-all hover:scale-105 whitespace-nowrap disabled:opacity-70 disabled:hover:shadow-none disabled:hover:scale-100"
-                  disabled={newsletterLoading}
-                >
-                  {newsletterLoading
-                    ? `${t.newsletter.button}...`
-                    : t.newsletter.button}
-                </button>
-              </form>
-
-              <p className="text-xs text-foreground/50 mt-4">
-                {t.newsletter.note}
-              </p>
-            </div>
-          </div>
-        </section>
+        <NewsletterSection t={t} />
 
         {/* Recent Articles Preview */}
         <section id="latest" className="scroll-mt-24 py-20 sm:py-32">

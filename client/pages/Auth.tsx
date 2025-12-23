@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import {
@@ -281,6 +282,7 @@ export default function Auth({ lang }: AuthProps) {
             </Card>
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

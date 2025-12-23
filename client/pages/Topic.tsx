@@ -1,32 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
 import { fetchPosts, type BlogPost } from "@/lib/posts";
 import {
   buildTopicPath,
+  collectTopicSummaries,
   normalizeTopicKey,
-  type TopicKey,
 } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
+import NotFound from "@/pages/NotFound";
 
 interface TopicProps {
   lang: Language;
-  topic: TopicKey;
 }
+
+type TopicParams = {
+  topicSlug?: string;
+};
 
 type PostsStatus = "loading" | "idle" | "error";
 
 const replaceTopic = (template: string, topic: string) =>
   template.replace("{topic}", topic);
 
-export default function Topic({ lang, topic }: TopicProps) {
+export default function Topic({ lang }: TopicProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
+  const { topicSlug } = useParams<TopicParams>();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -61,36 +67,69 @@ export default function Topic({ lang, topic }: TopicProps) {
     };
   }, [lang]);
 
-  const topicCard = useMemo(
-    () =>
-      t.categories.cards.find(
-        (card) => card.title.toLowerCase() === topic,
-      ),
-    [t.categories.cards, topic],
+  const normalizedTopic = useMemo(
+    () => normalizeTopicKey(topicSlug),
+    [topicSlug],
   );
 
-  const topicTitle = topicCard?.title ?? topic;
+  const topicSummaries = useMemo(
+    () => collectTopicSummaries(posts),
+    [posts],
+  );
+
+  const topicIndex = useMemo(
+    () => new Map(topicSummaries.map((summary) => [summary.slug, summary])),
+    [topicSummaries],
+  );
+
+  const topicSummary = normalizedTopic ? topicIndex.get(normalizedTopic) : null;
+
+  const topicCard = useMemo(() => {
+    if (!normalizedTopic) {
+      return null;
+    }
+    return t.categories.cards.find(
+      (card) => normalizeTopicKey(card.title) === normalizedTopic,
+    );
+  }, [t.categories.cards, normalizedTopic]);
+
+  const fallbackTitle = topicSlug ? topicSlug.replace(/-/g, " ") : "";
+  const topicTitle =
+    topicCard?.title ?? topicSummary?.title ?? fallbackTitle;
   const topicDescription =
     topicCard?.description ?? replaceTopic(t.topic.subtitle, topicTitle);
 
-  const filteredPosts = useMemo(
-    () => posts.filter((post) => normalizeTopicKey(post.category) === topic),
-    [posts, topic],
-  );
+  const filteredPosts = useMemo(() => {
+    if (!normalizedTopic) {
+      return [];
+    }
+    return posts.filter(
+      (post) => normalizeTopicKey(post.category) === normalizedTopic,
+    );
+  }, [posts, normalizedTopic]);
 
   const showLoading = status === "loading";
   const showError = status === "error";
   const showEmpty = status === "idle" && filteredPosts.length === 0;
+  const showNotFound =
+    status === "idle" &&
+    posts.length > 0 &&
+    (!normalizedTopic || !topicSummary);
 
   const formatDate = (value?: string) => formatPostDate(value, lang);
   const metaTitle = replaceTopic(t.topic.metaTitle, topicTitle);
   const metaDescription = replaceTopic(t.topic.metaDescription, topicTitle);
-  const canonicalPath = buildTopicPath(lang, topic);
+  const topicSlugValue = normalizedTopic ?? topicSlug ?? "";
+  const canonicalPath = buildTopicPath(lang, topicSlugValue);
   const alternatePaths = {
-    pt: buildTopicPath("pt", topic),
-    en: buildTopicPath("en", topic),
-    es: buildTopicPath("es", topic),
+    pt: buildTopicPath("pt", topicSlugValue),
+    en: buildTopicPath("en", topicSlugValue),
+    es: buildTopicPath("es", topicSlugValue),
   };
+
+  if (showNotFound) {
+    return <NotFound />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -229,6 +268,7 @@ export default function Topic({ lang, topic }: TopicProps) {
             )}
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

@@ -16,7 +16,6 @@ import Latest from "@/pages/Latest";
 import Admin from "@/pages/Admin";
 import Topic from "@/pages/Topic";
 import { defaultLang, languages, pageSlugs, postRouteSegment } from "@/lib/i18n";
-import { TOPICS } from "@/lib/topics";
 
 const queryClient = new QueryClient();
 
@@ -87,15 +86,13 @@ const App = () => (
               element={<Admin lang={lang} />}
             />
           ))}
-          {languages.flatMap((lang) =>
-            TOPICS.map((topic) => (
-              <Route
-                key={`${lang}-topic-${topic.slug}`}
-                path={`/${lang}/${topic.slug}`}
-                element={<Topic lang={lang} topic={topic.key} />}
-              />
-            )),
-          )}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-topic`}
+              path={`/${lang}/:topicSlug`}
+              element={<Topic lang={lang} />}
+            />
+          ))}
           {languages.map((lang) => (
             <Route
               key={`${lang}-post`}

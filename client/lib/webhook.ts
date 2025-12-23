@@ -9,7 +9,8 @@ export type WebhookAction =
   | "get_posts"
   | "edit_post"
   | "delete_post"
-  | "newsletter_subscribe";
+  | "newsletter_subscribe"
+  | "new_subscriptor";
 
 type MetaTag = { name?: string; property?: string; content: string };
 
@@ -62,16 +63,24 @@ export type WebhookPayload =
       action: "newsletter_subscribe";
       email: string;
       lang: Language;
+    }
+  | {
+      action: "new_subscriptor";
+      email: string;
     };
 
 export async function sendWebhook(payload: WebhookPayload) {
+  const body =
+    payload.action === "new_subscriptor"
+      ? JSON.stringify({ email: payload.email })
+      : JSON.stringify(payload);
   const response = await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify(payload),
+    body,
   });
 
   const text = await response.text();

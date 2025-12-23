@@ -4,6 +4,7 @@ import { ArrowLeft, Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { buildPath, translations, type Language } from "@/lib/i18n";
 import { deletePost, editPost, fetchPosts, type BlogPost } from "@/lib/posts";
+import { collectTopicSummaries } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 import { sendWebhook } from "@/lib/webhook";
 
-const CATEGORY_OPTIONS = ["ia", "tech", "marketing/seo", "business"] as const;
 const ADMIN_SESSION_KEY = "seommerce.admin.session";
 const SESSION_TTL = 1000 * 60 * 60 * 12;
 
@@ -289,6 +290,12 @@ export default function Admin({ lang }: AdminProps) {
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
+  const categoryOptions = useMemo(() => {
+    const options = collectTopicSummaries(posts).map(
+      (summary) => summary.title,
+    );
+    return options.sort((a, b) => a.localeCompare(b, lang));
+  }, [posts, lang]);
 
   useEffect(() => {
     const stored = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -900,7 +907,7 @@ export default function Admin({ lang }: AdminProps) {
                                     }
                                   />
                                   <datalist id={`category-options-${post.id}`}>
-                                    {CATEGORY_OPTIONS.map((option) => (
+                                    {categoryOptions.map((option) => (
                                       <option key={option} value={option} />
                                     ))}
                                   </datalist>
@@ -1153,6 +1160,7 @@ export default function Admin({ lang }: AdminProps) {
             )}
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

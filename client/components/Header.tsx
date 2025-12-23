@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import logoUrl from "@/pages/logo.png";
 
 interface HeaderProps {
   lang: Language;
@@ -44,15 +45,13 @@ export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
           <Link
             to={homePath}
             className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity"
+            aria-label="seommerce.shop"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-primary via-primary to-secondary rounded-lg flex items-center justify-center text-secondary-foreground font-bold">
-              S
-            </div>
-            <span className="hidden sm:inline text-foreground">
-              seommerce
-              <span className="text-secondary">.shop</span>
-            </span>
-            <span className="sm:hidden text-foreground">seommerce</span>
+            <img
+              src={logoUrl}
+              alt="seommerce.shop"
+              className="h-8 sm:h-9 w-auto"
+            />
           </Link>
 
           <div className="flex items-center gap-3 sm:gap-5">

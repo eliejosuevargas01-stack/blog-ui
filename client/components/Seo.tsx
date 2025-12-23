@@ -14,6 +14,12 @@ const localeMap: Record<Language, string> = {
   es: "es_ES",
 };
 
+const hreflangMap: Record<Language, string> = {
+  pt: "pt-BR",
+  en: "en",
+  es: "es",
+};
+
 interface SeoProps {
   lang: Language;
   page?: PageKey;
@@ -56,7 +62,7 @@ export function Seo({
   metaTags,
 }: SeoProps) {
   useEffect(() => {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = hreflangMap[lang] ?? lang;
     document.title = title;
 
     upsertMeta('meta[name="description"]', {
@@ -141,9 +147,10 @@ export function Seo({
           if (!path) {
             return;
           }
-          upsertLink(`link[rel="alternate"][hreflang="${langCode}"]`, {
+          const hreflang = hreflangMap[langCode] ?? langCode;
+          upsertLink(`link[rel="alternate"][hreflang="${hreflang}"]`, {
             rel: "alternate",
-            hreflang: langCode,
+            hreflang,
             href: `${origin}${path}`,
           });
         },

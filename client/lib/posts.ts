@@ -1,4 +1,4 @@
-import type { Language } from "@/lib/i18n";
+import { defaultLang, languages, type Language } from "@/lib/i18n";
 import { sendWebhook } from "@/lib/webhook";
 
 export interface BlogPost {
@@ -18,6 +18,7 @@ export interface BlogPost {
   author?: string;
   readTime?: string;
   slug?: string;
+  slugs?: Partial<Record<Language, string>>;
   featured?: boolean;
   metaTitle?: string;
   metaDescription?: string;
@@ -236,6 +237,175 @@ const pickStringArray = (record: Record<string, unknown>, keys: string[]) => {
   return null;
 };
 
+const LANGUAGE_VARIANTS: Record<Language, string[]> = {
+  pt: ["pt", "pt-br", "pt_br", "ptbr", "pt-BR", "pt_BR", "ptBR"],
+  en: ["en", "en-us", "en_us", "enus", "en-US", "en_US", "enUS"],
+  es: ["es", "es-es", "es_es", "eses", "es-ES", "es_ES", "esES"],
+};
+
+const TRANSLATION_CONTAINERS = [
+  "translations",
+  "translation",
+  "i18n",
+  "locales",
+  "languages",
+] as const;
+
+const getLanguageVariants = (lang: Language) =>
+  LANGUAGE_VARIANTS[lang] ?? [lang];
+
+const buildLocalizedKeys = (key: string, lang: Language) => {
+  const variants = new Set<string>();
+  const suffixes = getLanguageVariants(lang);
+  const upper = lang.toUpperCase();
+  const titleCase = `${lang.charAt(0).toUpperCase()}${lang.slice(1)}`;
+
+  variants.add(`${key}${titleCase}`);
+  variants.add(`${key}${upper}`);
+
+  suffixes.forEach((suffix) => {
+    variants.add(`${key}_${suffix}`);
+    variants.add(`${key}-${suffix}`);
+  });
+
+  return Array.from(variants);
+};
+
+const pickFromLanguageObject = <T>(
+  value: unknown,
+  lang: Language,
+  extractor: (input: unknown) => T | null,
+) => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  for (const variant of getLanguageVariants(lang)) {
+    const candidate = extractor(record[variant]);
+    if (candidate) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+const pickFromRecord = <T>(
+  record: Record<string, unknown>,
+  keys: string[],
+  extractor: (input: unknown) => T | null,
+) => {
+  for (const key of keys) {
+    const value = extractor(record[key]);
+    if (value) {
+      return value;
+    }
+  }
+  return null;
+};
+
+const pickFromTranslationContainer = <T>(
+  record: Record<string, unknown>,
+  keys: string[],
+  lang: Language,
+  extractor: (input: unknown) => T | null,
+) => {
+  for (const containerKey of TRANSLATION_CONTAINERS) {
+    const containerValue = record[containerKey];
+    if (!containerValue || typeof containerValue !== "object") {
+      continue;
+    }
+    const container = containerValue as Record<string, unknown>;
+
+    for (const variant of getLanguageVariants(lang)) {
+      const langRecord = container[variant];
+      if (langRecord && typeof langRecord === "object") {
+        const value = pickFromRecord(
+          langRecord as Record<string, unknown>,
+          keys,
+          extractor,
+        );
+        if (value) {
+          return value;
+        }
+      }
+    }
+
+    for (const key of keys) {
+      const value = pickFromLanguageObject(container[key], lang, extractor);
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return null;
+};
+
+const pickLocalizedValue = <T>(
+  record: Record<string, unknown>,
+  keys: string[],
+  lang: Language,
+  extractor: (input: unknown) => T | null,
+  fallbackToBase = true,
+) => {
+  for (const key of keys) {
+    for (const localizedKey of buildLocalizedKeys(key, lang)) {
+      const value = extractor(record[localizedKey]);
+      if (value) {
+        return value;
+      }
+    }
+    const nestedValue = pickFromLanguageObject(record[key], lang, extractor);
+    if (nestedValue) {
+      return nestedValue;
+    }
+  }
+
+  const containerValue = pickFromTranslationContainer(
+    record,
+    keys,
+    lang,
+    extractor,
+  );
+  if (containerValue) {
+    return containerValue;
+  }
+
+  return fallbackToBase ? pickFromRecord(record, keys, extractor) : null;
+};
+
+const pickLocalizedString = (
+  record: Record<string, unknown>,
+  keys: string[],
+  lang: Language,
+  fallbackToBase = true,
+) => pickLocalizedValue(record, keys, lang, stringValue, fallbackToBase);
+
+const pickLocalizedStringArray = (
+  record: Record<string, unknown>,
+  keys: string[],
+  lang: Language,
+  fallbackToBase = true,
+) => pickLocalizedValue(record, keys, lang, stringArrayValue, fallbackToBase);
+
+const collectLocalizedStrings = (
+  record: Record<string, unknown>,
+  keys: string[],
+) => {
+  const collected: Partial<Record<Language, string>> = {};
+  languages.forEach((lang) => {
+    const value = pickLocalizedString(
+      record,
+      keys,
+      lang,
+      lang === defaultLang,
+    );
+    if (value) {
+      collected[lang] = value;
+    }
+  });
+  return collected;
+};
+
 const parseMetaTagsFromHtml = (
   value: string,
 ): Array<{ name?: string; property?: string; content: string }> | undefined => {
@@ -347,7 +517,10 @@ const extractPostArray = (payload: unknown): unknown[] => {
   return [];
 };
 
-export function normalizePosts(payload: unknown): BlogPost[] {
+export function normalizePosts(
+  payload: unknown,
+  lang: Language = defaultLang,
+): BlogPost[] {
   const list = extractPostArray(payload);
 
   return list
@@ -356,38 +529,45 @@ export function normalizePosts(payload: unknown): BlogPost[] {
         return null;
       }
       const record = item as Record<string, unknown>;
-      const title = pickString(record, ["title", "titulo", "name", "headline"]);
+      const title = pickLocalizedString(
+        record,
+        ["title", "titulo", "name", "headline"],
+        lang,
+      );
       if (!title) {
         return null;
       }
 
       const id =
         pickString(record, ["id", "slug", "uuid"]) ?? `post-${index}`;
-      const excerpt = pickString(record, [
-        "excerpt",
-        "summary",
-        "descricao",
-        "description",
-        "resumo",
-      ]);
+      const excerpt = pickLocalizedString(
+        record,
+        ["excerpt", "summary", "descricao", "description", "resumo"],
+        lang,
+      );
       const description =
-        pickString(record, ["description", "descricao", "summary", "resumo"]) ??
-        undefined;
-      const contentHtml = pickString(record, [
-        "contentHtml",
-        "html",
-        "bodyHtml",
-        "content_html",
-        "conteudo_html",
-        "conteudoHtml",
-      ]);
-      const content = pickString(record, [
-        "content",
-        "body",
-        "texto",
-        "text",
-        "conteudo",
-      ]);
+        pickLocalizedString(
+          record,
+          ["description", "descricao", "summary", "resumo"],
+          lang,
+        ) ?? undefined;
+      const contentHtml = pickLocalizedString(
+        record,
+        [
+          "contentHtml",
+          "html",
+          "bodyHtml",
+          "content_html",
+          "conteudo_html",
+          "conteudoHtml",
+        ],
+        lang,
+      );
+      const content = pickLocalizedString(
+        record,
+        ["content", "body", "texto", "text", "conteudo"],
+        lang,
+      );
       const category = pickString(record, ["category", "categoria", "tag"]);
       const image = pickString(record, [
         "image",
@@ -415,14 +595,18 @@ export function normalizePosts(payload: unknown): BlogPost[] {
         "imageThumbUrl",
         "image_thumb_url",
       ]);
-      const imageAlt = pickString(record, [
-        "imageAlt",
-        "image_alt",
-        "cover_image_alt",
-        "coverImageAlt",
-        "imagem_alt",
-        "alt",
-      ]);
+      const imageAlt = pickLocalizedString(
+        record,
+        [
+          "imageAlt",
+          "image_alt",
+          "cover_image_alt",
+          "coverImageAlt",
+          "imagem_alt",
+          "alt",
+        ],
+        lang,
+      );
       const images = pickStringArray(record, [
         "images",
         "imagens",
@@ -458,28 +642,25 @@ export function normalizePosts(payload: unknown): BlogPost[] {
           "readingTimeMinutes",
         ]),
       );
-      const slug = pickString(record, ["slug"]);
+      const slugMap = collectLocalizedStrings(record, ["slug"]);
+      const slug =
+        pickLocalizedString(record, ["slug"], lang) ?? slugMap[lang];
       const featured = booleanValue(record.featured) ?? undefined;
-      const metaTitle = pickString(record, [
-        "metaTitle",
-        "meta_title",
-        "seoTitle",
-        "titleSeo",
-        "titleSEO",
-      ]);
-      const metaDescription = pickString(record, [
-        "metaDescription",
-        "meta_description",
-        "seoDescription",
-        "descriptionMeta",
-      ]);
-      const tags = pickStringArray(record, [
-        "tags",
-        "keywords",
-        "palavras_chave",
-        "palavrasChave",
-        "palavras-chave",
-      ]);
+      const metaTitle = pickLocalizedString(
+        record,
+        ["metaTitle", "meta_title", "seoTitle", "titleSeo", "titleSEO"],
+        lang,
+      );
+      const metaDescription = pickLocalizedString(
+        record,
+        ["metaDescription", "meta_description", "seoDescription", "descriptionMeta"],
+        lang,
+      );
+      const tags = pickLocalizedStringArray(
+        record,
+        ["tags", "keywords", "palavras_chave", "palavrasChave", "palavras-chave"],
+        lang,
+      );
       const metaTags = parseMetaTags(
         record.metaTags ?? record.meta_tags ?? record.meta,
       );
@@ -508,6 +689,7 @@ export function normalizePosts(payload: unknown): BlogPost[] {
         author: author ?? undefined,
         readTime: readTime ?? undefined,
         slug: slug ?? undefined,
+        slugs: Object.keys(slugMap).length > 0 ? slugMap : undefined,
         featured,
         metaTitle: metaTitle ?? undefined,
         metaDescription: metaDescription ?? description ?? undefined,
@@ -519,9 +701,7 @@ export function normalizePosts(payload: unknown): BlogPost[] {
 
 export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
   const response = await sendWebhook({ action: "get_posts", lang });
-  const posts = normalizePosts(response);
-  const { translatePosts } = await import("@/lib/translate");
-  return translatePosts(posts, lang);
+  return normalizePosts(response, lang);
 }
 
 export async function editPost(

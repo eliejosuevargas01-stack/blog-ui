@@ -3,6 +3,7 @@ import { ArrowRight, Gauge, Sparkles, Wrench } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, translations, type Language } from "@/lib/i18n";
 
@@ -137,6 +138,7 @@ export default function Tools({ lang }: ToolsProps) {
             </div>
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { buildPath, type Language, type Translation } from "@/lib/i18n";
+import logoUrl from "@/pages/logo.png";
 
 interface FooterProps {
   lang: Language;
@@ -18,10 +19,12 @@ export function Footer({ lang, t }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-secondary via-secondary to-primary rounded-lg flex items-center justify-center text-primary font-bold">
-                S
-              </div>
-              <h3 className="font-bold text-lg">seommerce.shop</h3>
+              <img
+                src={logoUrl}
+                alt="seommerce.shop"
+                className="h-9 w-auto"
+              />
+              <h3 className="sr-only">seommerce.shop</h3>
             </div>
             <p className="text-sm opacity-80">{t.footer.tagline}</p>
           </div>

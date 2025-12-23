@@ -13,10 +13,12 @@ import { marked } from "marked";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import {
   buildPath,
   buildPostPath,
+  languages,
   translations,
   type Language,
 } from "@/lib/i18n";
@@ -28,6 +30,12 @@ interface PostProps {
 }
 
 type PostStatus = "loading" | "idle" | "error";
+
+const resolvePostSlug = (
+  post: BlogPost | null,
+  lang: Language,
+  fallback?: string,
+) => post?.slugs?.[lang] ?? post?.slug ?? fallback ?? "";
 
 export default function Post({ lang }: PostProps) {
   const t = translations[lang];
@@ -92,15 +100,23 @@ export default function Post({ lang }: PostProps) {
     });
   }, [posts, slugParam]);
 
-  const languagePaths = slugParam
-    ? {
-        pt: buildPostPath("pt", slugParam),
-        en: buildPostPath("en", slugParam),
-        es: buildPostPath("es", slugParam),
+  const languagePaths = useMemo(() => {
+    if (!slugParam && !post) {
+      return undefined;
+    }
+    const paths: Partial<Record<Language, string>> = {};
+    languages.forEach((language) => {
+      const fallbackSlug = language === lang ? slugParam : undefined;
+      const slug = resolvePostSlug(post, language, fallbackSlug);
+      if (slug) {
+        paths[language] = buildPostPath(language, slug);
       }
-    : undefined;
+    });
+    return Object.keys(paths).length > 0 ? paths : undefined;
+  }, [lang, post, slugParam]);
 
-  const canonicalPath = slugParam ? buildPostPath(lang, slugParam) : undefined;
+  const canonicalSlug = resolvePostSlug(post, lang, slugParam);
+  const canonicalPath = canonicalSlug ? buildPostPath(lang, canonicalSlug) : undefined;
   const seoTitle = post
     ? `${post.metaTitle ?? post.title} | seommerce.shop`
     : t.post.notFoundTitle;
@@ -367,6 +383,7 @@ export default function Post({ lang }: PostProps) {
             )}
           </div>
         </section>
+        <NewsletterSection t={t} />
       </main>
 
       {activeImage && (

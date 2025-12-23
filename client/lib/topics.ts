@@ -1,37 +1,59 @@
 import type { Language } from "@/lib/i18n";
+import type { BlogPost } from "@/lib/posts";
 
-export const TOPICS = [
-  { key: "ia", slug: "ia" },
-  { key: "tech", slug: "tech" },
-  { key: "marketing/seo", slug: "marketing-seo" },
-  { key: "business", slug: "business" },
-] as const;
-
-export type TopicKey = (typeof TOPICS)[number]["key"];
-export type TopicSlug = (typeof TOPICS)[number]["slug"];
-
-export const TOPIC_KEYS = TOPICS.map((topic) => topic.key);
-
-export const topicSlugFromKey = (key: TopicKey): TopicSlug => {
-  const match = TOPICS.find((topic) => topic.key === key);
-  return match?.slug ?? "ia";
+export type TopicSummary = {
+  slug: string;
+  title: string;
+  count: number;
 };
 
-export const topicKeyFromSlug = (slug: string): TopicKey | null => {
-  const normalized = slug.trim().toLowerCase();
-  const match = TOPICS.find((topic) => topic.slug === normalized);
-  return match?.key ?? null;
+const slugifyTopic = (value: string) => {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const slug = normalized
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug;
 };
 
-export const normalizeTopicKey = (value?: string | null): TopicKey | null => {
+export const normalizeTopicKey = (value?: string | null): string | null => {
   if (!value) {
     return null;
   }
-  const normalized = value.trim().toLowerCase();
-  return TOPIC_KEYS.includes(normalized as TopicKey)
-    ? (normalized as TopicKey)
-    : null;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const slug = slugifyTopic(trimmed);
+  return slug ? slug : null;
 };
 
-export const buildTopicPath = (lang: Language, key: TopicKey) =>
-  `/${lang}/${topicSlugFromKey(key)}`;
+export const buildTopicPath = (lang: Language, value: string) => {
+  const slug = normalizeTopicKey(value);
+  return slug ? `/${lang}/${slug}` : `/${lang}`;
+};
+
+export const collectTopicSummaries = (posts: BlogPost[]): TopicSummary[] => {
+  const summaries = new Map<string, TopicSummary>();
+
+  posts.forEach((post) => {
+    const label = post.category?.trim();
+    if (!label) {
+      return;
+    }
+    const slug = normalizeTopicKey(label);
+    if (!slug) {
+      return;
+    }
+    const existing = summaries.get(slug);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    summaries.set(slug, { slug, title: label, count: 1 });
+  });
+
+  return Array.from(summaries.values());
+};
