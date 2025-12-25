@@ -180,6 +180,8 @@ export interface Translation {
   categories: {
     title: string;
     subtitle: string;
+    viewMore: string;
+    viewLess: string;
     cards: CategoryCopy[];
   };
   newsletter: {
@@ -406,6 +408,8 @@ export const translations: Record<Language, Translation> = {
     categories: {
       title: "Explore tópicos",
       subtitle: "Aprofunde-se nas categorias mais populares",
+      viewMore: "Ver mais categorias",
+      viewLess: "Ver menos categorias",
       cards: [
         {
           title: "IA",
@@ -677,6 +681,8 @@ export const translations: Record<Language, Translation> = {
     categories: {
       title: "Explore topics",
       subtitle: "Dive into our most popular categories",
+      viewMore: "View more categories",
+      viewLess: "View fewer categories",
       cards: [
         {
           title: "IA",
@@ -942,6 +948,8 @@ export const translations: Record<Language, Translation> = {
     categories: {
       title: "Explora temas",
       subtitle: "Profundiza en nuestras categorías más populares",
+      viewMore: "Ver más categorías",
+      viewLess: "Ver menos categorías",
       cards: [
         {
           title: "IA",

@@ -66,6 +66,8 @@ const parseDateValue = (value: string | undefined) => {
   return Number.isNaN(time) ? 0 : time;
 };
 
+const DEFAULT_CATEGORY_COUNT = 4;
+
 export default function Index({ lang }: IndexProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
@@ -75,6 +77,7 @@ export default function Index({ lang }: IndexProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -160,6 +163,10 @@ export default function Index({ lang }: IndexProps) {
   const showLoading = status === "loading";
   const showError = status === "error";
   const showEmpty = status === "idle" && posts.length === 0;
+  const hasMoreCategories = categoryCards.length > DEFAULT_CATEGORY_COUNT;
+  const visibleCategoryCards = showAllCategories
+    ? categoryCards
+    : categoryCards.slice(0, DEFAULT_CATEGORY_COUNT);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -382,8 +389,11 @@ export default function Index({ lang }: IndexProps) {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {categoryCards.map((cat, index) => {
+            <div
+              id="category-grid"
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              {visibleCategoryCards.map((cat, index) => {
                 const visual = categoryVisuals[index % categoryVisuals.length];
                 const Icon = visual.icon;
                 const topicPath = buildTopicPath(lang, cat.key);
@@ -417,6 +427,28 @@ export default function Index({ lang }: IndexProps) {
                 );
               })}
             </div>
+            {hasMoreCategories && (
+              <div className="mt-10 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories((prev) => !prev)}
+                  className="px-6 py-3 border-2 border-primary text-primary rounded-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-all inline-flex items-center gap-2 group"
+                  aria-expanded={showAllCategories}
+                  aria-controls="category-grid"
+                >
+                  {showAllCategories
+                    ? t.categories.viewLess
+                    : t.categories.viewMore}
+                  <ArrowRight
+                    className={`w-4 h-4 transition-transform ${
+                      showAllCategories
+                        ? "rotate-90"
+                        : "group-hover:translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

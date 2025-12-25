@@ -28,6 +28,7 @@ interface SeoProps {
   canonicalPath?: string;
   alternatePaths?: Partial<Record<Language, string>>;
   metaTags?: Array<{ name?: string; property?: string; content: string }>;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
 
 function upsertMeta(selector: string, attrs: Record<string, string>) {
@@ -52,6 +53,24 @@ function upsertLink(selector: string, attrs: Record<string, string>) {
   });
 }
 
+function upsertScript(
+  selector: string,
+  attrs: Record<string, string>,
+  text: string,
+) {
+  let element = document.head.querySelector(selector) as HTMLScriptElement | null;
+  if (!element) {
+    element = document.createElement("script");
+    document.head.appendChild(element);
+  }
+  Object.entries(attrs).forEach(([key, value]) => {
+    element?.setAttribute(key, value);
+  });
+  if (element && element.textContent !== text) {
+    element.textContent = text;
+  }
+}
+
 export function Seo({
   lang,
   page,
@@ -60,6 +79,7 @@ export function Seo({
   canonicalPath,
   alternatePaths,
   metaTags,
+  jsonLd,
 }: SeoProps) {
   useEffect(() => {
     document.documentElement.lang = hreflangMap[lang] ?? lang;
@@ -165,7 +185,30 @@ export function Seo({
         href: `${origin}${defaultPath}`,
       });
     }
-  }, [lang, page, title, description, canonicalPath, alternatePaths, metaTags]);
+
+    const jsonLdSelector = 'script[data-seo="jsonld"]';
+    if (jsonLd) {
+      upsertScript(
+        jsonLdSelector,
+        {
+          type: "application/ld+json",
+          "data-seo": "jsonld",
+        },
+        JSON.stringify(jsonLd),
+      );
+    } else {
+      document.head.querySelector(jsonLdSelector)?.remove();
+    }
+  }, [
+    lang,
+    page,
+    title,
+    description,
+    canonicalPath,
+    alternatePaths,
+    metaTags,
+    jsonLd,
+  ]);
 
   return null;
 }

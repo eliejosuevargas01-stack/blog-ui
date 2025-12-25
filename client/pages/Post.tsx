@@ -56,6 +56,8 @@ export default function Post({ lang }: PostProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [activeAlt, setActiveAlt] = useState<string | null>(null);
 
+  const articlesPath = buildPath(lang, "articles");
+
   useEffect(() => {
     let isMounted = true;
 
@@ -133,6 +135,60 @@ export default function Post({ lang }: PostProps) {
   const coverImageAlt = post?.imageAlt ?? post?.title ?? "Post image";
   const galleryImages =
     post?.images?.filter((image) => image && image !== coverImage) ?? [];
+  const keywords = post?.keywords ?? post?.tags ?? null;
+  const keywordString =
+    keywords && keywords.length > 0 ? keywords.join(", ") : null;
+  const mergedMetaTags = useMemo(() => {
+    const tags = post?.metaTags ? [...post.metaTags] : [];
+    if (keywordString && !tags.some((tag) => tag.name === "keywords")) {
+      tags.push({ name: "keywords", content: keywordString });
+    }
+    return tags.length > 0 ? tags : undefined;
+  }, [post?.metaTags, keywordString]);
+  const canonicalUrl = useMemo(() => {
+    if (!canonicalPath) {
+      return typeof window !== "undefined" ? window.location.href : undefined;
+    }
+    if (typeof window === "undefined") {
+      return canonicalPath;
+    }
+    return `${window.location.origin}${canonicalPath}`;
+  }, [canonicalPath]);
+  const jsonLd = useMemo(() => {
+    if (!post) {
+      return undefined;
+    }
+    const keywordList = keywords ?? [];
+    const about =
+      keywordList.length > 0
+        ? keywordList.map((keyword) => ({
+            "@type": "Thing",
+            name: keyword,
+          }))
+        : undefined;
+    return {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: post.title,
+      description: seoDescription,
+      image: coverImage ? [coverImage] : undefined,
+      author: post.author ? { "@type": "Person", name: post.author } : undefined,
+      publisher: {
+        "@type": "Organization",
+        name: "seommerce.shop",
+      },
+      datePublished: post.date ?? undefined,
+      dateModified: post.date ?? undefined,
+      inLanguage: lang === "pt" ? "pt-BR" : lang,
+      mainEntityOfPage: canonicalUrl
+        ? { "@type": "WebPage", "@id": canonicalUrl }
+        : undefined,
+      keywords: keywordString ?? undefined,
+      about,
+      articleSection: post.category ?? undefined,
+      url: canonicalUrl ?? undefined,
+    };
+  }, [post, seoDescription, coverImage, canonicalUrl, lang, keywords, keywordString]);
   const contentClassName =
     "prose prose-neutral max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:mt-10 prose-h3:mt-8 prose-p:text-foreground/80 prose-strong:text-foreground prose-a:text-secondary prose-a:font-semibold hover:prose-a:text-secondary/80 prose-ul:my-6 prose-ol:my-6 prose-li:marker:text-secondary/70 prose-blockquote:border-l-4 prose-blockquote:border-secondary/40 prose-blockquote:bg-muted/60 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:text-foreground/70 prose-hr:border-border/70 prose-img:rounded-2xl prose-img:border prose-img:border-border/80 prose-img:shadow-sm";
   const markdownContent = useMemo(() => {
@@ -189,7 +245,8 @@ export default function Post({ lang }: PostProps) {
         description={seoDescription}
         canonicalPath={canonicalPath}
         alternatePaths={languagePaths}
-        metaTags={post?.metaTags}
+        metaTags={mergedMetaTags}
+        jsonLd={jsonLd}
       />
       <Header lang={lang} pageKey="home" t={t} languagePaths={languagePaths} />
 
@@ -255,9 +312,31 @@ export default function Post({ lang }: PostProps) {
                       {post.title}
                     </h1>
                     {(post.excerpt || post.description) && (
-                      <p className="text-xl sm:text-2xl text-foreground/70 mb-6">
+                      <p className="text-lg sm:text-xl text-foreground/70 mb-6 rounded-2xl border border-border/70 bg-muted/60 px-6 py-4 italic">
                         {post.excerpt ?? post.description}
                       </p>
+                    )}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {post.tags.map((tag) => {
+                          const normalizedTag = tag.replace(/^#+/, "").trim();
+                          if (!normalizedTag) {
+                            return null;
+                          }
+                          return (
+                            <Link
+                              key={tag}
+                              to={{
+                                pathname: articlesPath,
+                                search: `?tag=${encodeURIComponent(normalizedTag)}`,
+                              }}
+                              className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground/70 hover:border-secondary hover:text-secondary transition-colors"
+                            >
+                              #{normalizedTag}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
                     <div className="flex flex-wrap items-center gap-4 text-sm text-foreground/60">
                       {post.author && (
@@ -279,18 +358,6 @@ export default function Post({ lang }: PostProps) {
                         </span>
                       )}
                     </div>
-                    {post.tags && post.tags.length > 0 && (
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        {post.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground/70"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </header>
 
                   <div className="mt-8 overflow-hidden rounded-3xl border border-border/70 bg-muted/60">

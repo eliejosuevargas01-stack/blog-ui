@@ -14,6 +14,7 @@ export interface BlogPost {
   imageThumb?: string;
   images?: string[];
   tags?: string[];
+  keywords?: string[];
   date?: string;
   author?: string;
   readTime?: string;
@@ -94,6 +95,72 @@ const stringArrayValue = (value: unknown) => {
       .map((item) => stringValue(item))
       .filter(Boolean) as string[];
     return values.length > 0 ? Array.from(new Set(values)) : null;
+  }
+  return null;
+};
+
+const normalizeHashtag = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const withoutHash = trimmed.replace(/^#+/, "");
+  return withoutHash ? withoutHash : null;
+};
+
+const normalizeHashtagList = (values: string[] | null) => {
+  if (!values) {
+    return null;
+  }
+  const normalized = values
+    .map((value) => normalizeHashtag(value))
+    .filter(Boolean) as string[];
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : null;
+};
+
+const parseHashtagsValue = (value: unknown): string[] | null => {
+  if (!value) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    const values = value
+      .map((item) => stringValue(item))
+      .filter(Boolean) as string[];
+    return normalizeHashtagList(values);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (
+      (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      (trimmed.startsWith("{") && trimmed.endsWith("}"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        return parseHashtagsValue(parsed);
+      } catch {
+        // Fall through to delimiter parsing.
+      }
+    }
+    const parts = /#/.test(trimmed)
+      ? trimmed.split(/\s+/g)
+      : trimmed.split(/[,;]+/g);
+    const values = parts
+      .map((item) => stringValue(item))
+      .filter(Boolean) as string[];
+    return normalizeHashtagList(values);
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const candidateKeys = ["tags", "values", "items", "list"];
+    for (const key of candidateKeys) {
+      const extracted = parseHashtagsValue(record[key]);
+      if (extracted && extracted.length > 0) {
+        return extracted;
+      }
+    }
   }
   return null;
 };
@@ -542,7 +609,7 @@ export function normalizePosts(
         pickString(record, ["id", "slug", "uuid"]) ?? `post-${index}`;
       const excerpt = pickLocalizedString(
         record,
-        ["excerpt", "summary", "descricao", "description", "resumo"],
+        ["excerpt", "summary", "resumo", "descricao", "description"],
         lang,
       );
       const description =
@@ -648,19 +715,54 @@ export function normalizePosts(
       const featured = booleanValue(record.featured) ?? undefined;
       const metaTitle = pickLocalizedString(
         record,
-        ["metaTitle", "meta_title", "seoTitle", "titleSeo", "titleSEO"],
+        [
+          "metaTitle",
+          "meta_title",
+          "seoTitle",
+          "seo_title",
+          "titleSeo",
+          "titleSEO",
+        ],
         lang,
       );
       const metaDescription = pickLocalizedString(
         record,
-        ["metaDescription", "meta_description", "seoDescription", "descriptionMeta"],
+        [
+          "metaDescription",
+          "meta_description",
+          "seoDescription",
+          "seo_description",
+          "descriptionMeta",
+        ],
         lang,
       );
-      const tags = pickLocalizedStringArray(
+      const keywords = pickLocalizedStringArray(
         record,
-        ["tags", "keywords", "palavras_chave", "palavrasChave", "palavras-chave"],
+        [
+          "keywords",
+          "keyword",
+          "palavras_chave",
+          "palavrasChave",
+          "palavras-chave",
+          "seoKeywords",
+          "seo_keywords",
+        ],
         lang,
       );
+      const hashtags =
+        pickLocalizedValue(
+          record,
+          ["hashtags", "hashTags", "hash_tags"],
+          lang,
+          parseHashtagsValue,
+        ) ?? parseHashtagsValue(record.hashtags);
+      const tags =
+        normalizeHashtagList(
+          hashtags ??
+            pickLocalizedStringArray(record, ["tags", "tag"], lang) ??
+            keywords ??
+            null,
+        ) ?? undefined;
       const metaTags = parseMetaTags(
         record.metaTags ?? record.meta_tags ?? record.meta,
       );
@@ -685,6 +787,7 @@ export function normalizePosts(
         imageThumb: coverImageThumb ?? undefined,
         images: normalizedImages ?? undefined,
         tags: tags ?? undefined,
+        keywords: keywords ?? undefined,
         date: date ?? undefined,
         author: author ?? undefined,
         readTime: readTime ?? undefined,

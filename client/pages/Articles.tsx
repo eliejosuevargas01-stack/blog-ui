@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
@@ -19,9 +19,19 @@ type PostsStatus = "loading" | "idle" | "error";
 export default function Articles({ lang }: ArticlesProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
+  const location = useLocation();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const tagFilter = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const value = params.get("tag");
+    if (!value) {
+      return null;
+    }
+    const normalized = value.replace(/^#+/, "").trim();
+    return normalized ? normalized : null;
+  }, [location.search]);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,7 +65,16 @@ export default function Articles({ lang }: ArticlesProps) {
 
   const showLoading = status === "loading";
   const showError = status === "error";
-  const showEmpty = status === "idle" && posts.length === 0;
+  const filteredPosts = useMemo(() => {
+    if (!tagFilter) {
+      return posts;
+    }
+    const target = tagFilter.toLowerCase();
+    return posts.filter((post) =>
+      post.tags?.some((tag) => tag.toLowerCase() === target),
+    );
+  }, [posts, tagFilter]);
+  const showEmpty = status === "idle" && filteredPosts.length === 0;
 
   const formatDate = (value?: string) => formatPostDate(value, lang);
 
@@ -138,7 +157,7 @@ export default function Articles({ lang }: ArticlesProps) {
 
             {!showLoading && !showError && !showEmpty && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.map((post) => {
+                {filteredPosts.map((post) => {
                   const postSlug = post.slug ?? post.id;
                   const postPath = buildPostPath(lang, postSlug);
                   const postDate = formatDate(post.date);
