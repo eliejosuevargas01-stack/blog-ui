@@ -6,7 +6,9 @@ import {
   buildAlternatePaths,
   buildPath,
   defaultLang,
+  siteName,
 } from "@/lib/i18n";
+import { brandAssets } from "@/lib/branding";
 
 const localeMap: Record<Language, string> = {
   pt: "pt_BR",
@@ -84,6 +86,12 @@ export function Seo({
   useEffect(() => {
     document.documentElement.lang = hreflangMap[lang] ?? lang;
     document.title = title;
+    const origin = window.location.origin;
+    const defaultOgImage = `${origin}${brandAssets.ogDefault}`;
+    const hasOgImage = metaTags?.some((tag) => tag.property === "og:image");
+    const hasTwitterImage = metaTags?.some(
+      (tag) => tag.name === "twitter:image",
+    );
 
     upsertMeta('meta[name="description"]', {
       name: "description",
@@ -107,12 +115,18 @@ export function Seo({
     });
     upsertMeta('meta[property="og:site_name"]', {
       property: "og:site_name",
-      content: "seommerce.shop",
+      content: siteName,
     });
     upsertMeta('meta[property="og:locale"]', {
       property: "og:locale",
       content: localeMap[lang],
     });
+    if (!hasOgImage) {
+      upsertMeta('meta[property="og:image"]', {
+        property: "og:image",
+        content: defaultOgImage,
+      });
+    }
     upsertMeta('meta[name="twitter:card"]', {
       name: "twitter:card",
       content: "summary_large_image",
@@ -125,6 +139,12 @@ export function Seo({
       name: "twitter:description",
       content: description,
     });
+    if (!hasTwitterImage) {
+      upsertMeta('meta[name="twitter:image"]', {
+        name: "twitter:image",
+        content: defaultOgImage,
+      });
+    }
 
     if (metaTags) {
       metaTags.forEach((tag) => {
@@ -147,7 +167,6 @@ export function Seo({
       });
     }
 
-    const origin = window.location.origin;
     const resolvedCanonicalPath =
       canonicalPath ?? (page ? buildPath(lang, page) : window.location.pathname);
     const canonicalUrl = `${origin}${resolvedCanonicalPath}`;

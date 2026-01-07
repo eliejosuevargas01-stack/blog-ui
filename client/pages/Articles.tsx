@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
-import { fetchPosts, type BlogPost } from "@/lib/posts";
+import { fetchPublicPosts, type BlogPost } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 
 interface ArticlesProps {
@@ -40,7 +40,7 @@ export default function Articles({ lang }: ArticlesProps) {
       setStatus("loading");
       setErrorMessage(null);
       try {
-        const response = await fetchPosts(lang);
+        const response = await fetchPublicPosts(lang);
         if (!isMounted) {
           return;
         }

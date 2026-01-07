@@ -2,6 +2,32 @@ export type Language = "pt" | "en" | "es";
 
 export const languages = ["pt", "en", "es"] as const;
 export const defaultLang: Language = "pt";
+export const siteName = "Curioso";
+export const editorialIdentity =
+  "Curioso é um portal editorial sobre tecnologia e inteligência artificial que revela como sistemas invisíveis já influenciam decisões, comportamentos e o dia a dia das pessoas, mesmo quando elas não percebem.";
+export const allowedCategories = [
+  "IA & Vida Real",
+  "Tecnologia Invisível",
+  "Curiosidades Tecnológicas",
+  "Automação & Negócios",
+  "Futuro Próximo",
+  "Guias Fundamentais",
+] as const;
+
+const categoryIntros = {
+  iaVidaReal:
+    "IA & Vida Real é o espaço onde a inteligência artificial sai do laboratório e entra na rotina das pessoas. Aqui, algoritmos deixam de ser abstrações e passam a decidir quais ofertas você vê, quais oportunidades chegam primeiro e até quais caminhos profissionais parecem mais promissores. Esse impacto costuma ser silencioso, porque a IA aparece como conveniência, rapidez ou automação, e não como uma escolha explícita.\n\nNesta categoria, investigamos como modelos de recomendação influenciam consumo, como sistemas de triagem afetam contratações e como a automação muda o ritmo do trabalho. Também acompanhamos o uso de IA em bancos, seguradoras, saúde e educação, onde a tecnologia promete eficiência, mas pode carregar vieses, erros e zonas cinzentas. O foco não é a tecnologia pela tecnologia: é a consequência humana, social e econômica de cada decisão automatizada.\n\nFalamos de produtividade, mas também de ansiedade, de competição e de novas formas de avaliação. Falamos de personalização, mas também de opacidade, de dados usados sem consentimento e de pessoas que não sabem por que receberam um \"sim\" ou um \"não\". A IA no dia a dia tem efeitos reais sobre renda, tempo e autonomia, e é isso que queremos tornar visível.\n\nTambém discutimos responsabilidade e transparência: quem responde quando um modelo erra, quais dados alimentam as previsões e como exigir explicações em serviços que dependem de IA. Observamos práticas de auditoria, leis emergentes e movimentos que defendem direitos digitais. A intenção é ajudar você a reconhecer quando a IA amplia escolhas e quando ela limita possibilidades, para que decisões automatizadas não se tornem decisões inevitáveis.\n\nOs textos de IA & Vida Real explicam conceitos essenciais com exemplos concretos, conectam casos atuais a tendências maiores e mostram onde a tecnologia já está operando sem alarde. Se você quer entender por que certas decisões parecem inevitáveis, como são treinados os modelos que regulam a sua experiência e o que dá para questionar ou exigir, este é o seu ponto de partida.",
+  tecnologiaInvisivel:
+    "Tecnologia Invisível é a categoria dedicada a tudo o que funciona quando ninguém está olhando. São protocolos, sensores, softwares e camadas de infraestrutura que sustentam a vida digital e física, mas raramente aparecem nas manchetes. Quando você aproxima o celular de uma catraca, quando a cidade ajusta semáforos em tempo real ou quando um aplicativo prevê sua próxima ação, existe um conjunto de sistemas silenciosos trabalhando no fundo.\n\nAqui exploramos como esses sistemas são construídos, quem decide suas regras e quais efeitos eles causam. Falamos de geolocalização, rastreamento, scoring, reconhecimento de padrões e redes que conectam máquinas a pessoas. Também mostramos como tecnologias invisíveis impactam segurança, mobilidade, consumo de energia e até relações sociais, criando benefícios práticos, mas também novas formas de controle e desigualdade.\n\nO objetivo é revelar o que está por trás do conforto. Muitas vezes, o invisível é o que define o limite entre liberdade e vigilância, entre eficiência e exclusão. Entender essas camadas ajuda a perceber por que certas soluções parecem mágicas e por que outras geram desconforto, mesmo quando não sabemos explicar.\n\nAlém do funcionamento técnico, analisamos o custo de manter essas engrenagens: energia, manutenção, dependência de fornecedores e impactos ambientais. Tecnologias invisíveis podem reforçar desigualdades quando não são distribuídas de forma justa ou quando operam apenas para quem já tem acesso. Entender essa camada de infraestrutura ajuda a questionar promessas fáceis e a enxergar quem fica de fora.\n\nNesta categoria, cada curiosidade vem com contexto: de onde surgiu, como funciona, quem ganha com ela e quais consequências reais ela produz. A tecnologia invisível já molda decisões, comportamentos e oportunidades. Ao iluminar esses bastidores, o Curioso oferece instrumentos para que você reconheça o que estava escondido e participe de forma mais consciente do futuro que já está em andamento.",
+  curiosidadesTecnologicas:
+    "Curiosidades Tecnológicas é o lugar onde o inesperado encontra impacto real. Não tratamos trivia vazia, e sim histórias, descobertas e fatos pouco conhecidos que mudam a maneira como percebemos o mundo conectado. São curiosidades que revelam um detalhe técnico, um comportamento coletivo ou uma escolha de design que altera vidas, mercados e rotinas.\n\nAqui você vai entender por que uma pequena mudança em um algoritmo pode modificar o que milhões de pessoas leem, por que um sensor aparentemente simples pode revolucionar uma cadeia logística e como uma decisão de engenharia acaba virando regra social. O curioso, neste caso, é o ponto de entrada para compreender consequências que não aparecem no título principal.\n\nA tecnologia é cheia de atalhos criativos, falhas inesperadas e soluções brilhantes que raramente são explicadas com calma. Nós fazemos essa ponte: explicamos o que aconteceu, por que aconteceu e o que isso significa na prática. Muitas vezes, a curiosidade revela também limites, riscos e dilemas que precisam de atenção.\n\nSelecionamos curiosidades que sirvam de lente para temas maiores. Investigamos a origem, comparamos versões, apontamos limites e explicamos por que aquela história importa agora. Em vez de tratar a tecnologia como espetáculo, usamos o fator surpresa para revelar mecanismos que passam despercebidos e para estimular perguntas melhores sobre o que estamos adotando. Também explicamos como essas descobertas se conectam a debates atuais sobre ética, sustentabilidade e poder, para que a curiosidade vire consciência.\n\nEsta categoria é para quem gosta de se surpreender, mas não quer ficar só na superfície. Cada post traz contexto, exemplos e consequências, mostrando que a história por trás do \"uau\" tem efeitos mensuráveis. Curiosidade, aqui, é ferramenta de compreensão e não apenas entretenimento.",
+  automacaoNegocios:
+    "Automação & Negócios acompanha a transformação silenciosa que acontece dentro das empresas. Processos que antes dependiam de pessoas agora são executados por sistemas, robôs de software e modelos preditivos. Isso muda custos, velocidade, emprego, estratégia e cultura. Nesta categoria, investigamos como a automação redefine o que é produtividade e quais são os novos gargalos que surgem quando tudo fica mais rápido.\n\nFalamos de fluxos de trabalho automatizados, atendimento com IA, decisões baseadas em dados e cadeias de suprimentos inteligentes. Mostramos como pequenas mudanças operacionais podem gerar efeitos enormes no resultado financeiro, mas também como a automação pode criar dependências perigosas e reduzir a capacidade de adaptação quando o ambiente muda.\n\nO impacto não é só econômico. A automação altera funções, redistribui responsabilidades e modifica a relação entre pessoas e ferramentas. Existem ganhos claros, mas também riscos de concentração, perda de transparência e mudanças abruptas no mercado de trabalho. O nosso foco é ajudar a enxergar esses efeitos antes que eles se tornem irreversíveis.\n\nTambém observamos governança e ética da automação. Quem define as regras do sistema, quais indicadores são priorizados e como preservar espaço para julgamento humano? Sem esses cuidados, a automação pode otimizar o curto prazo e enfraquecer a confiança. Nosso compromisso é oferecer uma visão equilibrada, com exemplos reais, para que inovação não seja sinônimo de cegueira operacional.\n\nEm Automação & Negócios, cada texto conecta tecnologia a estratégia. O objetivo é explicar o que está sendo automatizado, quem se beneficia, quais métricas importam e o que fica invisível no processo. Para líderes, profissionais e curiosos, esta é a categoria que traduz a linguagem técnica para decisões reais.",
+  futuroProximo:
+    "Futuro Próximo é a categoria que olha para o amanhã sem recorrer à ficção. Não falamos de um futuro distante e abstrato, e sim de mudanças que já estão em marcha e devem se tornar parte do cotidiano em pouco tempo. Aqui, analisamos sinais, protótipos e tendências que apontam para o que é provável, possível e urgente.\n\nO futuro próximo é feito de escolhas que acontecem agora: regulações, investimentos, padrões de consumo e decisões de design. Por isso, nossos textos mostram o que está emergindo em áreas como energia, mobilidade, trabalho, educação e saúde, sempre com foco no impacto real e invisível das tecnologias envolvidas.\n\nEsta categoria ajuda a diferenciar hype de transformação concreta. Explicamos por que certas ideias ganham tração, quais interesses as sustentam e o que pode dar errado no caminho. Também mostramos oportunidades: novos modelos de negócio, novas profissões e novas formas de organizar a vida em rede.\n\nMapeamos cenários com base em evidências, não em promessas. Isso inclui estudos acadêmicos, pilotos corporativos, políticas públicas e movimentos culturais que sinalizam a direção da mudança. O resultado é um olhar prático: o que vale acompanhar, o que vale aprender agora e o que pode ser adiado. Futuro Próximo é, acima de tudo, uma ferramenta de preparação. Esse olhar evita alarmismo e também evita complacência, porque mudanças graduais podem acumular efeitos enormes quando ninguém está prestando atenção.\n\nSe você quer se preparar para mudanças que não são mais teoria, o Futuro Próximo oferece contexto, comparação e clareza. A intenção é tornar o futuro legível, para que as pessoas possam participar dele com mais consciência e menos surpresa.",
+  guiasFundamentais:
+    "Guias Fundamentais reúne o conteúdo evergreen do Curioso: explicações completas, organizadas e acessíveis para entender os conceitos que sustentam a tecnologia contemporânea. São textos para consulta, revisão e aprofundamento, pensados para durar e servir como referência sempre que surgir uma dúvida.\n\nCada guia parte do básico, mas não para no óbvio. Explicamos o que é um algoritmo, como funcionam os dados, por que a IA precisa de treinamento e quais são as diferenças entre automação simples e sistemas inteligentes. Também abordamos temas como privacidade, ética, transparência e os limites das decisões automatizadas, sempre com exemplos concretos.\n\nO objetivo é criar um repertório sólido. Sem ele, é difícil interpretar notícias, avaliar promessas de empresas e tomar decisões informadas sobre tecnologia. Com ele, é possível enxergar padrões, reconhecer riscos e entender o impacto invisível que sistemas digitais exercem no dia a dia.\n\nOs guias também funcionam como mapas de navegação. Eles conectam conceitos entre si, sugerem leituras relacionadas e indicam como aplicar o conhecimento em situações reais. Se você chegou ao Curioso por uma dúvida específica, é aqui que encontra a base para entender o restante do portal. A ideia é construir autonomia intelectual e reduzir a dependência de respostas rápidas. Eles são atualizados quando novas tecnologias mudam o cenário, mantendo o material relevante para quem estuda, trabalha ou simplesmente quer entender.\n\nOs Guias Fundamentais não são artigos rápidos. São peças longas, estruturadas com H2 e H3, com links para aprofundamento e conexões com outros conteúdos do portal. Eles são o alicerce editorial do Curioso e permanecem em destaque na home para que você sempre saiba por onde começar.",
+} as const;
 
 export const languageLabels: Record<Language, string> = {
   pt: "Português",
@@ -29,6 +55,21 @@ export const pageSlugs = {
     pt: "ferramentas",
     en: "tools",
     es: "herramientas",
+  },
+  about: {
+    pt: "sobre",
+    en: "about",
+    es: "sobre",
+  },
+  contact: {
+    pt: "contato",
+    en: "contact",
+    es: "contacto",
+  },
+  privacy: {
+    pt: "privacidade",
+    en: "privacy",
+    es: "privacidad",
   },
   auth: {
     pt: "acesso",
@@ -94,12 +135,23 @@ export interface CategoryCopy {
   title: string;
   description: string;
   count: string;
+  intro: string;
 }
 
 export interface ToolCard {
   title: string;
   description: string;
   status: string;
+}
+
+export interface ContactDetailItem {
+  label: string;
+  value: string;
+}
+
+export interface PrivacySection {
+  title: string;
+  body: string;
 }
 
 export interface Translation {
@@ -128,6 +180,18 @@ export interface Translation {
       title: string;
       description: string;
     };
+    about: {
+      title: string;
+      description: string;
+    };
+    contact: {
+      title: string;
+      description: string;
+    };
+    privacy: {
+      title: string;
+      description: string;
+    };
     notFound: {
       title: string;
       description: string;
@@ -135,9 +199,12 @@ export interface Translation {
   };
   nav: {
     home: string;
+    about: string;
     topics: string;
     tools: string;
     newsletter: string;
+    contact: string;
+    privacy: string;
     login: string;
     signup: string;
   };
@@ -160,6 +227,44 @@ export interface Translation {
     ctaPrimary: string;
     ctaSecondary: string;
     stat: string;
+    institutional: string;
+  };
+  home: {
+    highlight: {
+      title: string;
+      subtitle: string;
+      cta: string;
+    };
+    affectsYou: {
+      title: string;
+      subtitle: string;
+      empty: string;
+      topics: {
+        work: string;
+        money: string;
+        consumption: string;
+        privacy: string;
+      };
+    };
+    ai: {
+      title: string;
+      subtitle: string;
+    };
+    curiosities: {
+      title: string;
+      subtitle: string;
+    };
+    latest: {
+      title: string;
+      subtitle: string;
+      cta: string;
+    };
+    guides: {
+      title: string;
+      subtitle: string;
+      empty: string;
+      cta: string;
+    };
   };
   featured: {
     title: string;
@@ -218,6 +323,40 @@ export interface Translation {
     ctaButton: string;
     cards: ToolCard[];
   };
+  about: {
+    title: string;
+    subtitle: string;
+    identityTitle: string;
+    identityText: string;
+    focusTitle: string;
+    focusItems: string[];
+  };
+  contact: {
+    title: string;
+    subtitle: string;
+    intro: string;
+    email: string;
+    form: {
+      nameLabel: string;
+      emailLabel: string;
+      subjectLabel: string;
+      messageLabel: string;
+      submitLabel: string;
+      defaultSubject: string;
+      note: string;
+    };
+    details: {
+      title: string;
+      items: ContactDetailItem[];
+    };
+  };
+  privacy: {
+    title: string;
+    subtitle: string;
+    updatedLabel: string;
+    updatedAt: string;
+    sections: PrivacySection[];
+  };
   auth: {
     title: string;
     subtitle: string;
@@ -254,6 +393,26 @@ export interface Translation {
     sectionContent: string;
     sectionMedia: string;
     sectionSeo: string;
+    contentStrategy: {
+      title: string;
+      subtitle: string;
+      countLabel: string;
+      missing: string;
+      types: {
+        search: {
+          title: string;
+          description: string;
+        };
+        editorial: {
+          title: string;
+          description: string;
+        };
+        evergreen: {
+          title: string;
+          description: string;
+        };
+      };
+    };
     actions: {
       edit: string;
       close: string;
@@ -298,6 +457,8 @@ export interface Translation {
     errors: {
       metaTags: string;
       notAuthorized: string;
+      categoryRequired: string;
+      categoryInvalid: string;
     };
   };
   topic: {
@@ -305,6 +466,8 @@ export interface Translation {
     subtitle: string;
     emptyTitle: string;
     emptyDescription: string;
+    minimumTitle: string;
+    minimumDescription: string;
     metaTitle: string;
     metaDescription: string;
   };
@@ -313,6 +476,10 @@ export interface Translation {
     notFoundTitle: string;
     notFoundDescription: string;
     backToHome: string;
+    publishedLabel: string;
+    updatedLabel: string;
+    guideTitle: string;
+    relatedTitle: string;
   };
   notFound: {
     title: string;
@@ -325,45 +492,60 @@ export const translations: Record<Language, Translation> = {
   pt: {
     meta: {
       home: {
-        title: "seommerce.shop | Blog de Tecnologia, IA e Marketing",
-        description:
-          "Insights diários sobre tecnologia, IA, negócios e marketing digital para líderes e equipes de crescimento.",
+        title: `${siteName} | Portal editorial de tecnologia e inteligência artificial`,
+        description: editorialIdentity,
       },
       tools: {
-        title: "Ferramentas Seommerce | Hub de crescimento digital",
+        title: `Experimentos e ferramentas | ${siteName}`,
         description:
-          "Acesse a biblioteca de ferramentas seommerce para SEO, conteúdo e automação.",
+          "Explore experimentos, mini ferramentas e explicações curiosas sobre tecnologia, marketing e IA.",
       },
       articles: {
-        title: "Todos os artigos | seommerce.shop",
+        title: `Todas as curiosidades | ${siteName}`,
         description:
-          "Explore todas as publicações do seommerce.shop sobre tecnologia, IA, negócios e marketing.",
+          "Explore todas as curiosidades e histórias sobre tecnologia, marketing, IA e negócios.",
       },
       latest: {
-        title: "Últimos artigos | seommerce.shop",
-        description:
-          "Acompanhe as publicações mais recentes do seommerce.shop.",
+        title: `Últimas curiosidades | ${siteName}`,
+        description: `Acompanhe as curiosidades mais recentes do ${siteName}.`,
       },
       auth: {
-        title: "Acesso | seommerce.shop",
+        title: `Acesso | ${siteName}`,
         description:
-          "Entre ou crie sua conta para acessar ferramentas e publicar conteúdos.",
+          "Entre ou crie sua conta para acessar recursos e publicar curiosidades.",
       },
       admin: {
-        title: "Administração do Blog | seommerce.shop",
+        title: `Administração do Blog | ${siteName}`,
         description:
-          "Gerencie posts, edite conteúdos e organize categorias do blog.",
+          "Gerencie posts, edite conteúdos e organize as curiosidades do blog.",
+      },
+      about: {
+        title: `Sobre o ${siteName}`,
+        description: editorialIdentity,
+      },
+      contact: {
+        title: `Contato | ${siteName}`,
+        description:
+          "Fale com a equipe do Curioso sobre pautas, dúvidas e parcerias.",
+      },
+      privacy: {
+        title: `Política de Privacidade | ${siteName}`,
+        description:
+          "Entenda como o Curioso coleta, usa e protege informações.",
       },
       notFound: {
-        title: "Página não encontrada | seommerce.shop",
+        title: `Página não encontrada | ${siteName}`,
         description: "A página que você procura não existe ou foi movida.",
       },
     },
     nav: {
       home: "Início",
-      topics: "Tópicos",
+      about: "Sobre",
+      topics: "Curiosidades",
       tools: "Ferramentas",
-      newsletter: "Newsletter",
+      newsletter: "Guias",
+      contact: "Contato",
+      privacy: "Privacidade",
       login: "Entrar",
       signup: "Criar conta",
     },
@@ -371,127 +553,254 @@ export const translations: Record<Language, Translation> = {
       language: "Idioma",
     },
     hero: {
-      badge: "Insights diários para líderes digitais",
-      title: "seommerce.shop",
+      badge: "Curiosidades diárias para mentes curiosas",
+      title: siteName,
       description: {
-        lead: "Sua fonte diária para as últimas novidades e insights sobre ",
-        and: ", e ",
+        lead: "Curiosidades e explicações leves sobre ",
+        and: " e ",
       },
       highlights: {
         technology: "tecnologia",
         ai: "IA",
         business: "negócios",
-        marketing: "marketing digital",
+        marketing: "marketing",
       },
-      ctaPrimary: "Assinar agora",
-      ctaSecondary: "Últimos artigos",
-      stat: "Junte-se a 10.000+ profissionais que se mantêm informados",
+      ctaPrimary: "Receber newsletter",
+      ctaSecondary: "Últimas curiosidades",
+      stat: "Junte-se a 10.000+ curiosos que aprendem algo novo todo dia",
+      institutional: editorialIdentity,
+    },
+    home: {
+      highlight: {
+        title: "Destaque Curioso",
+        subtitle: "O impacto invisível da tecnologia que já molda o seu dia.",
+        cta: "Ler destaque",
+      },
+      affectsYou: {
+        title: "Isso afeta você",
+        subtitle: "IA alterando trabalho, dinheiro, consumo e privacidade.",
+        empty: "Em preparação",
+        topics: {
+          work: "IA no trabalho",
+          money: "IA no dinheiro",
+          consumption: "IA no consumo",
+          privacy: "IA na privacidade",
+        },
+      },
+      ai: {
+        title: "Inteligência Artificial",
+        subtitle: "Aplicações reais, decisões automatizadas e consequências.",
+      },
+      curiosities: {
+        title: "Curiosidades Tecnológicas",
+        subtitle: "Descobertas curiosas com efeito real.",
+      },
+      latest: {
+        title: "Últimas publicações",
+        subtitle: "Feed cronológico das publicações recentes.",
+        cta: "Ver últimas publicações",
+      },
+      guides: {
+        title: "Guias Fundamentais",
+        subtitle: "Conteúdo evergreen para entender o essencial.",
+        empty: "Guias fundamentais em preparação.",
+        cta: "Ver todos os guias",
+      },
     },
     featured: {
-      title: "Artigos em destaque",
-      subtitle: "Descubra nossos conteúdos mais populares desta semana",
-      viewAll: "Ver todos os artigos",
+      title: "Curiosidades em destaque",
+      subtitle: "Descubra as curiosidades mais populares da semana",
+      viewAll: "Ver todas as curiosidades",
     },
     articles: {
-      title: "Todos os artigos",
+      title: "Todas as curiosidades",
       subtitle:
-        "Reunimos todos os conteúdos publicados para você explorar.",
+        "Reunimos todas as curiosidades publicadas para você explorar.",
     },
     posts: {
-      loading: "Carregando posts...",
-      emptyTitle: "Sem posts por enquanto",
+      loading: "Carregando curiosidades...",
+      emptyTitle: "Sem curiosidades por enquanto",
       emptyDescription:
-        "Assim que publicarmos novos conteúdos, eles aparecerão aqui.",
-      errorTitle: "Não foi possível carregar os posts",
+        "Assim que publicarmos novas curiosidades, elas aparecerão aqui.",
+      errorTitle: "Não foi possível carregar as curiosidades",
       errorDescription: "Tente novamente em alguns instantes.",
     },
     categories: {
-      title: "Explore tópicos",
-      subtitle: "Aprofunde-se nas categorias mais populares",
-      viewMore: "Ver mais categorias",
+      title: "Categorias editoriais",
+      subtitle: "Navegue pelos eixos fixos do Curioso.",
+      viewMore: "Ver todas as categorias",
       viewLess: "Ver menos categorias",
       cards: [
         {
-          title: "IA",
-          description: "Insights sobre inteligência artificial aplicada",
-          count: "0 artigos",
+          title: allowedCategories[0],
+          description: "Como a IA interfere em trabalho, consumo e decisões diárias.",
+          count: "0 posts",
+          intro: categoryIntros.iaVidaReal,
         },
         {
-          title: "tech",
-          description: "Tendências, ferramentas e inovação em tecnologia",
-          count: "0 artigos",
+          title: allowedCategories[1],
+          description: "Infraestruturas e sistemas silenciosos que moldam a rotina.",
+          count: "0 posts",
+          intro: categoryIntros.tecnologiaInvisivel,
         },
         {
-          title: "marketing/seo",
-          description: "Estratégias de marketing digital e SEO",
-          count: "0 artigos",
+          title: allowedCategories[2],
+          description: "Histórias curiosas com consequência prática.",
+          count: "0 posts",
+          intro: categoryIntros.curiosidadesTecnologicas,
         },
         {
-          title: "business",
-          description: "Negócios, crescimento e estratégia",
-          count: "0 artigos",
+          title: allowedCategories[3],
+          description: "Automação aplicada a operações, mercados e estratégia.",
+          count: "0 posts",
+          intro: categoryIntros.automacaoNegocios,
+        },
+        {
+          title: allowedCategories[4],
+          description: "Mudanças que já estão chegando e vão redefinir o cotidiano.",
+          count: "0 posts",
+          intro: categoryIntros.futuroProximo,
+        },
+        {
+          title: allowedCategories[5],
+          description: "Explicações evergreen para dominar conceitos essenciais.",
+          count: "0 posts",
+          intro: categoryIntros.guiasFundamentais,
         },
       ],
     },
     newsletter: {
-      title: "Fique atualizado diariamente",
+      title: "Receba a newsletter de curiosidades",
       subtitle:
-        "Receba os artigos mais recentes direto no seu email. Sem spam, só conteúdo de qualidade.",
+        "Curiosidades fresquinhas sobre tecnologia, marketing, IA e negócios direto no seu email.",
       placeholder: "seu@email.com",
-      button: "Assinar",
+      button: "Receber newsletter",
       note: "Respeitamos sua privacidade. Cancele quando quiser.",
       successTitle: "Inscrição confirmada",
-      successDescription: "Você receberá os próximos artigos por email.",
-      errorTitle: "Não foi possível assinar",
+      successDescription: "Você receberá as próximas curiosidades por email.",
+      errorTitle: "Não foi possível entrar na newsletter",
       errorDescription: "Confira o email e tente novamente.",
     },
     latest: {
-      title: "Últimos do blog",
-      subtitle: "Conteúdo fresco publicado diariamente",
+      title: "Últimas curiosidades",
+      subtitle: "Curiosidades fresquinhas publicadas diariamente",
     },
     footer: {
-      tagline:
-        "Insights diários sobre tecnologia, IA, negócios e marketing digital.",
+      tagline: editorialIdentity,
       sectionsTitle: "Seções",
       resourcesTitle: "Recursos",
       followTitle: "Siga a gente",
-      bottomLine:
-        "Feito com paixão | Insights diários sobre tech, IA, negócios e marketing",
-      copyright: "© {year} seommerce.shop. Todos os direitos reservados.",
+      bottomLine: "Portal editorial de tecnologia e inteligência artificial.",
+      copyright: `© {year} ${siteName}. Todos os direitos reservados.`,
     },
     tools: {
-      heroTitle: "Ferramentas Seommerce",
+      heroTitle: "Laboratório Seommerce",
       heroSubtitle:
-        "Um hub para todas as ferramentas que criamos para acelerar seu crescimento digital.",
+        "Experimentos, mini ferramentas e testes rápidos para explorar tecnologia, marketing, IA e negócios.",
       badge: "Em breve",
-      gridTitle: "Biblioteca de ferramentas",
-      gridSubtitle:
-        "Coleção crescente de soluções para SEO, conteúdo e automação.",
-      ctaTitle: "Acesso antecipado",
+      gridTitle: "Experimentos para explorar",
+      gridSubtitle: "Uma coleção de ferramentas leves para aprender brincando.",
+      ctaTitle: "Quer receber os próximos experimentos?",
       ctaSubtitle:
-        "Crie sua conta para ser avisado quando lançarmos novas ferramentas.",
-      ctaButton: "Quero acesso",
+        "Entre na newsletter e saiba quando publicarmos novidades.",
+      ctaButton: "Quero a newsletter",
       cards: [
         {
-          title: "Auditoria SEO Express",
-          description: "Diagnóstico rápido de páginas e oportunidades de otimização.",
+          title: "Radar de tendências",
+          description:
+            "Sinais fracos e novidades que estão surgindo no mundo tech.",
           status: "Em breve",
         },
         {
-          title: "Gerador de Briefs",
-          description: "Crie briefings prontos para produção de conteúdo.",
+          title: "Laboratório de IA",
+          description:
+            "Testes rápidos com prompts, modelos e comparações.",
           status: "Em breve",
         },
         {
-          title: "Monitor de SERP",
-          description: "Acompanhe posições e mudanças nas buscas em tempo real.",
+          title: "Decodificador de métricas",
+          description: "Entenda números de marketing e negócios sem jargão.",
           status: "Em breve",
+        },
+      ],
+    },
+    about: {
+      title: `Sobre o ${siteName}`,
+      subtitle: "Tecnologia e IA com impacto real no cotidiano.",
+      identityTitle: "Identidade editorial",
+      identityText: editorialIdentity,
+      focusTitle: "O que cobrimos",
+      focusItems: [
+        "Tecnologia invisível no dia a dia e seus efeitos reais.",
+        "Inteligência artificial aplicada ao trabalho, consumo e decisões.",
+        "Curiosidades tecnológicas que sempre têm consequência prática.",
+        "Sistemas que moldam hábitos, escolhas e comportamentos.",
+      ],
+    },
+    contact: {
+      title: "Contato",
+      subtitle: "Fale com a equipe do Curioso.",
+      intro:
+        "Tem uma pauta, dúvida ou parceria? Use o formulário e envie sua mensagem.",
+      email: "contato@curioso.com",
+      form: {
+        nameLabel: "Nome",
+        emailLabel: "Email",
+        subjectLabel: "Assunto",
+        messageLabel: "Mensagem",
+        submitLabel: "Enviar mensagem",
+        defaultSubject: "Contato via Curioso",
+        note: "Se o seu cliente de email não abrir, envie direto para {email}.",
+      },
+      details: {
+        title: "Contato direto",
+        items: [
+          { label: "Email", value: "contato@curioso.com" },
+          { label: "Tempo de resposta", value: "até 2 dias úteis" },
+          {
+            label: "Imprensa e parcerias",
+            value: "Use o assunto \"Parceria\".",
+          },
+        ],
+      },
+    },
+    privacy: {
+      title: "Política de Privacidade",
+      subtitle: "Como coletamos, usamos e protegemos informações.",
+      updatedLabel: "Última atualização",
+      updatedAt: "Março de 2024",
+      sections: [
+        {
+          title: "Informações que coletamos",
+          body:
+            "Coletamos dados fornecidos por você em formulários (como email e nome) e dados técnicos básicos sobre acesso e navegação.",
+        },
+        {
+          title: "Como usamos os dados",
+          body:
+            "Usamos as informações para responder mensagens, entregar newsletters e melhorar o conteúdo do portal.",
+        },
+        {
+          title: "Cookies e métricas",
+          body:
+            "Podemos usar cookies e ferramentas de análise para entender desempenho, sem vender dados pessoais.",
+        },
+        {
+          title: "Compartilhamento responsável",
+          body:
+            "Compartilhamos dados apenas com fornecedores essenciais para operar o portal e nunca comercializamos suas informações.",
+        },
+        {
+          title: "Seus direitos e contato",
+          body:
+            "Você pode solicitar acesso, correção ou remoção de dados. Escreva para contato@curioso.com.",
         },
       ],
     },
     auth: {
       title: "Acesso",
-      subtitle: "Entre ou crie sua conta para publicar e gerenciar posts.",
+      subtitle:
+        "Entre ou crie sua conta para publicar e gerenciar curiosidades.",
       loginTab: "Entrar",
       signupTab: "Criar conta",
       emailLabel: "Email",
@@ -529,6 +838,27 @@ export const translations: Record<Language, Translation> = {
       sectionContent: "Conteúdo",
       sectionMedia: "Mídia",
       sectionSeo: "SEO",
+      contentStrategy: {
+        title: "Estratégia de conteúdo",
+        subtitle:
+          "O Curioso precisa manter três formatos ativos: busca direta, editorial e evergreen.",
+        countLabel: "posts válidos",
+        missing: "Nenhum post válido neste tipo.",
+        types: {
+          search: {
+            title: "Busca direta",
+            description: "Responde dúvidas claras e pesquisas objetivas.",
+          },
+          editorial: {
+            title: "Curioso/editorial",
+            description: "Histórias e impactos invisíveis da tecnologia.",
+          },
+          evergreen: {
+            title: "Evergreen (Guias Fundamentais)",
+            description: "Referência longa e atualizável para consulta.",
+          },
+        },
+      },
       actions: {
         edit: "Editar",
         close: "Fechar",
@@ -559,7 +889,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Use uma categoria existente ou crie uma nova.",
+        category: "Use uma das categorias fixas do Curioso.",
         tags: "Separe por vírgula.",
         images: "Separe por vírgula.",
         metaTags: 'Exemplo: [{"name":"description","content":"..."}]',
@@ -573,23 +903,32 @@ export const translations: Record<Language, Translation> = {
       errors: {
         metaTags: "JSON inválido para meta tags.",
         notAuthorized: "Seu usuário não tem permissão de administrador.",
+        categoryRequired: "Informe uma categoria obrigatória.",
+        categoryInvalid: "Categoria inválida. Use uma das categorias fixas.",
       },
     },
     topic: {
       title: "Tópico",
-      subtitle: "Conteúdos sobre {topic}",
-      emptyTitle: "Nenhum post em {topic}",
+      subtitle: "Curiosidades sobre {topic}",
+      emptyTitle: "Nenhuma curiosidade em {topic}",
       emptyDescription:
-        "Assim que publicarmos novos conteúdos, eles aparecerão aqui.",
-      metaTitle: "{topic} | seommerce.shop",
-      metaDescription: "Artigos e insights sobre {topic} no seommerce.shop.",
+        "Assim que publicarmos novas curiosidades, elas aparecerão aqui.",
+      minimumTitle: "Categoria em preparação: {topic}",
+      minimumDescription:
+        "Precisamos de pelo menos 5 posts ativos para abrir este eixo editorial.",
+      metaTitle: `{topic} | ${siteName}`,
+      metaDescription: `Curiosidades sobre {topic} no ${siteName}.`,
     },
     post: {
-      loading: "Carregando post...",
-      notFoundTitle: "Post não encontrado",
+      loading: "Carregando curiosidade...",
+      notFoundTitle: "Curiosidade não encontrada",
       notFoundDescription:
-        "Este conteúdo pode ter sido movido ou ainda não está disponível.",
+        "Esta curiosidade pode ter sido movida ou ainda não está disponível.",
       backToHome: "Voltar ao blog",
+      publishedLabel: "Publicado em",
+      updatedLabel: "Atualizado em",
+      guideTitle: "Guia fundamental",
+      relatedTitle: "Posts relacionados",
     },
     notFound: {
       title: "Página não encontrada",
@@ -600,44 +939,60 @@ export const translations: Record<Language, Translation> = {
   en: {
     meta: {
       home: {
-        title: "seommerce.shop | Blog on Tech, AI, and Marketing",
-        description:
-          "Daily insights on technology, AI, business, and digital marketing for growth teams and leaders.",
+        title: `${siteName} | Technology & AI editorial portal`,
+        description: editorialIdentity,
       },
       tools: {
-        title: "Seommerce Tools | Digital growth hub",
+        title: `Experiments & tools | ${siteName}`,
         description:
-          "Explore the seommerce tools library for SEO, content, and automation.",
+          "Explore experiments, mini tools, and playful explainers on tech, marketing, and AI.",
       },
       articles: {
-        title: "All articles | seommerce.shop",
+        title: `All curiosities | ${siteName}`,
         description:
-          "Browse every seommerce.shop article on tech, AI, business, and marketing.",
+          "Browse every curiosity and story on tech, marketing, AI, and business.",
       },
       latest: {
-        title: "Latest articles | seommerce.shop",
-        description: "See the newest stories published on seommerce.shop.",
+        title: `Latest curiosities | ${siteName}`,
+        description: `Catch the newest curiosities from ${siteName}.`,
       },
       auth: {
-        title: "Access | seommerce.shop",
+        title: `Access | ${siteName}`,
         description:
-          "Sign in or create your account to access tools and publish content.",
+          "Sign in or create your account to access resources and publish curiosities.",
       },
       admin: {
-        title: "Blog Admin | seommerce.shop",
+        title: `Blog Admin | ${siteName}`,
         description:
-          "Manage posts, edit content, and organize blog categories.",
+          "Manage posts, edit content, and organize blog curiosities.",
+      },
+      about: {
+        title: `About ${siteName}`,
+        description: editorialIdentity,
+      },
+      contact: {
+        title: `Contact | ${siteName}`,
+        description:
+          "Reach the Curioso team with tips, questions, or partnerships.",
+      },
+      privacy: {
+        title: `Privacy Policy | ${siteName}`,
+        description:
+          "Learn how Curioso collects, uses, and protects information.",
       },
       notFound: {
-        title: "Page not found | seommerce.shop",
+        title: `Page not found | ${siteName}`,
         description: "The page you are looking for does not exist or was moved.",
       },
     },
     nav: {
       home: "Home",
-      topics: "Topics",
+      about: "About",
+      topics: "Curiosities",
       tools: "Tools",
-      newsletter: "Newsletter",
+      newsletter: "Guides",
+      contact: "Contact",
+      privacy: "Privacy",
       login: "Sign in",
       signup: "Create account",
     },
@@ -645,124 +1000,250 @@ export const translations: Record<Language, Translation> = {
       language: "Language",
     },
     hero: {
-      badge: "Daily insights for digital leaders",
-      title: "seommerce.shop",
+      badge: "Daily curiosities for curious minds",
+      title: siteName,
       description: {
-        lead: "Your daily source for the latest news and insights on ",
+        lead: "Curiosities and simple explanations on ",
         and: ", and ",
       },
       highlights: {
         technology: "technology",
         ai: "AI",
         business: "business",
-        marketing: "digital marketing",
+        marketing: "marketing",
       },
-      ctaPrimary: "Subscribe now",
-      ctaSecondary: "Latest articles",
-      stat: "Join 10,000+ professionals who stay informed",
+      ctaPrimary: "Get the newsletter",
+      ctaSecondary: "Latest curiosities",
+      stat: "Join 10,000+ curious readers who learn something new every day",
+      institutional: editorialIdentity,
+    },
+    home: {
+      highlight: {
+        title: "Curioso highlight",
+        subtitle: "The invisible impact of technology already shaping your day.",
+        cta: "Read highlight",
+      },
+      affectsYou: {
+        title: "This affects you",
+        subtitle: "AI reshaping work, money, consumption, and privacy.",
+        empty: "In progress",
+        topics: {
+          work: "AI at work",
+          money: "AI and money",
+          consumption: "AI in consumption",
+          privacy: "AI and privacy",
+        },
+      },
+      ai: {
+        title: "Artificial Intelligence",
+        subtitle: "Real applications, automated decisions, and consequences.",
+      },
+      curiosities: {
+        title: "Tech curiosities",
+        subtitle: "Curious stories with real-world consequences.",
+      },
+      latest: {
+        title: "Latest publications",
+        subtitle: "A chronological feed of recent posts.",
+        cta: "See latest posts",
+      },
+      guides: {
+        title: "Fundamental guides",
+        subtitle: "Evergreen guides to understand the essentials.",
+        empty: "Fundamental guides in progress.",
+        cta: "See all guides",
+      },
     },
     featured: {
-      title: "Featured articles",
-      subtitle: "Discover our most popular stories this week",
-      viewAll: "View all articles",
+      title: "Featured curiosities",
+      subtitle: "Discover the most popular curiosities this week",
+      viewAll: "View all curiosities",
     },
     articles: {
-      title: "All articles",
-      subtitle: "Everything we have published, curated in one place.",
+      title: "All curiosities",
+      subtitle: "Every curiosity we've published, ready to explore.",
     },
     posts: {
-      loading: "Loading posts...",
-      emptyTitle: "No posts yet",
+      loading: "Loading curiosities...",
+      emptyTitle: "No curiosities yet",
       emptyDescription:
-        "As soon as we publish new content, it will appear here.",
-      errorTitle: "Unable to load posts",
+        "As soon as we publish new curiosities, they will appear here.",
+      errorTitle: "Unable to load curiosities",
       errorDescription: "Please try again in a moment.",
     },
     categories: {
-      title: "Explore topics",
-      subtitle: "Dive into our most popular categories",
-      viewMore: "View more categories",
+      title: "Editorial categories",
+      subtitle: "Navigate the fixed pillars of Curioso.",
+      viewMore: "View all categories",
       viewLess: "View fewer categories",
       cards: [
         {
-          title: "IA",
-          description: "Insights on applied artificial intelligence",
-          count: "0 articles",
+          title: allowedCategories[0],
+          description: "How AI shapes work, consumption, and everyday decisions.",
+          count: "0 posts",
+          intro: categoryIntros.iaVidaReal,
         },
         {
-          title: "tech",
-          description: "Trends, tools, and innovation in tech",
-          count: "0 articles",
+          title: allowedCategories[1],
+          description: "Hidden infrastructures and silent systems shaping daily life.",
+          count: "0 posts",
+          intro: categoryIntros.tecnologiaInvisivel,
         },
         {
-          title: "marketing/seo",
-          description: "Digital marketing and SEO strategies",
-          count: "0 articles",
+          title: allowedCategories[2],
+          description: "Curious stories with practical consequences.",
+          count: "0 posts",
+          intro: categoryIntros.curiosidadesTecnologicas,
         },
         {
-          title: "business",
-          description: "Business, growth, and strategy",
-          count: "0 articles",
+          title: allowedCategories[3],
+          description: "Automation applied to operations, markets, and strategy.",
+          count: "0 posts",
+          intro: categoryIntros.automacaoNegocios,
+        },
+        {
+          title: allowedCategories[4],
+          description: "Near-term changes already reshaping everyday life.",
+          count: "0 posts",
+          intro: categoryIntros.futuroProximo,
+        },
+        {
+          title: allowedCategories[5],
+          description: "Evergreen explanations to master essential concepts.",
+          count: "0 posts",
+          intro: categoryIntros.guiasFundamentais,
         },
       ],
     },
     newsletter: {
-      title: "Stay updated daily",
+      title: "Get the curiosity newsletter",
       subtitle:
-        "Get the latest articles delivered to your inbox. No spam, just quality content.",
+        "Fresh curiosities on tech, marketing, AI, and business in your inbox.",
       placeholder: "your@email.com",
-      button: "Subscribe",
+      button: "Get the newsletter",
       note: "We respect your privacy. Unsubscribe anytime.",
       successTitle: "Subscription confirmed",
-      successDescription: "You'll receive the next articles by email.",
-      errorTitle: "Unable to subscribe",
+      successDescription: "You'll receive the next curiosities by email.",
+      errorTitle: "Unable to join the newsletter",
       errorDescription: "Please check the email and try again.",
     },
     latest: {
-      title: "Latest from the blog",
-      subtitle: "Fresh content published daily",
+      title: "Latest curiosities",
+      subtitle: "Fresh curiosities published daily",
     },
     footer: {
-      tagline: "Daily insights on technology, AI, business, and digital marketing.",
+      tagline: editorialIdentity,
       sectionsTitle: "Sections",
       resourcesTitle: "Resources",
       followTitle: "Follow us",
-      bottomLine:
-        "Crafted with passion | Daily insights on tech, AI, business, and marketing",
-      copyright: "© {year} seommerce.shop. All rights reserved.",
+      bottomLine: "Technology and AI editorial portal.",
+      copyright: `© {year} ${siteName}. All rights reserved.`,
     },
     tools: {
-      heroTitle: "Seommerce Tools",
+      heroTitle: "Seommerce Lab",
       heroSubtitle:
-        "A hub for all the tools we build to accelerate your digital growth.",
+        "Experiments, mini tools, and quick tests to explore tech, marketing, AI, and business.",
       badge: "Coming soon",
-      gridTitle: "Tools library",
-      gridSubtitle: "A growing collection of SEO, content, and automation solutions.",
-      ctaTitle: "Early access",
+      gridTitle: "Experiments to explore",
+      gridSubtitle: "A growing collection of playful tools to learn by doing.",
+      ctaTitle: "Want the next experiments?",
       ctaSubtitle:
-        "Create your account to be notified when we launch new tools.",
-      ctaButton: "Get early access",
+        "Join the newsletter and get updates when new ones drop.",
+      ctaButton: "Get the newsletter",
       cards: [
         {
-          title: "SEO Express Audit",
-          description: "Quick diagnostics for pages and optimization opportunities.",
+          title: "Trend Radar",
+          description: "Spot weak signals and emerging ideas in tech.",
           status: "Coming soon",
         },
         {
-          title: "Brief Generator",
-          description: "Create ready-to-go content briefs for your team.",
+          title: "AI Playground",
+          description: "Quick tests with prompts, models, and comparisons.",
           status: "Coming soon",
         },
         {
-          title: "SERP Monitor",
-          description: "Track rankings and search changes in real time.",
+          title: "Metrics Decoder",
+          description: "Understand marketing and business numbers without the jargon.",
           status: "Coming soon",
+        },
+      ],
+    },
+    about: {
+      title: `About ${siteName}`,
+      subtitle: "Technology and AI with real-world impact.",
+      identityTitle: "Editorial identity",
+      identityText: editorialIdentity,
+      focusTitle: "What we cover",
+      focusItems: [
+        "Invisible technology in daily life and its real effects.",
+        "Artificial intelligence applied to work, consumption, and decisions.",
+        "Tech curiosities that always have practical consequences.",
+        "Systems shaping habits, choices, and behaviors.",
+      ],
+    },
+    contact: {
+      title: "Contact",
+      subtitle: "Talk to the Curioso team.",
+      intro:
+        "Have a tip, question, or partnership idea? Use the form to send your message.",
+      email: "contact@curioso.com",
+      form: {
+        nameLabel: "Name",
+        emailLabel: "Email",
+        subjectLabel: "Subject",
+        messageLabel: "Message",
+        submitLabel: "Send message",
+        defaultSubject: "Message from Curioso",
+        note: "If your email client does not open, write directly to {email}.",
+      },
+      details: {
+        title: "Direct contact",
+        items: [
+          { label: "Email", value: "contact@curioso.com" },
+          { label: "Response time", value: "within 2 business days" },
+          {
+            label: "Press & partnerships",
+            value: "Use the subject line \"Partnership\".",
+          },
+        ],
+      },
+    },
+    privacy: {
+      title: "Privacy Policy",
+      subtitle: "How we collect, use, and protect information.",
+      updatedLabel: "Last updated",
+      updatedAt: "March 2024",
+      sections: [
+        {
+          title: "Information we collect",
+          body:
+            "We collect details you provide in forms (such as name and email) plus basic technical data about access and navigation.",
+        },
+        {
+          title: "How we use data",
+          body:
+            "We use information to respond to messages, send newsletters, and improve the portal experience.",
+        },
+        {
+          title: "Cookies and analytics",
+          body:
+            "We may use cookies and analytics tools to understand performance without selling personal data.",
+        },
+        {
+          title: "Responsible sharing",
+          body:
+            "We only share data with essential providers to run the portal and never sell your information.",
+        },
+        {
+          title: "Your rights and contact",
+          body:
+            "You can request access, correction, or removal of data. Email contact@curioso.com.",
         },
       ],
     },
     auth: {
       title: "Access",
-      subtitle: "Sign in or create your account to publish and manage posts.",
+      subtitle: "Sign in or create your account to publish and manage curiosities.",
       loginTab: "Sign in",
       signupTab: "Create account",
       emailLabel: "Email",
@@ -797,6 +1278,27 @@ export const translations: Record<Language, Translation> = {
       sectionContent: "Content",
       sectionMedia: "Media",
       sectionSeo: "SEO",
+      contentStrategy: {
+        title: "Content strategy",
+        subtitle:
+          "Curioso must keep three formats active: direct search, editorial, and evergreen.",
+        countLabel: "valid posts",
+        missing: "No valid posts in this type yet.",
+        types: {
+          search: {
+            title: "Direct search",
+            description: "Answers clear questions and search intent.",
+          },
+          editorial: {
+            title: "Curioso/editorial",
+            description: "Invisible tech impacts told with context.",
+          },
+          evergreen: {
+            title: "Evergreen (Fundamental Guides)",
+            description: "Long-form reference that stays relevant.",
+          },
+        },
+      },
       actions: {
         edit: "Edit",
         close: "Close",
@@ -827,7 +1329,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Use an existing category or create a new one.",
+        category: "Use one of Curioso's fixed categories.",
         tags: "Comma-separated.",
         images: "Comma-separated.",
         metaTags: 'Example: [{"name":"description","content":"..."}]',
@@ -841,22 +1343,32 @@ export const translations: Record<Language, Translation> = {
       errors: {
         metaTags: "Invalid JSON for meta tags.",
         notAuthorized: "Your account does not have admin access.",
+        categoryRequired: "Category is required.",
+        categoryInvalid: "Invalid category. Use one of the fixed categories.",
       },
     },
     topic: {
       title: "Topic",
-      subtitle: "Content about {topic}",
-      emptyTitle: "No posts in {topic}",
-      emptyDescription: "New posts will appear here as soon as they are published.",
-      metaTitle: "{topic} | seommerce.shop",
-      metaDescription: "Articles and insights about {topic} on seommerce.shop.",
+      subtitle: "Curiosities about {topic}",
+      emptyTitle: "No curiosities in {topic}",
+      emptyDescription:
+        "New curiosities will appear here as soon as they are published.",
+      minimumTitle: "Category in preparation: {topic}",
+      minimumDescription:
+        "We need at least 5 active posts to open this editorial pillar.",
+      metaTitle: `{topic} | ${siteName}`,
+      metaDescription: `Curiosities about {topic} on ${siteName}.`,
     },
     post: {
-      loading: "Loading post...",
-      notFoundTitle: "Post not found",
+      loading: "Loading curiosity...",
+      notFoundTitle: "Curiosity not found",
       notFoundDescription:
-        "This content may have been moved or is not available yet.",
+        "This curiosity may have been moved or is not available yet.",
       backToHome: "Back to the blog",
+      publishedLabel: "Published",
+      updatedLabel: "Updated",
+      guideTitle: "Fundamental guide",
+      relatedTitle: "Related posts",
     },
     notFound: {
       title: "Page not found",
@@ -867,44 +1379,60 @@ export const translations: Record<Language, Translation> = {
   es: {
     meta: {
       home: {
-        title: "seommerce.shop | Blog de Tecnología, IA y Marketing",
-        description:
-          "Insights diarios sobre tecnología, IA, negocios y marketing digital para líderes y equipos de crecimiento.",
+        title: `${siteName} | Portal editorial de tecnología e inteligencia artificial`,
+        description: editorialIdentity,
       },
       tools: {
-        title: "Herramientas Seommerce | Hub de crecimiento digital",
+        title: `Experimentos y herramientas | ${siteName}`,
         description:
-          "Explora la biblioteca de herramientas Seommerce para SEO, contenido y automatización.",
+          "Explora experimentos, mini herramientas y explicaciones curiosas sobre tecnología, marketing e IA.",
       },
       articles: {
-        title: "Todos los artículos | seommerce.shop",
+        title: `Todas las curiosidades | ${siteName}`,
         description:
-          "Explora todos los artículos sobre tecnología, IA, negocios y marketing.",
+          "Explora todas las curiosidades e historias sobre tecnología, marketing, IA y negocios.",
       },
       latest: {
-        title: "Últimos artículos | seommerce.shop",
-        description: "Descubre las publicaciones más recientes del blog.",
+        title: `Últimas curiosidades | ${siteName}`,
+        description: `Sigue las curiosidades más recientes de ${siteName}.`,
       },
       auth: {
-        title: "Acceso | seommerce.shop",
+        title: `Acceso | ${siteName}`,
         description:
-          "Inicia sesión o crea tu cuenta para acceder a herramientas y publicar contenidos.",
+          "Inicia sesión o crea tu cuenta para acceder a recursos y publicar curiosidades.",
       },
       admin: {
-        title: "Administración del Blog | seommerce.shop",
+        title: `Administración del Blog | ${siteName}`,
         description:
-          "Gestiona posts, edita contenidos y organiza categorías del blog.",
+          "Gestiona posts, edita contenidos y organiza las curiosidades del blog.",
+      },
+      about: {
+        title: `Sobre ${siteName}`,
+        description: editorialIdentity,
+      },
+      contact: {
+        title: `Contacto | ${siteName}`,
+        description:
+          "Escribe al equipo de Curioso con dudas, ideas o colaboraciones.",
+      },
+      privacy: {
+        title: `Política de Privacidad | ${siteName}`,
+        description:
+          "Conoce cómo Curioso recoge, usa y protege la información.",
       },
       notFound: {
-        title: "Página no encontrada | seommerce.shop",
+        title: `Página no encontrada | ${siteName}`,
         description: "La página que buscas no existe o fue movida.",
       },
     },
     nav: {
       home: "Inicio",
-      topics: "Temas",
+      about: "Sobre",
+      topics: "Curiosidades",
       tools: "Herramientas",
-      newsletter: "Newsletter",
+      newsletter: "Guías",
+      contact: "Contacto",
+      privacy: "Privacidad",
       login: "Iniciar sesión",
       signup: "Crear cuenta",
     },
@@ -912,126 +1440,253 @@ export const translations: Record<Language, Translation> = {
       language: "Idioma",
     },
     hero: {
-      badge: "Insights diarios para líderes digitales",
-      title: "seommerce.shop",
+      badge: "Curiosidades diarias para mentes curiosas",
+      title: siteName,
       description: {
-        lead: "Tu fuente diaria de noticias e insights sobre ",
-        and: ", y ",
+        lead: "Curiosidades y explicaciones sencillas sobre ",
+        and: " y ",
       },
       highlights: {
         technology: "tecnología",
         ai: "IA",
         business: "negocios",
-        marketing: "marketing digital",
+        marketing: "marketing",
       },
-      ctaPrimary: "Suscribirme",
-      ctaSecondary: "Últimos artículos",
-      stat: "Únete a más de 10.000 profesionales que se mantienen informados",
+      ctaPrimary: "Recibir newsletter",
+      ctaSecondary: "Últimas curiosidades",
+      stat: "Únete a más de 10.000 curiosos que aprenden algo nuevo cada día",
+      institutional: editorialIdentity,
+    },
+    home: {
+      highlight: {
+        title: "Destacado Curioso",
+        subtitle: "El impacto invisible de la tecnología que ya moldea tu día.",
+        cta: "Leer destacado",
+      },
+      affectsYou: {
+        title: "Esto te afecta",
+        subtitle: "IA transformando trabajo, dinero, consumo y privacidad.",
+        empty: "En preparación",
+        topics: {
+          work: "IA en el trabajo",
+          money: "IA y dinero",
+          consumption: "IA en el consumo",
+          privacy: "IA y privacidad",
+        },
+      },
+      ai: {
+        title: "Inteligencia Artificial",
+        subtitle: "Aplicaciones reales, decisiones automatizadas y consecuencias.",
+      },
+      curiosities: {
+        title: "Curiosidades tecnológicas",
+        subtitle: "Historias curiosas con consecuencias reales.",
+      },
+      latest: {
+        title: "Últimas publicaciones",
+        subtitle: "Un feed cronológico de publicaciones recientes.",
+        cta: "Ver últimas publicaciones",
+      },
+      guides: {
+        title: "Guías fundamentales",
+        subtitle: "Guías evergreen para entender lo esencial.",
+        empty: "Guías fundamentales en preparación.",
+        cta: "Ver todas las guías",
+      },
     },
     featured: {
-      title: "Artículos destacados",
-      subtitle: "Descubre nuestros contenidos más populares de la semana",
-      viewAll: "Ver todos los artículos",
+      title: "Curiosidades destacadas",
+      subtitle: "Descubre las curiosidades más populares de la semana",
+      viewAll: "Ver todas las curiosidades",
     },
     articles: {
-      title: "Todos los artículos",
-      subtitle: "Todo lo publicado para que explores sin límites.",
+      title: "Todas las curiosidades",
+      subtitle: "Reunimos todas las curiosidades publicadas para que explores.",
     },
     posts: {
-      loading: "Cargando publicaciones...",
-      emptyTitle: "Aún no hay publicaciones",
+      loading: "Cargando curiosidades...",
+      emptyTitle: "Aún no hay curiosidades",
       emptyDescription:
-        "Cuando publiquemos contenido nuevo, aparecerá aquí.",
-      errorTitle: "No se pudieron cargar las publicaciones",
+        "Cuando publiquemos nuevas curiosidades, aparecerán aquí.",
+      errorTitle: "No se pudieron cargar las curiosidades",
       errorDescription: "Intenta nuevamente en unos momentos.",
     },
     categories: {
-      title: "Explora temas",
-      subtitle: "Profundiza en nuestras categorías más populares",
-      viewMore: "Ver más categorías",
+      title: "Categorías editoriales",
+      subtitle: "Navega por los pilares fijos de Curioso.",
+      viewMore: "Ver todas las categorías",
       viewLess: "Ver menos categorías",
       cards: [
         {
-          title: "IA",
-          description: "Insights sobre inteligencia artificial aplicada",
-          count: "0 artículos",
+          title: allowedCategories[0],
+          description: "Cómo la IA afecta trabajo, consumo y decisiones diarias.",
+          count: "0 posts",
+          intro: categoryIntros.iaVidaReal,
         },
         {
-          title: "tech",
-          description: "Tendencias, herramientas e innovación en tecnología",
-          count: "0 artículos",
+          title: allowedCategories[1],
+          description: "Infraestructuras y sistemas silenciosos que moldean la rutina.",
+          count: "0 posts",
+          intro: categoryIntros.tecnologiaInvisivel,
         },
         {
-          title: "marketing/seo",
-          description: "Estrategias de marketing digital y SEO",
-          count: "0 artículos",
+          title: allowedCategories[2],
+          description: "Historias curiosas con consecuencias prácticas.",
+          count: "0 posts",
+          intro: categoryIntros.curiosidadesTecnologicas,
         },
         {
-          title: "business",
-          description: "Negocios, crecimiento y estrategia",
-          count: "0 artículos",
+          title: allowedCategories[3],
+          description: "Automatización aplicada a operaciones, mercados y estrategia.",
+          count: "0 posts",
+          intro: categoryIntros.automacaoNegocios,
+        },
+        {
+          title: allowedCategories[4],
+          description: "Cambios cercanos que ya están redefiniendo la vida cotidiana.",
+          count: "0 posts",
+          intro: categoryIntros.futuroProximo,
+        },
+        {
+          title: allowedCategories[5],
+          description: "Explicaciones evergreen para dominar conceptos esenciales.",
+          count: "0 posts",
+          intro: categoryIntros.guiasFundamentais,
         },
       ],
     },
     newsletter: {
-      title: "Mantente al día",
+      title: "Recibe la newsletter de curiosidades",
       subtitle:
-        "Recibe los artículos más recientes en tu correo. Sin spam, solo contenido de calidad.",
+        "Curiosidades frescas sobre tecnología, marketing, IA y negocios en tu correo.",
       placeholder: "tu@email.com",
-      button: "Suscribirme",
+      button: "Recibir newsletter",
       note: "Respetamos tu privacidad. Cancela cuando quieras.",
       successTitle: "Suscripción confirmada",
-      successDescription: "Recibirás los próximos artículos por email.",
-      errorTitle: "No se pudo suscribir",
+      successDescription: "Recibirás las próximas curiosidades por email.",
+      errorTitle: "No se pudo unir a la newsletter",
       errorDescription: "Revisa el email e inténtalo de nuevo.",
     },
     latest: {
-      title: "Lo último del blog",
-      subtitle: "Contenido fresco publicado a diario",
+      title: "Últimas curiosidades",
+      subtitle: "Curiosidades frescas publicadas a diario",
     },
     footer: {
-      tagline:
-        "Insights diarios sobre tecnología, IA, negocios y marketing digital.",
+      tagline: editorialIdentity,
       sectionsTitle: "Secciones",
       resourcesTitle: "Recursos",
       followTitle: "Síguenos",
-      bottomLine:
-        "Hecho con pasión | Insights diarios sobre tech, IA, negocios y marketing",
-      copyright: "© {year} seommerce.shop. Todos los derechos reservados.",
+      bottomLine: "Portal editorial de tecnología e inteligencia artificial.",
+      copyright: `© {year} ${siteName}. Todos los derechos reservados.`,
     },
     tools: {
-      heroTitle: "Herramientas Seommerce",
+      heroTitle: "Laboratorio Seommerce",
       heroSubtitle:
-        "Un hub con todas las herramientas que creamos para acelerar tu crecimiento digital.",
+        "Experimentos, mini herramientas y pruebas rápidas para explorar tecnología, marketing, IA y negocios.",
       badge: "Próximamente",
-      gridTitle: "Biblioteca de herramientas",
-      gridSubtitle:
-        "Colección creciente de soluciones para SEO, contenido y automatización.",
-      ctaTitle: "Acceso anticipado",
+      gridTitle: "Experimentos para explorar",
+      gridSubtitle: "Una colección de herramientas ligeras para aprender jugando.",
+      ctaTitle: "¿Quieres recibir los próximos experimentos?",
       ctaSubtitle:
-        "Crea tu cuenta para ser avisado cuando lancemos nuevas herramientas.",
-      ctaButton: "Quiero acceso",
+        "Únete a la newsletter y entérate cuando publiquemos novedades.",
+      ctaButton: "Recibir newsletter",
       cards: [
         {
-          title: "Auditoría SEO Express",
-          description: "Diagnóstico rápido de páginas y oportunidades de optimización.",
+          title: "Radar de tendencias",
+          description:
+            "Detecta señales débiles y novedades en el mundo tech.",
           status: "Próximamente",
         },
         {
-          title: "Generador de briefs",
-          description: "Crea briefings listos para producción de contenido.",
+          title: "Laboratorio de IA",
+          description:
+            "Pruebas rápidas con prompts, modelos y comparaciones.",
           status: "Próximamente",
         },
         {
-          title: "Monitor de SERP",
-          description: "Sigue posiciones y cambios en búsquedas en tiempo real.",
+          title: "Decodificador de métricas",
+          description: "Entiende números de marketing y negocios sin jerga.",
           status: "Próximamente",
+        },
+      ],
+    },
+    about: {
+      title: `Sobre ${siteName}`,
+      subtitle: "Tecnología e IA con impacto real en la vida cotidiana.",
+      identityTitle: "Identidad editorial",
+      identityText: editorialIdentity,
+      focusTitle: "Lo que cubrimos",
+      focusItems: [
+        "Tecnología invisible en el día a día y sus efectos reales.",
+        "Inteligencia artificial aplicada al trabajo, consumo y decisiones.",
+        "Curiosidades tecnológicas con consecuencias prácticas.",
+        "Sistemas que moldean hábitos, elecciones y comportamientos.",
+      ],
+    },
+    contact: {
+      title: "Contacto",
+      subtitle: "Habla con el equipo de Curioso.",
+      intro:
+        "¿Tienes una idea, duda o propuesta? Usa el formulario y envía tu mensaje.",
+      email: "contacto@curioso.com",
+      form: {
+        nameLabel: "Nombre",
+        emailLabel: "Email",
+        subjectLabel: "Asunto",
+        messageLabel: "Mensaje",
+        submitLabel: "Enviar mensaje",
+        defaultSubject: "Mensaje desde Curioso",
+        note: "Si tu cliente de email no se abre, escribe a {email}.",
+      },
+      details: {
+        title: "Contacto directo",
+        items: [
+          { label: "Email", value: "contacto@curioso.com" },
+          { label: "Tiempo de respuesta", value: "hasta 2 días hábiles" },
+          {
+            label: "Prensa y alianzas",
+            value: "Usa el asunto \"Alianza\".",
+          },
+        ],
+      },
+    },
+    privacy: {
+      title: "Política de Privacidad",
+      subtitle: "Cómo recopilamos, usamos y protegemos la información.",
+      updatedLabel: "Última actualización",
+      updatedAt: "Marzo de 2024",
+      sections: [
+        {
+          title: "Información que recopilamos",
+          body:
+            "Recopilamos datos que nos entregas en formularios (como nombre y email) y datos técnicos básicos sobre acceso y navegación.",
+        },
+        {
+          title: "Cómo usamos los datos",
+          body:
+            "Usamos la información para responder mensajes, enviar newsletters y mejorar el portal.",
+        },
+        {
+          title: "Cookies y analítica",
+          body:
+            "Podemos usar cookies y herramientas de analítica para entender el rendimiento sin vender datos personales.",
+        },
+        {
+          title: "Compartición responsable",
+          body:
+            "Compartimos datos solo con proveedores esenciales para operar el portal y nunca vendemos tu información.",
+        },
+        {
+          title: "Tus derechos y contacto",
+          body:
+            "Puedes solicitar acceso, corrección o eliminación de datos. Escribe a contacto@curioso.com.",
         },
       ],
     },
     auth: {
       title: "Acceso",
-      subtitle: "Inicia sesión o crea tu cuenta para publicar y gestionar posts.",
+      subtitle:
+        "Inicia sesión o crea tu cuenta para publicar y gestionar curiosidades.",
       loginTab: "Iniciar sesión",
       signupTab: "Crear cuenta",
       emailLabel: "Email",
@@ -1066,6 +1721,27 @@ export const translations: Record<Language, Translation> = {
       sectionContent: "Contenido",
       sectionMedia: "Media",
       sectionSeo: "SEO",
+      contentStrategy: {
+        title: "Estrategia de contenido",
+        subtitle:
+          "Curioso debe mantener tres formatos activos: búsqueda directa, editorial y evergreen.",
+        countLabel: "posts válidos",
+        missing: "Aún no hay posts válidos en este tipo.",
+        types: {
+          search: {
+            title: "Búsqueda directa",
+            description: "Responde dudas claras e intención de búsqueda.",
+          },
+          editorial: {
+            title: "Curioso/editorial",
+            description: "Impactos invisibles contados con contexto.",
+          },
+          evergreen: {
+            title: "Evergreen (Guías Fundamentales)",
+            description: "Referencia extensa y vigente para consulta.",
+          },
+        },
+      },
       actions: {
         edit: "Editar",
         close: "Cerrar",
@@ -1096,7 +1772,7 @@ export const translations: Record<Language, Translation> = {
         metaTags: "Meta tags (JSON)",
       },
       hints: {
-        category: "Usa una categoría existente o crea una nueva.",
+        category: "Usa una de las categorías fijas de Curioso.",
         tags: "Separadas por coma.",
         images: "Separadas por coma.",
         metaTags: 'Ejemplo: [{"name":"description","content":"..."}]',
@@ -1110,23 +1786,32 @@ export const translations: Record<Language, Translation> = {
       errors: {
         metaTags: "JSON inválido para meta tags.",
         notAuthorized: "Tu cuenta no tiene permisos de administrador.",
+        categoryRequired: "La categoría es obligatoria.",
+        categoryInvalid: "Categoría inválida. Usa una de las categorías fijas.",
       },
     },
     topic: {
       title: "Tema",
-      subtitle: "Contenido sobre {topic}",
-      emptyTitle: "No hay posts en {topic}",
+      subtitle: "Curiosidades sobre {topic}",
+      emptyTitle: "No hay curiosidades en {topic}",
       emptyDescription:
-        "Cuando publiquemos nuevos contenidos, aparecerán aquí.",
-      metaTitle: "{topic} | seommerce.shop",
-      metaDescription: "Artículos e insights sobre {topic} en seommerce.shop.",
+        "Cuando publiquemos nuevas curiosidades, aparecerán aquí.",
+      minimumTitle: "Categoría en preparación: {topic}",
+      minimumDescription:
+        "Necesitamos al menos 5 posts activos para abrir este eje editorial.",
+      metaTitle: `{topic} | ${siteName}`,
+      metaDescription: `Curiosidades sobre {topic} en ${siteName}.`,
     },
     post: {
-      loading: "Cargando publicación...",
-      notFoundTitle: "Publicación no encontrada",
+      loading: "Cargando curiosidad...",
+      notFoundTitle: "Curiosidad no encontrada",
       notFoundDescription:
-        "Este contenido pudo haberse movido o aún no está disponible.",
+        "Esta curiosidad pudo haberse movido o aún no está disponible.",
       backToHome: "Volver al blog",
+      publishedLabel: "Publicado",
+      updatedLabel: "Actualizado",
+      guideTitle: "Guía fundamental",
+      relatedTitle: "Posts relacionados",
     },
     notFound: {
       title: "Página no encontrada",

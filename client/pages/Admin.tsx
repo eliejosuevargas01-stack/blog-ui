@@ -20,9 +20,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { buildPath, translations, type Language } from "@/lib/i18n";
-import { deletePost, editPost, fetchPosts, type BlogPost } from "@/lib/posts";
-import { collectTopicSummaries } from "@/lib/topics";
+import { allowedCategories, buildPath, translations, type Language } from "@/lib/i18n";
+import {
+  deletePost,
+  editPost,
+  fetchPosts,
+  filterValidPosts,
+  getContentType,
+  type BlogPost,
+  type ContentType,
+} from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 import { sendWebhook } from "@/lib/webhook";
 
@@ -66,6 +73,12 @@ const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
 };
+
+const normalizeCategory = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 const normalizeList = (value: string) => {
   const trimmed = value.trim();
@@ -290,12 +303,13 @@ export default function Admin({ lang }: AdminProps) {
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
+  const allowedCategorySet = useMemo(
+    () => new Set(allowedCategories.map((category) => normalizeCategory(category))),
+    [],
+  );
   const categoryOptions = useMemo(() => {
-    const options = collectTopicSummaries(posts).map(
-      (summary) => summary.title,
-    );
-    return options.sort((a, b) => a.localeCompare(b, lang));
-  }, [posts, lang]);
+    return [...allowedCategories];
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -404,6 +418,37 @@ export default function Admin({ lang }: AdminProps) {
       );
     });
   }, [posts, query]);
+
+  const validPosts = useMemo(() => filterValidPosts(posts), [posts]);
+  const contentTypeCounts = useMemo(() => {
+    const counts: Record<ContentType, number> = {
+      search: 0,
+      editorial: 0,
+      evergreen: 0,
+    };
+    validPosts.forEach((post) => {
+      counts[getContentType(post)] += 1;
+    });
+    return counts;
+  }, [validPosts]);
+
+  const contentStrategyCards = [
+    {
+      key: "search",
+      title: t.admin.contentStrategy.types.search.title,
+      description: t.admin.contentStrategy.types.search.description,
+    },
+    {
+      key: "editorial",
+      title: t.admin.contentStrategy.types.editorial.title,
+      description: t.admin.contentStrategy.types.editorial.description,
+    },
+    {
+      key: "evergreen",
+      title: t.admin.contentStrategy.types.evergreen.title,
+      description: t.admin.contentStrategy.types.evergreen.description,
+    },
+  ] as const;
 
   const showLoading = isAuthenticated && status === "loading";
   const showError = isAuthenticated && status === "error";
@@ -565,6 +610,26 @@ export default function Admin({ lang }: AdminProps) {
       delete next[postId];
       return next;
     });
+    const categoryValue = normalizeOptional(draft.category);
+    if (!categoryValue) {
+      setDraftErrors((prev) => ({
+        ...prev,
+        [postId]: t.admin.errors.categoryRequired,
+      }));
+      return;
+    }
+    if (!allowedCategorySet.has(normalizeCategory(categoryValue))) {
+      setDraftErrors((prev) => ({
+        ...prev,
+        [postId]: t.admin.errors.categoryInvalid,
+      }));
+      return;
+    }
+    const canonicalCategory =
+      allowedCategories.find(
+        (category) => normalizeCategory(category) === normalizeCategory(categoryValue),
+      ) ?? categoryValue;
+
     const updatedPost: BlogPost = {
       ...target,
       title: draft.title.trim() || target.title,
@@ -573,7 +638,7 @@ export default function Admin({ lang }: AdminProps) {
       description: normalizeOptional(draft.description),
       content: normalizeOptional(draft.content),
       contentHtml: normalizeOptional(draft.contentHtml),
-      category: normalizeOptional(draft.category),
+      category: canonicalCategory,
       image: normalizeOptional(draft.image),
       imageAlt: normalizeOptional(draft.imageAlt),
       imageThumb: normalizeOptional(draft.imageThumb),
@@ -748,6 +813,55 @@ export default function Admin({ lang }: AdminProps) {
                     />
                   </div>
                 </div>
+                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {t.admin.contentStrategy.title}
+                      </h3>
+                      <p className="text-sm text-foreground/60">
+                        {t.admin.contentStrategy.subtitle}
+                      </p>
+                    </div>
+                    <div className="text-xs text-foreground/60">
+                      {validPosts.length} {t.admin.contentStrategy.countLabel}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {contentStrategyCards.map((card) => {
+                      const count = contentTypeCounts[card.key];
+                      const isMissing = count === 0;
+                      return (
+                        <Card
+                          key={card.key}
+                          className={isMissing ? "border-destructive/40" : undefined}
+                        >
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between text-base">
+                              <span>{card.title}</span>
+                              <Badge
+                                variant={isMissing ? "destructive" : "secondary"}
+                              >
+                                {count}
+                              </Badge>
+                            </CardTitle>
+                            <CardDescription>{card.description}</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-xs text-foreground/60">
+                              {count} {t.admin.contentStrategy.countLabel}
+                            </p>
+                            {isMissing && (
+                              <p className="text-xs text-destructive mt-2">
+                                {t.admin.contentStrategy.missing}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
                 {showLoading && (
                   <div className="space-y-4">
                     <p className="text-sm text-foreground/60">
@@ -786,85 +900,93 @@ export default function Admin({ lang }: AdminProps) {
 
                 {!showLoading && !showError && !showEmpty && (
                   <div className="space-y-6">
-                {filteredPosts.map((post) => {
-                  const isEditing = editingId === post.id;
-                  const draft = drafts[post.id] ?? buildDraft(post);
-                  const postDate = formatDate(post.date);
-                  const isSaving = savingId === post.id;
-                  const isDeleting = deletingId === post.id;
-                  const isBusy = isSaving || isDeleting;
-                  const previewSrc =
-                    post.imageThumb ?? post.image ?? post.images?.[0] ?? "";
-                  return (
-                    <article
-                      key={post.id}
-                      className="rounded-xl border border-border bg-card p-6 shadow-sm"
-                    >
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                        <div className="flex flex-col sm:flex-row gap-4">
-                          <div className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 flex items-center justify-center">
-                            {previewSrc ? (
-                              <img
-                                src={previewSrc}
-                                alt={post.title}
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <ImageIcon className="h-6 w-6 text-foreground/40" />
-                            )}
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <h3 className="text-xl font-semibold text-foreground">
-                                {post.title}
-                              </h3>
-                              {post.featured && (
-                                <Badge variant="secondary">
-                                  {t.admin.fields.featured}
-                                </Badge>
-                              )}
-                              {post.category && (
-                                <Badge variant="outline">{post.category}</Badge>
-                              )}
+                    {filteredPosts.map((post) => {
+                      const isEditing = editingId === post.id;
+                      const draft = drafts[post.id] ?? buildDraft(post);
+                      const postDate = formatDate(post.date);
+                      const isSaving = savingId === post.id;
+                      const isDeleting = deletingId === post.id;
+                      const isBusy = isSaving || isDeleting;
+                      const previewSrc =
+                        post.imageThumb ?? post.image ?? post.images?.[0] ?? "";
+                      const contentType = getContentType(post);
+                      const contentTypeLabel =
+                        t.admin.contentStrategy.types[contentType].title;
+                      return (
+                        <article
+                          key={post.id}
+                          className="rounded-xl border border-border bg-card p-6 shadow-sm"
+                        >
+                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row gap-4">
+                              <div className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 flex items-center justify-center">
+                                {previewSrc ? (
+                                  <img
+                                    src={previewSrc}
+                                    alt={post.title}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <ImageIcon className="h-6 w-6 text-foreground/40" />
+                                )}
+                              </div>
+                              <div className="space-y-3">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <h3 className="text-xl font-semibold text-foreground">
+                                    {post.title}
+                                  </h3>
+                                  {post.featured && (
+                                    <Badge variant="secondary">
+                                      {t.admin.fields.featured}
+                                    </Badge>
+                                  )}
+                                  {contentTypeLabel && (
+                                    <Badge variant="outline">
+                                      {contentTypeLabel}
+                                    </Badge>
+                                  )}
+                                  {post.category && (
+                                    <Badge variant="outline">{post.category}</Badge>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
+                                  {post.author && <span>{post.author}</span>}
+                                  {postDate && <span>{postDate}</span>}
+                                  {post.readTime && <span>{post.readTime}</span>}
+                                </div>
+                                {(post.excerpt || post.description) && (
+                                  <p className="text-sm text-foreground/70 max-w-3xl line-clamp-2">
+                                    {post.excerpt ?? post.description}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
-                              {post.author && <span>{post.author}</span>}
-                              {postDate && <span>{postDate}</span>}
-                              {post.readTime && <span>{post.readTime}</span>}
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleStartEdit(post)}
+                                disabled={isBusy}
+                              >
+                                <Pencil className="w-4 h-4" />
+                                {isEditing
+                                  ? t.admin.actions.close
+                                  : t.admin.actions.edit}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={() => handleDelete(post.id)}
+                                disabled={isBusy}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {isDeleting
+                                  ? `${t.admin.actions.delete}...`
+                                  : t.admin.actions.delete}
+                              </Button>
                             </div>
-                            {(post.excerpt || post.description) && (
-                              <p className="text-sm text-foreground/70 max-w-3xl line-clamp-2">
-                                {post.excerpt ?? post.description}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => handleStartEdit(post)}
-                            disabled={isBusy}
-                          >
-                            <Pencil className="w-4 h-4" />
-                            {isEditing
-                              ? t.admin.actions.close
-                              : t.admin.actions.edit}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleDelete(post.id)}
-                            disabled={isBusy}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            {isDeleting
-                              ? `${t.admin.actions.delete}...`
-                              : t.admin.actions.delete}
-                          </Button>
-                        </div>
-                      </div>
 
-                      {isEditing && (
+                          {isEditing && (
                         <div className="mt-6 border-t border-border pt-6 space-y-6">
                           <div className="grid grid-cols-1 gap-6">
                             <div>

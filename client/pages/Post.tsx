@@ -19,10 +19,17 @@ import {
   buildPath,
   buildPostPath,
   languages,
+  siteName,
   translations,
   type Language,
 } from "@/lib/i18n";
-import { fetchPosts, type BlogPost } from "@/lib/posts";
+import {
+  fetchPublicPosts,
+  getRelatedPosts,
+  isGuidePost,
+  pickGuidePost,
+  type BlogPost,
+} from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 
 interface PostProps {
@@ -30,6 +37,9 @@ interface PostProps {
 }
 
 type PostStatus = "loading" | "idle" | "error";
+
+const normalizeHeadingHtml = (value: string) =>
+  value.replace(/<\/?h1\b/gi, (match) => match.replace(/h1/i, "h2"));
 
 const resolvePostSlug = (
   post: BlogPost | null,
@@ -65,7 +75,7 @@ export default function Post({ lang }: PostProps) {
       setStatus("loading");
       setErrorMessage(null);
       try {
-        const response = await fetchPosts(lang);
+        const response = await fetchPublicPosts(lang);
         if (!isMounted) {
           return;
         }
@@ -102,6 +112,23 @@ export default function Post({ lang }: PostProps) {
     });
   }, [posts, slugParam]);
 
+  const guideCandidates = useMemo(
+    () => posts.filter(isGuidePost),
+    [posts],
+  );
+  const relatedPosts = useMemo(() => {
+    if (!post) {
+      return [];
+    }
+    return getRelatedPosts(posts, post, 3);
+  }, [posts, post]);
+  const guidePost = useMemo(() => {
+    if (!post) {
+      return null;
+    }
+    return pickGuidePost(guideCandidates, post);
+  }, [guideCandidates, post]);
+
   const languagePaths = useMemo(() => {
     if (!slugParam && !post) {
       return undefined;
@@ -119,8 +146,12 @@ export default function Post({ lang }: PostProps) {
 
   const canonicalSlug = resolvePostSlug(post, lang, slugParam);
   const canonicalPath = canonicalSlug ? buildPostPath(lang, canonicalSlug) : undefined;
+  const guideSlug = guidePost
+    ? resolvePostSlug(guidePost, lang, guidePost.slug ?? guidePost.id)
+    : "";
+  const guidePath = guideSlug ? buildPostPath(lang, guideSlug) : undefined;
   const seoTitle = post
-    ? `${post.metaTitle ?? post.title} | seommerce.shop`
+    ? `${post.metaTitle ?? post.title} | ${siteName}`
     : t.post.notFoundTitle;
   const seoDescription =
     post?.metaDescription ??
@@ -129,7 +160,14 @@ export default function Post({ lang }: PostProps) {
     t.post.notFoundDescription;
   const hasInlineHtml =
     post?.content && /<[^>]+>/.test(post.content) ? true : false;
-  const formattedDate = post?.date ? formatPostDate(post.date, lang) : null;
+  const publishedDate = post?.publishedAt ?? post?.date;
+  const updatedDate = post?.updatedAt ?? post?.date;
+  const formattedPublishedDate = publishedDate
+    ? formatPostDate(publishedDate, lang)
+    : null;
+  const formattedUpdatedDate = updatedDate
+    ? formatPostDate(updatedDate, lang)
+    : null;
   const coverImage = post?.image ?? post?.images?.[0] ?? null;
   const coverImageThumb = post?.imageThumb ?? coverImage;
   const coverImageAlt = post?.imageAlt ?? post?.title ?? "Post image";
@@ -140,11 +178,17 @@ export default function Post({ lang }: PostProps) {
     keywords && keywords.length > 0 ? keywords.join(", ") : null;
   const mergedMetaTags = useMemo(() => {
     const tags = post?.metaTags ? [...post.metaTags] : [];
+    if (coverImage && !tags.some((tag) => tag.property === "og:image")) {
+      tags.push({ property: "og:image", content: coverImage });
+    }
+    if (coverImage && !tags.some((tag) => tag.name === "twitter:image")) {
+      tags.push({ name: "twitter:image", content: coverImage });
+    }
     if (keywordString && !tags.some((tag) => tag.name === "keywords")) {
       tags.push({ name: "keywords", content: keywordString });
     }
     return tags.length > 0 ? tags : undefined;
-  }, [post?.metaTags, keywordString]);
+  }, [post?.metaTags, keywordString, coverImage]);
   const canonicalUrl = useMemo(() => {
     if (!canonicalPath) {
       return typeof window !== "undefined" ? window.location.href : undefined;
@@ -175,10 +219,10 @@ export default function Post({ lang }: PostProps) {
       author: post.author ? { "@type": "Person", name: post.author } : undefined,
       publisher: {
         "@type": "Organization",
-        name: "seommerce.shop",
+        name: siteName,
       },
-      datePublished: post.date ?? undefined,
-      dateModified: post.date ?? undefined,
+      datePublished: publishedDate ?? undefined,
+      dateModified: updatedDate ?? publishedDate ?? undefined,
       inLanguage: lang === "pt" ? "pt-BR" : lang,
       mainEntityOfPage: canonicalUrl
         ? { "@type": "WebPage", "@id": canonicalUrl }
@@ -188,7 +232,17 @@ export default function Post({ lang }: PostProps) {
       articleSection: post.category ?? undefined,
       url: canonicalUrl ?? undefined,
     };
-  }, [post, seoDescription, coverImage, canonicalUrl, lang, keywords, keywordString]);
+  }, [
+    post,
+    seoDescription,
+    coverImage,
+    canonicalUrl,
+    lang,
+    keywords,
+    keywordString,
+    publishedDate,
+    updatedDate,
+  ]);
   const contentClassName =
     "prose prose-neutral max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:mt-10 prose-h3:mt-8 prose-p:text-foreground/80 prose-strong:text-foreground prose-a:text-secondary prose-a:font-semibold hover:prose-a:text-secondary/80 prose-ul:my-6 prose-ol:my-6 prose-li:marker:text-secondary/70 prose-blockquote:border-l-4 prose-blockquote:border-secondary/40 prose-blockquote:bg-muted/60 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:text-foreground/70 prose-hr:border-border/70 prose-img:rounded-2xl prose-img:border prose-img:border-border/80 prose-img:shadow-sm";
   const markdownContent = useMemo(() => {
@@ -196,7 +250,8 @@ export default function Post({ lang }: PostProps) {
       return null;
     }
     try {
-      return marked.parse(post.content, { async: false });
+      const html = marked.parse(post.content, { async: false });
+      return normalizeHeadingHtml(html);
     } catch {
       return null;
     }
@@ -345,10 +400,16 @@ export default function Post({ lang }: PostProps) {
                           {post.author}
                         </span>
                       )}
-                      {formattedDate && (
+                      {formattedPublishedDate && (
                         <span className="inline-flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          {formattedDate}
+                          {t.post.publishedLabel} {formattedPublishedDate}
+                        </span>
+                      )}
+                      {formattedUpdatedDate && (
+                        <span className="inline-flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          {t.post.updatedLabel} {formattedUpdatedDate}
                         </span>
                       )}
                       {post.readTime && (
@@ -423,12 +484,16 @@ export default function Post({ lang }: PostProps) {
                     {post.contentHtml ? (
                       <div
                         className={contentClassName}
-                        dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+                        dangerouslySetInnerHTML={{
+                          __html: normalizeHeadingHtml(post.contentHtml),
+                        }}
                       />
                     ) : post.content && hasInlineHtml ? (
                       <div
                         className={contentClassName}
-                        dangerouslySetInnerHTML={{ __html: post.content }}
+                        dangerouslySetInnerHTML={{
+                          __html: normalizeHeadingHtml(post.content),
+                        }}
                       />
                     ) : post.content ? (
                       markdownContent ? (
@@ -445,6 +510,65 @@ export default function Post({ lang }: PostProps) {
                       )
                     ) : null}
                   </div>
+
+                  {guidePost && guidePath && relatedPosts.length >= 2 && (
+                    <div className="mt-12 border-t border-border pt-10">
+                      <div className="grid gap-8 lg:grid-cols-[1.2fr_2fr]">
+                        <div className="rounded-2xl border border-border bg-card/70 p-6">
+                          <h2 className="text-lg font-semibold text-foreground mb-4">
+                            {t.post.guideTitle}
+                          </h2>
+                          <Link
+                            to={guidePath}
+                            className="block rounded-xl border border-border bg-background p-4 hover:border-secondary hover:shadow-lg transition-all"
+                          >
+                            <h3 className="text-xl font-bold text-foreground mb-2">
+                              {guidePost.title}
+                            </h3>
+                            {(guidePost.excerpt || guidePost.description) && (
+                              <p className="text-sm text-foreground/60 line-clamp-3">
+                                {guidePost.excerpt ?? guidePost.description}
+                              </p>
+                            )}
+                          </Link>
+                        </div>
+
+                        <div className="rounded-2xl border border-border bg-muted/40 p-6">
+                          <h2 className="text-lg font-semibold text-foreground mb-4">
+                            {t.post.relatedTitle}
+                          </h2>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            {relatedPosts.map((related) => {
+                              const relatedSlug = resolvePostSlug(
+                                related,
+                                lang,
+                                related.slug ?? related.id,
+                              );
+                              const relatedPath = relatedSlug
+                                ? buildPostPath(lang, relatedSlug)
+                                : buildPath(lang, "home");
+                              return (
+                                <Link
+                                  key={related.id}
+                                  to={relatedPath}
+                                  className="block rounded-xl border border-border bg-background p-4 hover:border-secondary hover:shadow-lg transition-all"
+                                >
+                                  <h3 className="text-base font-semibold text-foreground mb-2 line-clamp-2">
+                                    {related.title}
+                                  </h3>
+                                  {(related.excerpt || related.description) && (
+                                    <p className="text-sm text-foreground/60 line-clamp-3">
+                                      {related.excerpt ?? related.description}
+                                    </p>
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </article>
             )}

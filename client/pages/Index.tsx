@@ -1,56 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Sparkles,
-  TrendingUp,
-  Zap,
-  Brain,
-  LineChart,
-} from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Seo } from "@/components/Seo";
-import { NewsletterSection } from "@/components/NewsletterSection";
 import {
   buildPath,
   buildPostPath,
   translations,
   type Language,
 } from "@/lib/i18n";
-import { fetchPosts, type BlogPost } from "@/lib/posts";
-import {
-  buildTopicPath,
-  collectTopicSummaries,
-  normalizeTopicKey,
-} from "@/lib/topics";
+import { fetchPublicPosts, isGuidePost, type BlogPost } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
-
-const categoryVisuals = [
-  {
-    icon: Brain,
-    color: "from-purple-500/10 to-transparent",
-  },
-  {
-    icon: Zap,
-    color: "from-blue-500/10 to-transparent",
-  },
-  {
-    icon: TrendingUp,
-    color: "from-emerald-500/10 to-transparent",
-  },
-  {
-    icon: LineChart,
-    color: "from-amber-500/10 to-transparent",
-  },
-];
-
-const categoryLabels = {
-  pt: { about: "Artigos sobre", singular: "artigo", plural: "artigos" },
-  en: { about: "Articles about", singular: "article", plural: "articles" },
-  es: { about: "Articulos sobre", singular: "articulo", plural: "articulos" },
-} as const;
 
 interface IndexProps {
   lang: Language;
@@ -66,18 +28,54 @@ const parseDateValue = (value: string | undefined) => {
   return Number.isNaN(time) ? 0 : time;
 };
 
-const DEFAULT_CATEGORY_COUNT = 4;
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const buildSearchText = (post: BlogPost) =>
+  normalizeText(
+    [
+      post.title,
+      post.excerpt,
+      post.description,
+      post.category,
+      ...(post.tags ?? []),
+      ...(post.keywords ?? []),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+
+const postMatchesKeywords = (post: BlogPost, keywords: string[]) => {
+  const haystack = buildSearchText(post);
+  return keywords.some((keyword) => haystack.includes(normalizeText(keyword)));
+};
+
+const aiKeywords = [
+  "inteligencia artificial",
+  "inteligência artificial",
+  "ia",
+  "ai",
+  "machine learning",
+  "algoritmo",
+  "modelos",
+  "llm",
+  "automacao",
+  "automação",
+];
+
+const isAiPost = (post: BlogPost) => postMatchesKeywords(post, aiKeywords);
 
 export default function Index({ lang }: IndexProps) {
   const t = translations[lang];
-  const homePath = buildPath(lang, "home");
   const articlesPath = buildPath(lang, "articles");
   const latestPath = buildPath(lang, "latest");
   const formatDate = (value?: string) => formatPostDate(value, lang);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [status, setStatus] = useState<PostsStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,7 +84,7 @@ export default function Index({ lang }: IndexProps) {
       setStatus("loading");
       setErrorMessage(null);
       try {
-        const response = await fetchPosts(lang);
+        const response = await fetchPublicPosts(lang);
         if (!isMounted) {
           return;
         }
@@ -109,64 +107,202 @@ export default function Index({ lang }: IndexProps) {
     };
   }, [lang]);
 
-  const { featuredPosts, latestPosts } = useMemo(() => {
-    const featuredCandidates = posts.filter((post) => post.featured);
-    const featuredList =
-      featuredCandidates.length > 0 ? featuredCandidates : posts.slice(0, 3);
-    const latestList = [...posts].sort(
+  const portal = useMemo(() => {
+    const sorted = [...posts].sort(
       (a, b) => parseDateValue(b.date) - parseDateValue(a.date),
     );
-    return {
-      featuredPosts: featuredList,
-      latestPosts: latestList,
-    };
-  }, [posts]);
+    const aiPosts = sorted.filter(isAiPost);
+    const guidePosts = sorted.filter(isGuidePost);
+    const featuredCandidates = sorted.filter((post) => post.featured);
+    const rotatingPool = (featuredCandidates.length > 0
+      ? featuredCandidates
+      : sorted
+    ).slice(0, 6);
+    const rotationIndex =
+      rotatingPool.length > 0
+        ? Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % rotatingPool.length
+        : 0;
+    const highlightPost =
+      rotatingPool.length > 0 ? rotatingPool[rotationIndex] : null;
 
-  const categoryCards = useMemo(() => {
-    const summaries = collectTopicSummaries(posts);
-    const labels = categoryLabels[lang] ?? categoryLabels.pt;
-    const baseCards = new Map<string, (typeof t.categories.cards)[number]>();
-    t.categories.cards.forEach((card) => {
-      const key = normalizeTopicKey(card.title);
-      if (key) {
-        baseCards.set(key, card);
+    const usedIds = new Set<string>();
+    if (highlightPost) {
+      usedIds.add(highlightPost.id);
+    }
+
+    const impactTopics = [
+      {
+        key: "work",
+        label: t.home.affectsYou.topics.work,
+        keywords: [
+          "trabalho",
+          "emprego",
+          "carreira",
+          "profissao",
+          "profissão",
+          "work",
+          "job",
+          "empleo",
+          "trabajo",
+          "produtividade",
+        ],
+      },
+      {
+        key: "money",
+        label: t.home.affectsYou.topics.money,
+        keywords: [
+          "dinheiro",
+          "financas",
+          "finanças",
+          "preco",
+          "preço",
+          "economia",
+          "investimento",
+          "money",
+          "finance",
+          "finanzas",
+          "precio",
+        ],
+      },
+      {
+        key: "consumption",
+        label: t.home.affectsYou.topics.consumption,
+        keywords: [
+          "consumo",
+          "compras",
+          "compra",
+          "consumidor",
+          "shopping",
+          "consumption",
+          "buying",
+          "recomendacao",
+          "recomendação",
+          "recomendacion",
+        ],
+      },
+      {
+        key: "privacy",
+        label: t.home.affectsYou.topics.privacy,
+        keywords: [
+          "privacidade",
+          "dados",
+          "rastreamento",
+          "vigilancia",
+          "vigilância",
+          "privacy",
+          "data",
+          "tracking",
+          "seguranca",
+          "segurança",
+          "seguridad",
+        ],
+      },
+    ];
+
+    const pickTopicPost = (keywords: string[]) => {
+      const direct = aiPosts.find(
+        (post) => !usedIds.has(post.id) && postMatchesKeywords(post, keywords),
+      );
+      if (direct) {
+        usedIds.add(direct.id);
+        return direct;
       }
-    });
+      const fallback = aiPosts.find((post) => !usedIds.has(post.id));
+      if (fallback) {
+        usedIds.add(fallback.id);
+        return fallback;
+      }
+      return null;
+    };
 
-    const cards = summaries.map((summary) => {
-      const baseCard = baseCards.get(summary.slug);
-      const title = baseCard?.title ?? summary.title;
-      const description =
-        baseCard?.description ?? `${labels.about} ${title}`;
-      return {
-        key: summary.slug,
-        title,
-        description,
-        count: summary.count,
-      };
-    });
-
-    cards.sort(
-      (a, b) => b.count - a.count || a.title.localeCompare(b.title),
-    );
-
-    return cards.map((card) => ({
-      key: card.key,
-      title: card.title,
-      description: card.description,
-      count: `${card.count} ${
-        card.count === 1 ? labels.singular : labels.plural
-      }`,
+    const affectCards = impactTopics.map((topic) => ({
+      ...topic,
+      post: pickTopicPost(topic.keywords),
     }));
-  }, [posts, t.categories.cards, lang]);
+
+    const aiFeed = aiPosts
+      .filter((post) => !usedIds.has(post.id))
+      .slice(0, 6);
+
+    const curiosityFeed = sorted
+      .filter(
+        (post) =>
+          !usedIds.has(post.id) && !isAiPost(post) && !isGuidePost(post),
+      )
+      .slice(0, 6);
+
+    const latestFeed = sorted.slice(0, 6);
+    const guideFeed = guidePosts.slice(0, 4);
+
+    return {
+      highlightPost,
+      affectCards,
+      aiFeed,
+      curiosityFeed,
+      latestFeed,
+      guideFeed,
+    };
+  }, [posts, lang]);
 
   const showLoading = status === "loading";
   const showError = status === "error";
   const showEmpty = status === "idle" && posts.length === 0;
-  const hasMoreCategories = categoryCards.length > DEFAULT_CATEGORY_COUNT;
-  const visibleCategoryCards = showAllCategories
-    ? categoryCards
-    : categoryCards.slice(0, DEFAULT_CATEGORY_COUNT);
+
+  const renderPostCard = (post: BlogPost, badge?: string) => {
+    const postSlug = post.slugs?.[lang] ?? post.slug ?? post.id;
+    const postPath = buildPostPath(lang, postSlug);
+    const postDate = formatDate(post.date);
+    const footerText = post.readTime ?? postDate;
+
+    return (
+      <Link
+        key={post.id}
+        to={postPath}
+        className="group block rounded-xl border border-border bg-card hover:border-secondary transition-all hover:shadow-lg"
+      >
+        <article className="h-full">
+          <div className="h-40 bg-gradient-to-br from-primary/20 to-secondary/20 overflow-hidden">
+            {post.image ? (
+              <img
+                src={post.imageThumb ?? post.image}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Sparkles className="w-10 h-10 text-secondary/30" />
+              </div>
+            )}
+          </div>
+          <div className="p-5">
+            {badge ? (
+              <div className="inline-block px-2 py-1 bg-secondary/15 text-secondary text-xs font-semibold rounded mb-3">
+                {badge}
+              </div>
+            ) : post.category ? (
+              <div className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded mb-3">
+                {post.category}
+              </div>
+            ) : null}
+            <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+              {post.title}
+            </h3>
+            {(post.excerpt || post.description) && (
+              <p className="text-base text-foreground/60 line-clamp-2 mb-4">
+                {post.excerpt ?? post.description}
+              </p>
+            )}
+            {footerText && (
+              <div className="flex items-center justify-between text-xs text-foreground/50">
+                <span>{footerText}</span>
+                <ArrowRight className="w-4 h-4 text-secondary group-hover:translate-x-1 transition-transform" />
+              </div>
+            )}
+          </div>
+        </article>
+      </Link>
+    );
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -179,95 +315,42 @@ export default function Index({ lang }: IndexProps) {
       <Header lang={lang} pageKey="home" t={t} />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background py-20 sm:py-32">
+        <section
+          id="featured"
+          className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background py-20 sm:py-28"
+        >
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
             <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
           </div>
 
           <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-4xl mx-auto text-center">
+            <div className="max-w-4xl mb-10">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/10 rounded-full border border-secondary/20 mb-6">
                 <Sparkles className="w-4 h-4 text-secondary" />
                 <span className="text-sm font-medium text-secondary">
                   {t.hero.badge}
                 </span>
               </div>
-
-              <h1 className="text-5xl sm:text-7xl font-bold bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent mb-6">
+              <h1 className="text-4xl sm:text-6xl font-bold text-foreground mb-4">
                 {t.hero.title}
               </h1>
-
-              <p className="text-xl sm:text-2xl text-foreground/70 mb-8 leading-relaxed">
-                {t.hero.description.lead}
-                <span className="font-semibold text-primary">
-                  {t.hero.highlights.technology}
-                </span>
-                ,{" "}
-                <span className="font-semibold text-secondary">
-                  {t.hero.highlights.ai}
-                </span>
-                ,{" "}
-                <span className="font-semibold text-primary">
-                  {t.hero.highlights.business}
-                </span>
-                {t.hero.description.and}
-                <span className="font-semibold text-secondary">
-                  {t.hero.highlights.marketing}
-                </span>
+              <p className="text-base sm:text-lg text-foreground/70 leading-relaxed">
+                {t.hero.institutional}
               </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                <Link
-                  to={{ pathname: homePath, hash: "#newsletter" }}
-                  className="px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:shadow-xl hover:shadow-primary/20 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
-                >
-                  {t.hero.ctaPrimary}
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link
-                  to={latestPath}
-                  className="px-8 py-4 border-2 border-secondary text-secondary rounded-lg font-semibold hover:bg-secondary hover:text-secondary-foreground transition-all"
-                >
-                  {t.hero.ctaSecondary}
-                </Link>
-              </div>
-
-              <p className="text-sm text-foreground/50">{t.hero.stat}</p>
             </div>
-          </div>
-        </section>
 
-        {/* Featured Articles Section */}
-        <section
-          id="featured"
-          className="scroll-mt-24 py-20 sm:py-32 border-b border-border"
-        >
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto mb-16">
-              <h2 className="text-5xl sm:text-6xl font-bold text-foreground mb-4">
-                {t.featured.title}
+            <div className="mb-8">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.highlight.title}
               </h2>
-              <p className="text-xl text-foreground/60">
-                {t.featured.subtitle}
+              <p className="text-lg text-foreground/60">
+                {t.home.highlight.subtitle}
               </p>
             </div>
 
             {showLoading && (
-              <div className="space-y-6">
-                <p className="text-sm text-foreground/60">{t.posts.loading}</p>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className={`rounded-xl border border-border bg-card/50 animate-pulse ${
-                        index === 0 ? "lg:col-span-2 lg:row-span-2 h-96" : "h-64"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
+              <div className="h-[420px] rounded-3xl border border-border bg-card/50 animate-pulse" />
             )}
 
             {showError && (
@@ -279,7 +362,253 @@ export default function Index({ lang }: IndexProps) {
               </div>
             )}
 
-            {showEmpty && (
+            {!showLoading && !showError && portal.highlightPost && (
+              <Link
+                to={buildPostPath(
+                  lang,
+                  portal.highlightPost.slugs?.[lang] ??
+                    portal.highlightPost.slug ??
+                    portal.highlightPost.id,
+                )}
+                className="group grid gap-6 lg:grid-cols-[1.2fr_0.8fr] rounded-3xl border border-border bg-card/80 overflow-hidden hover:border-secondary transition-all hover:shadow-2xl"
+              >
+                <div className="p-8 lg:p-10 flex flex-col justify-center">
+                  {portal.highlightPost.category && (
+                    <span className="inline-flex w-fit items-center px-3 py-1 rounded-full bg-secondary/15 text-secondary text-xs font-semibold uppercase tracking-wide mb-4">
+                      {portal.highlightPost.category}
+                    </span>
+                  )}
+                  <h3 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                    {portal.highlightPost.title}
+                  </h3>
+                  {(portal.highlightPost.excerpt ||
+                    portal.highlightPost.description) && (
+                    <p className="text-lg text-foreground/70 mb-6">
+                      {portal.highlightPost.excerpt ??
+                        portal.highlightPost.description}
+                    </p>
+                  )}
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-secondary">
+                    {t.home.highlight.cta}
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+                <div className="relative h-64 lg:h-full bg-muted">
+                  {portal.highlightPost.image ? (
+                    <img
+                      src={
+                        portal.highlightPost.imageThumb ??
+                        portal.highlightPost.image
+                      }
+                      alt={portal.highlightPost.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+                      <Sparkles className="w-16 h-16 text-secondary/40" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                </div>
+              </Link>
+            )}
+
+            {!showLoading && !showError && showEmpty && (
+              <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
+                <p className="text-lg font-semibold text-foreground mb-2">
+                  {t.posts.emptyTitle}
+                </p>
+                <p className="text-sm text-foreground/60">
+                  {t.posts.emptyDescription}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="impact" className="py-16 sm:py-24 border-b border-border">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.affectsYou.title}
+              </h2>
+              <p className="text-lg text-foreground/60">
+                {t.home.affectsYou.subtitle}
+              </p>
+            </div>
+
+            {showLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-40 rounded-2xl border border-border bg-card/50 animate-pulse"
+                  />
+                ))}
+              </div>
+            )}
+
+            {!showLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {portal.affectCards.map((topic) => {
+                  if (!topic.post) {
+                    return (
+                      <div
+                        key={topic.key}
+                        className="rounded-2xl border border-dashed border-border bg-muted/40 p-6"
+                      >
+                        <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                          {topic.label}
+                        </span>
+                        <p className="mt-4 text-base text-foreground/60">
+                          {t.home.affectsYou.empty}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  const postSlug =
+                    topic.post.slugs?.[lang] ??
+                    topic.post.slug ??
+                    topic.post.id;
+                  const postPath = buildPostPath(lang, postSlug);
+
+                  return (
+                    <Link
+                      key={topic.key}
+                      to={postPath}
+                      className="group rounded-2xl border border-border bg-card/70 p-6 hover:border-secondary hover:shadow-xl transition-all"
+                    >
+                      <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                        {topic.label}
+                      </span>
+                      <h3 className="mt-4 text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                        {topic.post.title}
+                      </h3>
+                      {(topic.post.excerpt || topic.post.description) && (
+                        <p className="mt-3 text-base text-foreground/60 line-clamp-3">
+                          {topic.post.excerpt ?? topic.post.description}
+                        </p>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="ai" className="py-16 sm:py-24 border-b border-border">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.ai.title}
+              </h2>
+              <p className="text-lg text-foreground/60">
+                {t.home.ai.subtitle}
+              </p>
+            </div>
+
+            {showLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-64 rounded-lg border border-border bg-card/50 animate-pulse"
+                  />
+                ))}
+              </div>
+            )}
+
+            {!showLoading && portal.aiFeed.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {portal.aiFeed.map((post) => renderPostCard(post))}
+              </div>
+            )}
+
+            {!showLoading && portal.aiFeed.length === 0 && (
+              <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
+                <p className="text-lg font-semibold text-foreground mb-2">
+                  {t.posts.emptyTitle}
+                </p>
+                <p className="text-sm text-foreground/60">
+                  {t.posts.emptyDescription}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="topics" className="py-16 sm:py-24 border-b border-border">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.curiosities.title}
+              </h2>
+              <p className="text-lg text-foreground/60">
+                {t.home.curiosities.subtitle}
+              </p>
+            </div>
+
+            {showLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-64 rounded-lg border border-border bg-card/50 animate-pulse"
+                  />
+                ))}
+              </div>
+            )}
+
+            {!showLoading && portal.curiosityFeed.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {portal.curiosityFeed.map((post) => renderPostCard(post))}
+              </div>
+            )}
+
+            {!showLoading && portal.curiosityFeed.length === 0 && (
+              <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
+                <p className="text-lg font-semibold text-foreground mb-2">
+                  {t.posts.emptyTitle}
+                </p>
+                <p className="text-sm text-foreground/60">
+                  {t.posts.emptyDescription}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="latest" className="py-16 sm:py-24 border-b border-border">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.latest.title}
+              </h2>
+              <p className="text-lg text-foreground/60">
+                {t.home.latest.subtitle}
+              </p>
+            </div>
+
+            {showLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-64 rounded-lg border border-border bg-card/50 animate-pulse"
+                  />
+                ))}
+              </div>
+            )}
+
+            {!showLoading && portal.latestFeed.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {portal.latestFeed.map((post) => renderPostCard(post))}
+              </div>
+            )}
+
+            {!showLoading && portal.latestFeed.length === 0 && (
               <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
@@ -290,83 +619,13 @@ export default function Index({ lang }: IndexProps) {
               </div>
             )}
 
-            {!showLoading && !showError && !showEmpty && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {featuredPosts.map((post, index) => {
-                  const postSlug = post.slug ?? post.id;
-                  const postPath = buildPostPath(lang, postSlug);
-                  const postDate = formatDate(post.date);
-                  return (
-                    <Link
-                      key={post.id}
-                      to={postPath}
-                      className={`group block rounded-xl overflow-hidden border border-border bg-card hover:border-secondary transition-all hover:shadow-xl hover:shadow-secondary/10 ${
-                        index === 0 ? "lg:col-span-2 lg:row-span-2" : ""
-                      }`}
-                    >
-                      <article className="h-full">
-                        <div
-                          className={`relative overflow-hidden bg-muted ${
-                            index === 0 ? "h-96" : "h-48"
-                          }`}
-                        >
-                      {post.image ? (
-                        <img
-                          src={post.imageThumb ?? post.image}
-                          alt={post.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                          <Sparkles className="w-12 h-12 text-secondary/40" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      {post.category && (
-                        <div className="absolute top-4 left-4">
-                          <span className="inline-block px-3 py-1 bg-secondary text-secondary-foreground text-xs font-semibold rounded-full">
-                            {post.category}
-                          </span>
-                        </div>
-                      )}
-                        </div>
-
-                        <div className="p-6">
-                      <h3 className="text-2xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-2">
-                        {post.title}
-                      </h3>
-
-                      {(post.excerpt || post.description) && (
-                        <p className="text-foreground/60 text-base mb-4 line-clamp-2">
-                          {post.excerpt ?? post.description}
-                        </p>
-                      )}
-
-                      {(post.author || postDate || post.readTime) && (
-                        <div className="flex items-center justify-between pt-4 border-t border-border text-xs text-foreground/50">
-                          <div className="flex items-center gap-2">
-                            {post.author && <span>{post.author}</span>}
-                            {post.author && postDate && <span>•</span>}
-                            {postDate && <span>{postDate}</span>}
-                          </div>
-                          {post.readTime && <span>{post.readTime}</span>}
-                        </div>
-                      )}
-                        </div>
-                      </article>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {!showLoading && !showError && !showEmpty && (
-              <div className="mt-12 text-center">
+            {!showLoading && portal.latestFeed.length > 0 && (
+              <div className="mt-10 text-center">
                 <Link
-                  to={articlesPath}
+                  to={latestPath}
                   className="px-6 py-3 border-2 border-primary text-primary rounded-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-all inline-flex items-center gap-2 group"
                 >
-                  {t.featured.viewAll}
+                  {t.home.latest.cta}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -374,125 +633,40 @@ export default function Index({ lang }: IndexProps) {
           </div>
         </section>
 
-        {/* Categories Section */}
-        <section
-          id="topics"
-          className="scroll-mt-24 py-20 sm:py-32 border-b border-border"
-        >
+        <section id="guides" className="py-16 sm:py-24">
           <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto mb-16">
-              <h2 className="text-5xl sm:text-6xl font-bold text-foreground mb-4">
-                {t.categories.title}
+            <div className="max-w-4xl mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                {t.home.guides.title}
               </h2>
-              <p className="text-xl text-foreground/60">
-                {t.categories.subtitle}
-              </p>
-            </div>
-
-            <div
-              id="category-grid"
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
-              {visibleCategoryCards.map((cat, index) => {
-                const visual = categoryVisuals[index % categoryVisuals.length];
-                const Icon = visual.icon;
-                const topicPath = buildTopicPath(lang, cat.key);
-                return (
-                  <Link
-                    key={cat.key}
-                    to={topicPath}
-                    className="relative group"
-                  >
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${visual.color} rounded-xl blur-xl transition-all group-hover:blur-2xl`}
-                    />
-                    <div className="relative border border-border bg-card rounded-xl p-8 hover:border-secondary transition-all hover:shadow-xl">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center mb-4">
-                        <Icon className="w-6 h-6 text-primary-foreground" />
-                      </div>
-                      <h3 className="text-3xl font-bold text-foreground mb-2">
-                        {cat.title}
-                      </h3>
-                      <p className="text-foreground/60 mb-4 text-lg">
-                        {cat.description}
-                      </p>
-                      <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <span className="text-sm text-secondary font-semibold">
-                          {cat.count}
-                        </span>
-                        <ArrowRight className="w-4 h-4 text-secondary group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-            {hasMoreCategories && (
-              <div className="mt-10 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllCategories((prev) => !prev)}
-                  className="px-6 py-3 border-2 border-primary text-primary rounded-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-all inline-flex items-center gap-2 group"
-                  aria-expanded={showAllCategories}
-                  aria-controls="category-grid"
-                >
-                  {showAllCategories
-                    ? t.categories.viewLess
-                    : t.categories.viewMore}
-                  <ArrowRight
-                    className={`w-4 h-4 transition-transform ${
-                      showAllCategories
-                        ? "rotate-90"
-                        : "group-hover:translate-x-1"
-                    }`}
-                  />
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <NewsletterSection t={t} />
-
-        {/* Recent Articles Preview */}
-        <section id="latest" className="scroll-mt-24 py-20 sm:py-32">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto mb-16">
-              <h2 className="text-5xl sm:text-6xl font-bold text-foreground mb-4">
-                {t.latest.title}
-              </h2>
-              <p className="text-xl text-foreground/60">
-                {t.latest.subtitle}
+              <p className="text-lg text-foreground/60">
+                {t.home.guides.subtitle}
               </p>
             </div>
 
             {showLoading && (
-              <div className="space-y-6">
-                <p className="text-sm text-foreground/60">{t.posts.loading}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-64 rounded-lg border border-border bg-card/50 animate-pulse"
-                    />
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-64 rounded-lg border border-border bg-card/50 animate-pulse"
+                  />
+                ))}
               </div>
             )}
 
-            {showError && (
-              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-6 py-6 text-destructive">
-                <p className="text-base font-semibold">{t.posts.errorTitle}</p>
-                <p className="text-sm opacity-80">
-                  {errorMessage ?? t.posts.errorDescription}
-                </p>
+            {!showLoading && portal.guideFeed.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {portal.guideFeed.map((post) =>
+                  renderPostCard(post, t.post.guideTitle),
+                )}
               </div>
             )}
 
-            {showEmpty && (
+            {!showLoading && portal.guideFeed.length === 0 && (
               <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
                 <p className="text-lg font-semibold text-foreground mb-2">
-                  {t.posts.emptyTitle}
+                  {t.home.guides.empty}
                 </p>
                 <p className="text-sm text-foreground/60">
                   {t.posts.emptyDescription}
@@ -500,58 +674,15 @@ export default function Index({ lang }: IndexProps) {
               </div>
             )}
 
-            {!showLoading && !showError && !showEmpty && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {latestPosts.map((post) => {
-                  const postSlug = post.slug ?? post.id;
-                  const postPath = buildPostPath(lang, postSlug);
-                  const postDate = formatDate(post.date);
-                  const footerText = post.readTime ?? postDate;
-                  return (
-                    <Link
-                      key={post.id}
-                      to={postPath}
-                      className="group block rounded-lg border border-border bg-card hover:border-secondary transition-all hover:shadow-lg"
-                    >
-                      <article className="h-full">
-                        <div className="h-40 bg-gradient-to-br from-primary/20 to-secondary/20 overflow-hidden">
-                      {post.image ? (
-                        <img
-                          src={post.imageThumb ?? post.image}
-                          alt={post.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Sparkles className="w-12 h-12 text-secondary/30" />
-                        </div>
-                      )}
-                        </div>
-                        <div className="p-5">
-                      {post.category && (
-                        <div className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded mb-3">
-                          {post.category}
-                        </div>
-                      )}
-                      <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                        {post.title}
-                      </h3>
-                      {(post.excerpt || post.description) && (
-                        <p className="text-base text-foreground/60 line-clamp-2 mb-4">
-                          {post.excerpt ?? post.description}
-                        </p>
-                      )}
-                      {footerText && (
-                        <div className="flex items-center justify-between text-xs text-foreground/50">
-                          <span>{footerText}</span>
-                          <ArrowRight className="w-4 h-4 text-secondary group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      )}
-                        </div>
-                      </article>
-                    </Link>
-                  );
-                })}
+            {!showLoading && portal.guideFeed.length > 0 && (
+              <div className="mt-10 text-center">
+                <Link
+                  to={articlesPath}
+                  className="px-6 py-3 border-2 border-secondary text-secondary rounded-lg font-semibold hover:bg-secondary hover:text-secondary-foreground transition-all inline-flex items-center gap-2 group"
+                >
+                  {t.home.guides.cta}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </div>
             )}
           </div>

@@ -15,6 +15,9 @@ import Articles from "@/pages/Articles";
 import Latest from "@/pages/Latest";
 import Admin from "@/pages/Admin";
 import Topic from "@/pages/Topic";
+import About from "@/pages/About";
+import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
 import { defaultLang, languages, pageSlugs, postRouteSegment } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
@@ -84,6 +87,27 @@ const App = () => (
               key={`${lang}-admin`}
               path={`/${lang}/${pageSlugs.admin[lang]}`}
               element={<Admin lang={lang} />}
+            />
+          ))}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-about`}
+              path={`/${lang}/${pageSlugs.about[lang]}`}
+              element={<About lang={lang} />}
+            />
+          ))}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-contact`}
+              path={`/${lang}/${pageSlugs.contact[lang]}`}
+              element={<Contact lang={lang} />}
+            />
+          ))}
+          {languages.map((lang) => (
+            <Route
+              key={`${lang}-privacy`}
+              path={`/${lang}/${pageSlugs.privacy[lang]}`}
+              element={<Privacy lang={lang} />}
             />
           ))}
           {languages.map((lang) => (

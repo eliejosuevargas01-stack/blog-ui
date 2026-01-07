@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
-import { buildPath, type Language, type Translation } from "@/lib/i18n";
-import logoUrl from "@/pages/logo.png";
+import { brandAssets } from "@/lib/branding";
+import { buildPath, siteName, type Language, type Translation } from "@/lib/i18n";
 
 interface FooterProps {
   lang: Language;
@@ -12,6 +12,9 @@ export function Footer({ lang, t }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const homePath = buildPath(lang, "home");
   const toolsPath = buildPath(lang, "tools");
+  const aboutPath = buildPath(lang, "about");
+  const contactPath = buildPath(lang, "contact");
+  const privacyPath = buildPath(lang, "privacy");
 
   return (
     <footer className="bg-primary text-primary-foreground py-12">
@@ -20,11 +23,11 @@ export function Footer({ lang, t }: FooterProps) {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <img
-                src={logoUrl}
-                alt="seommerce.shop"
+                src={brandAssets.logo}
+                alt={siteName}
                 className="h-9 w-auto"
               />
-              <h3 className="sr-only">seommerce.shop</h3>
+              <h3 className="sr-only">{siteName}</h3>
             </div>
             <p className="text-sm opacity-80">{t.footer.tagline}</p>
           </div>
@@ -42,10 +45,26 @@ export function Footer({ lang, t }: FooterProps) {
               </li>
               <li>
                 <Link
+                  to={aboutPath}
+                  className="hover:text-secondary transition-colors"
+                >
+                  {t.nav.about}
+                </Link>
+              </li>
+              <li>
+                <Link
                   to={{ pathname: homePath, hash: "#featured" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  {t.featured.title}
+                  {t.home.highlight.title}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={{ pathname: homePath, hash: "#impact" }}
+                  className="hover:text-secondary transition-colors"
+                >
+                  {t.home.affectsYou.title}
                 </Link>
               </li>
               <li>
@@ -53,15 +72,15 @@ export function Footer({ lang, t }: FooterProps) {
                   to={{ pathname: homePath, hash: "#topics" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  {t.categories.title}
+                  {t.home.curiosities.title}
                 </Link>
               </li>
               <li>
                 <Link
-                  to={{ pathname: homePath, hash: "#newsletter" }}
+                  to={{ pathname: homePath, hash: "#guides" }}
                   className="hover:text-secondary transition-colors"
                 >
-                  {t.newsletter.title}
+                  {t.home.guides.title}
                 </Link>
               </li>
             </ul>
@@ -76,6 +95,22 @@ export function Footer({ lang, t }: FooterProps) {
                   className="hover:text-secondary transition-colors"
                 >
                   {t.nav.tools}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={contactPath}
+                  className="hover:text-secondary transition-colors"
+                >
+                  {t.nav.contact}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={privacyPath}
+                  className="hover:text-secondary transition-colors"
+                >
+                  {t.nav.privacy}
                 </Link>
               </li>
             </ul>

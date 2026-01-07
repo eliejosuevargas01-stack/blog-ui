@@ -7,12 +7,8 @@ import { Header } from "@/components/Header";
 import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
-import { fetchPosts, type BlogPost } from "@/lib/posts";
-import {
-  buildTopicPath,
-  collectTopicSummaries,
-  normalizeTopicKey,
-} from "@/lib/topics";
+import { fetchPublicPosts, type BlogPost } from "@/lib/posts";
+import { buildTopicPath, normalizeTopicKey } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 import NotFound from "@/pages/NotFound";
 
@@ -44,7 +40,7 @@ export default function Topic({ lang }: TopicProps) {
       setStatus("loading");
       setErrorMessage(null);
       try {
-        const response = await fetchPosts(lang);
+        const response = await fetchPublicPosts(lang);
         if (!isMounted) {
           return;
         }
@@ -72,18 +68,6 @@ export default function Topic({ lang }: TopicProps) {
     [topicSlug],
   );
 
-  const topicSummaries = useMemo(
-    () => collectTopicSummaries(posts),
-    [posts],
-  );
-
-  const topicIndex = useMemo(
-    () => new Map(topicSummaries.map((summary) => [summary.slug, summary])),
-    [topicSummaries],
-  );
-
-  const topicSummary = normalizedTopic ? topicIndex.get(normalizedTopic) : null;
-
   const topicCard = useMemo(() => {
     if (!normalizedTopic) {
       return null;
@@ -94,10 +78,10 @@ export default function Topic({ lang }: TopicProps) {
   }, [t.categories.cards, normalizedTopic]);
 
   const fallbackTitle = topicSlug ? topicSlug.replace(/-/g, " ") : "";
-  const topicTitle =
-    topicCard?.title ?? topicSummary?.title ?? fallbackTitle;
+  const topicTitle = topicCard?.title ?? fallbackTitle;
   const topicDescription =
     topicCard?.description ?? replaceTopic(t.topic.subtitle, topicTitle);
+  const topicIntro = topicCard?.intro ?? null;
 
   const filteredPosts = useMemo(() => {
     if (!normalizedTopic) {
@@ -110,11 +94,11 @@ export default function Topic({ lang }: TopicProps) {
 
   const showLoading = status === "loading";
   const showError = status === "error";
-  const showEmpty = status === "idle" && filteredPosts.length === 0;
+  const hasMinimumPosts = filteredPosts.length >= 5;
+  const showMinimum = status === "idle" && !hasMinimumPosts;
   const showNotFound =
     status === "idle" &&
-    posts.length > 0 &&
-    (!normalizedTopic || !topicSummary);
+    (!normalizedTopic || !topicCard);
 
   const formatDate = (value?: string) => formatPostDate(value, lang);
   const metaTitle = replaceTopic(t.topic.metaTitle, topicTitle);
@@ -178,6 +162,16 @@ export default function Topic({ lang }: TopicProps) {
           </div>
         </section>
 
+        {topicIntro && (
+          <section className="py-12 sm:py-16 border-b border-border">
+            <div className="container mx-auto px-4">
+              <div className="max-w-4xl text-base sm:text-lg text-foreground/70 leading-relaxed whitespace-pre-line">
+                {topicIntro}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="py-16 sm:py-24">
           <div className="container mx-auto px-4">
             {showLoading && (
@@ -203,18 +197,18 @@ export default function Topic({ lang }: TopicProps) {
               </div>
             )}
 
-            {showEmpty && (
+            {showMinimum && (
               <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
                 <p className="text-lg font-semibold text-foreground mb-2">
-                  {replaceTopic(t.topic.emptyTitle, topicTitle)}
+                  {replaceTopic(t.topic.minimumTitle, topicTitle)}
                 </p>
                 <p className="text-sm text-foreground/60">
-                  {replaceTopic(t.topic.emptyDescription, topicTitle)}
+                  {replaceTopic(t.topic.minimumDescription, topicTitle)}
                 </p>
               </div>
             )}
 
-            {!showLoading && !showError && !showEmpty && (
+            {!showLoading && !showError && hasMinimumPosts && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPosts.map((post) => {
                   const postSlug = post.slug ?? post.id;

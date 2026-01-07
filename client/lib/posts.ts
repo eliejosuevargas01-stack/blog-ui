@@ -1,4 +1,4 @@
-import { defaultLang, languages, type Language } from "@/lib/i18n";
+import { allowedCategories, defaultLang, languages, type Language } from "@/lib/i18n";
 import { sendWebhook } from "@/lib/webhook";
 
 export interface BlogPost {
@@ -16,6 +16,8 @@ export interface BlogPost {
   tags?: string[];
   keywords?: string[];
   date?: string;
+  publishedAt?: string;
+  updatedAt?: string;
   author?: string;
   readTime?: string;
   slug?: string;
@@ -584,6 +586,185 @@ const extractPostArray = (payload: unknown): unknown[] => {
   return [];
 };
 
+const normalizeCategoryText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .toLowerCase()
+    .trim();
+
+const allowedCategoryMap = new Map(
+  allowedCategories.map((category) => [normalizeCategoryText(category), category]),
+);
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const textMatchesTerm = (text: string, term: string) => {
+  if (!text) {
+    return false;
+  }
+  if (term.includes(" ")) {
+    return text.includes(term);
+  }
+  const pattern = new RegExp(`\\b${escapeRegExp(term)}\\b`, "i");
+  return pattern.test(text);
+};
+
+const textMatchesAny = (text: string, terms: string[]) =>
+  terms.some((term) => textMatchesTerm(text, term));
+
+const guideTerms = [
+  "guia",
+  "guide",
+  "fundamental",
+  "meaning",
+  "significado",
+  "o que e",
+  "what is",
+  "como",
+];
+
+const curiosityTerms = [
+  "curiosidade",
+  "curiosidades",
+  "curioso",
+  "misterio",
+  "misterios",
+  "meme",
+  "golpe",
+  "fraude",
+  "viral",
+];
+
+const aiTerms = [
+  "inteligencia artificial",
+  "ia",
+  "ai",
+  "llm",
+  "gpt",
+  "openai",
+  "chatgpt",
+  "gemini",
+  "dalle",
+  "midjourney",
+  "sora",
+  "deepfake",
+  "deepfakes",
+];
+
+const invisibleTechTerms = [
+  "invisivel",
+  "algoritmo",
+  "score",
+  "data center",
+  "infraestrutura",
+  "privacidade",
+  "energia",
+  "logistica",
+  "apagao",
+  "blackout",
+  "cadastro positivo",
+  "rastreamento",
+  "doomscrolling",
+  "detox",
+];
+
+const businessTerms = [
+  "negocio",
+  "negocios",
+  "business",
+  "marketing",
+  "carreira",
+  "emprego",
+  "jobs",
+  "vaga",
+  "vagas",
+  "financa",
+  "financas",
+  "economia",
+  "mercado",
+  "varejo",
+  "investimento",
+  "estrategia",
+  "gestao",
+  "vendas",
+  "orcamento",
+  "budget",
+  "politica",
+  "educacao",
+  "edtech",
+  "grant",
+];
+
+const futureTerms = [
+  "futuro",
+  "proximo",
+  "6g",
+  "biotecnologia",
+  "epigenetica",
+  "saude",
+  "defesa",
+  "geopolitica",
+  "robot",
+  "robotaxi",
+  "satelite",
+  "espacial",
+  "space",
+  "quantum",
+  "chip",
+];
+
+const inferCategoryFromText = (value: string): string | null => {
+  if (!value) {
+    return null;
+  }
+  if (textMatchesAny(value, guideTerms)) {
+    return "Guias Fundamentais";
+  }
+  if (textMatchesAny(value, curiosityTerms)) {
+    return "Curiosidades Tecnológicas";
+  }
+  if (textMatchesAny(value, aiTerms)) {
+    return "IA & Vida Real";
+  }
+  if (textMatchesAny(value, invisibleTechTerms)) {
+    return "Tecnologia Invisível";
+  }
+  if (textMatchesAny(value, businessTerms)) {
+    return "Automação & Negócios";
+  }
+  if (textMatchesAny(value, futureTerms)) {
+    return "Futuro Próximo";
+  }
+  return null;
+};
+
+const resolveCategory = (
+  rawCategory: string | null,
+  title: string,
+  tags: string[] | undefined,
+  keywords: string[] | undefined,
+) => {
+  if (rawCategory) {
+    const normalized = normalizeCategoryText(rawCategory);
+    const allowed = allowedCategoryMap.get(normalized);
+    if (allowed) {
+      return allowed;
+    }
+    const inferred = inferCategoryFromText(normalized);
+    if (inferred) {
+      return inferred;
+    }
+  }
+
+  const signalText = normalizeCategoryText(
+    [title, ...(tags ?? []), ...(keywords ?? [])].join(" "),
+  );
+  return inferCategoryFromText(signalText) ?? undefined;
+};
+
 export function normalizePosts(
   payload: unknown,
   lang: Language = defaultLang,
@@ -635,7 +816,7 @@ export function normalizePosts(
         ["content", "body", "texto", "text", "conteudo"],
         lang,
       );
-      const category = pickString(record, ["category", "categoria", "tag"]);
+      const rawCategory = pickString(record, ["category", "categoria", "tag"]);
       const image = pickString(record, [
         "image",
         "coverImage",
@@ -681,7 +862,7 @@ export function normalizePosts(
         "galeria",
         "media",
       ]);
-      const date = pickString(record, [
+      const publishedAt = pickString(record, [
         "date",
         "publishedAt",
         "published_at",
@@ -689,10 +870,13 @@ export function normalizePosts(
         "createdAt",
         "created_at",
         "criado_em",
+      ]);
+      const updatedAt = pickString(record, [
         "updatedAt",
         "updated_at",
         "atualizado_em",
       ]);
+      const date = publishedAt ?? updatedAt;
       const author = pickString(record, [
         "author",
         "authorName",
@@ -763,6 +947,7 @@ export function normalizePosts(
             keywords ??
             null,
         ) ?? undefined;
+      const category = resolveCategory(rawCategory, title, tags, keywords);
       const metaTags = parseMetaTags(
         record.metaTags ?? record.meta_tags ?? record.meta,
       );
@@ -789,6 +974,8 @@ export function normalizePosts(
         tags: tags ?? undefined,
         keywords: keywords ?? undefined,
         date: date ?? undefined,
+        publishedAt: publishedAt ?? undefined,
+        updatedAt: updatedAt ?? undefined,
         author: author ?? undefined,
         readTime: readTime ?? undefined,
         slug: slug ?? undefined,
@@ -805,6 +992,291 @@ export function normalizePosts(
 export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
   const response = await sendWebhook({ action: "get_posts", lang });
   return normalizePosts(response, lang);
+}
+
+export const MIN_POST_WORDS = 900;
+
+export type ContentType = "search" | "editorial" | "evergreen";
+
+type PostContentStats = {
+  wordCount: number;
+  hasH2: boolean;
+  hasH3: boolean;
+};
+
+const stripHtml = (value: string) => value.replace(/<[^>]+>/g, " ");
+
+const stripMarkdown = (value: string) =>
+  value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/[#>*_~]/g, " ")
+    .replace(/\s+/g, " ");
+
+const countWords = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+  return trimmed.split(/\s+/g).length;
+};
+
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const getPostContentSource = (post: BlogPost) => {
+  const raw = post.contentHtml ?? post.content ?? "";
+  const isHtml = /<[^>]+>/.test(raw);
+  return { raw, isHtml };
+};
+
+export const getPostContentStats = (post: BlogPost): PostContentStats => {
+  const { raw, isHtml } = getPostContentSource(post);
+  if (!raw) {
+    return { wordCount: 0, hasH2: false, hasH3: false };
+  }
+
+  if (isHtml) {
+    const text = stripHtml(raw);
+    return {
+      wordCount: countWords(text),
+      hasH2: /<h2\b/i.test(raw),
+      hasH3: /<h3\b/i.test(raw),
+    };
+  }
+
+  const text = stripMarkdown(raw);
+  return {
+    wordCount: countWords(text),
+    hasH2: /^##\s+/m.test(raw),
+    hasH3: /^###\s+/m.test(raw),
+  };
+};
+
+const guideMarkers = [
+  "guia fundamental",
+  "guias fundamentais",
+  "guias fundamentales",
+  "fundamental guide",
+  "fundamental guides",
+];
+
+const contentTypeByCategory = new Map<string, ContentType>([
+  [normalizeText("Guias Fundamentais"), "evergreen"],
+  [normalizeText("Curiosidades Tecnológicas"), "editorial"],
+  [normalizeText("Tecnologia Invisível"), "editorial"],
+  [normalizeText("Futuro Próximo"), "editorial"],
+  [normalizeText("IA & Vida Real"), "search"],
+  [normalizeText("Automação & Negócios"), "search"],
+]);
+
+const searchTitlePatterns = [
+  /^o que e\\b/,
+  /^como\\b/,
+  /^por que\\b/,
+  /^what is\\b/,
+  /^how\\b/,
+  /^why\\b/,
+  /^que es\\b/,
+];
+
+export const getContentType = (post: BlogPost): ContentType => {
+  const categoryKey = post.category ? normalizeText(post.category) : "";
+  const categoryType = contentTypeByCategory.get(categoryKey);
+  if (categoryType) {
+    return categoryType;
+  }
+
+  const normalizedTitle = normalizeText(post.title ?? "");
+  if (searchTitlePatterns.some((pattern) => pattern.test(normalizedTitle))) {
+    return "search";
+  }
+
+  return "editorial";
+};
+
+export const isGuidePost = (post: BlogPost) => {
+  const values = [
+    post.category,
+    ...(post.tags ?? []),
+    ...(post.keywords ?? []),
+  ]
+    .map((value) => (value ? normalizeText(value) : null))
+    .filter(Boolean) as string[];
+
+  if (values.length === 0) {
+    return false;
+  }
+
+  return values.some((value) =>
+    guideMarkers.some((marker) => value.includes(marker)),
+  );
+};
+
+const parseDateValue = (value?: string) => {
+  if (!value) {
+    return 0;
+  }
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+export const getRelatedPosts = (
+  posts: BlogPost[],
+  post: BlogPost,
+  limit = 3,
+) => {
+  const category = post.category ? normalizeText(post.category) : null;
+  const tags = new Set(
+    (post.tags ?? []).map((tag) => normalizeText(tag)).filter(Boolean),
+  );
+  const keywords = new Set(
+    (post.keywords ?? []).map((keyword) => normalizeText(keyword)).filter(Boolean),
+  );
+
+  const scored = posts
+    .filter((item) => item.id !== post.id)
+    .map((item) => {
+      let score = 0;
+      if (category && item.category) {
+        const candidate = normalizeText(item.category);
+        if (candidate === category) {
+          score += 3;
+        }
+      }
+      const itemTags = item.tags ?? [];
+      const itemKeywords = item.keywords ?? [];
+      itemTags.forEach((tag) => {
+        const normalized = normalizeText(tag);
+        if (tags.has(normalized)) {
+          score += 2;
+        }
+      });
+      itemKeywords.forEach((keyword) => {
+        const normalized = normalizeText(keyword);
+        if (keywords.has(normalized)) {
+          score += 1;
+        }
+      });
+      return { item, score };
+    });
+
+  const related = scored
+    .filter((entry) => entry.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        parseDateValue(b.item.date) - parseDateValue(a.item.date),
+    )
+    .map((entry) => entry.item)
+    .slice(0, limit);
+
+  if (related.length > 0) {
+    return related;
+  }
+
+  return posts
+    .filter((item) => item.id !== post.id)
+    .sort((a, b) => parseDateValue(b.date) - parseDateValue(a.date))
+    .slice(0, limit);
+};
+
+export const pickGuidePost = (posts: BlogPost[], currentPost: BlogPost) => {
+  if (posts.length === 0) {
+    return null;
+  }
+  const other = posts.find((post) => post.id !== currentPost.id);
+  return other ?? null;
+};
+
+export const filterValidPosts = (posts: BlogPost[]) => {
+  const normalizeMetaValue = (value?: string) =>
+    value ? value.trim().toLowerCase() : "";
+  const buildMetaTitleKey = (post: BlogPost) =>
+    normalizeMetaValue(post.metaTitle ?? post.title);
+  const buildMetaDescriptionKey = (post: BlogPost) =>
+    normalizeMetaValue(post.metaDescription ?? post.description ?? post.excerpt);
+
+  const titleCounts = new Map<string, number>();
+  const descriptionCounts = new Map<string, number>();
+
+  posts.forEach((post) => {
+    const titleKey = buildMetaTitleKey(post);
+    const descriptionKey = buildMetaDescriptionKey(post);
+    if (titleKey) {
+      titleCounts.set(titleKey, (titleCounts.get(titleKey) ?? 0) + 1);
+    }
+    if (descriptionKey) {
+      descriptionCounts.set(
+        descriptionKey,
+        (descriptionCounts.get(descriptionKey) ?? 0) + 1,
+      );
+    }
+  });
+
+  const structurallyValid = posts.filter((post) => {
+    const { wordCount, hasH2, hasH3 } = getPostContentStats(post);
+    const titleKey = buildMetaTitleKey(post);
+    const descriptionKey = buildMetaDescriptionKey(post);
+    const hasUniqueTitle = Boolean(titleKey) && titleCounts.get(titleKey) === 1;
+    const hasUniqueDescription =
+      Boolean(descriptionKey) && descriptionCounts.get(descriptionKey) === 1;
+    return (
+      hasUniqueTitle &&
+      hasUniqueDescription &&
+      wordCount >= MIN_POST_WORDS &&
+      hasH2 &&
+      hasH3
+    );
+  });
+
+  const allowedCategoryKeys = new Set(
+    allowedCategories.map((category) => normalizeText(category)),
+  );
+  const categoryCounts = new Map<string, number>();
+
+  structurallyValid.forEach((post) => {
+    if (!post.category) {
+      return;
+    }
+    const categoryKey = normalizeText(post.category);
+    if (!allowedCategoryKeys.has(categoryKey)) {
+      return;
+    }
+    categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) ?? 0) + 1);
+  });
+
+  const activeCategoryKeys = new Set(
+    Array.from(categoryCounts.entries())
+      .filter(([, count]) => count >= 5)
+      .map(([key]) => key),
+  );
+
+  const taxonomyValid = structurallyValid.filter((post) => {
+    if (!post.category) {
+      return false;
+    }
+    const categoryKey = normalizeText(post.category);
+    return activeCategoryKeys.has(categoryKey);
+  });
+
+  const guidePosts = taxonomyValid.filter(isGuidePost);
+
+  return taxonomyValid.filter((post) => {
+    const related = getRelatedPosts(taxonomyValid, post, 3);
+    const guide = pickGuidePost(guidePosts, post);
+    return related.length >= 2 && Boolean(guide);
+  });
+};
+
+export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
+  const posts = await fetchPosts(lang);
+  return filterValidPosts(posts);
 }
 
 export async function editPost(
