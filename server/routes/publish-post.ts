@@ -292,8 +292,8 @@ const buildSitemap = async (rootDir: string, origin: string) => {
         .split(path.sep)
         .join("/");
       const routePath = `/${relative}`
-        .replace(/index\\.html$/i, "")
-        .replace(/\\.html$/i, "");
+        .replace(/index\.html$/i, "")
+        .replace(/\.html$/i, "");
       return {
         loc: `${origin}${routePath}`,
         lastmod: formatSitemapDate(stat.mtime),
