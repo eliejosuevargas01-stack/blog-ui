@@ -61,7 +61,7 @@ const toRoutePath = (rootDir: string, filePath: string) => {
 
 const parseSitemapUrls = (xml: string) => {
   const urls: string[] = [];
-  const regex = /<loc>([^<]+)<\\/loc>/g;
+  const regex = /<loc>([^<]+)<\/loc>/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(xml)) !== null) {
     urls.push(match[1].trim());
