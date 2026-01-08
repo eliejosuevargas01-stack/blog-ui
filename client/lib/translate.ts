@@ -3,9 +3,21 @@ import translate, { Translate } from "translate";
 import type { Language } from "@/lib/i18n";
 import type { BlogPost } from "@/lib/posts";
 
-const TRANSLATE_URL =
-  import.meta.env.VITE_TRANSLATE_URL ?? "https://libretranslate.com/translate";
-const TRANSLATE_KEY = import.meta.env.VITE_TRANSLATE_KEY ?? undefined;
+const resolveEnv = () => {
+  const env =
+    typeof import.meta !== "undefined" &&
+    (import.meta as { env?: Record<string, string> }).env
+      ? (import.meta as { env?: Record<string, string> }).env
+      : undefined;
+  return {
+    url: env?.VITE_TRANSLATE_URL ?? process.env.VITE_TRANSLATE_URL,
+    key: env?.VITE_TRANSLATE_KEY ?? process.env.VITE_TRANSLATE_KEY,
+  };
+};
+
+const { url: resolvedUrl, key: resolvedKey } = resolveEnv();
+const TRANSLATE_URL = resolvedUrl ?? "https://libretranslate.com/translate";
+const TRANSLATE_KEY = resolvedKey ?? undefined;
 const CACHE_TTL = 1000 * 60 * 60 * 12;
 const MAX_TRANSLATE_CHARS = 4000;
 const MAX_TRANSLATE_CONCURRENCY = 3;

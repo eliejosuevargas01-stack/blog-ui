@@ -1,4 +1,5 @@
 import { allowedCategories, defaultLang, languages, type Language } from "@/lib/i18n";
+import { translatePosts } from "@/lib/translate";
 const POSTS_API_PATH = "/api/posts";
 
 export interface BlogPost {
@@ -1290,7 +1291,14 @@ export const filterValidPosts = (posts: BlogPost[]) => {
 export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
   const posts = await fetchPosts(lang);
   const curated = filterValidPosts(posts);
-  return curated.length > 0 ? curated : posts;
+  const effective = curated.length > 0 ? curated : posts;
+  if (lang !== defaultLang && effective.length === 0) {
+    const basePosts = await fetchPosts(defaultLang);
+    const baseCurated = filterValidPosts(basePosts);
+    const baseEffective = baseCurated.length > 0 ? baseCurated : basePosts;
+    return translatePosts(baseEffective, lang);
+  }
+  return effective;
 }
 
 export async function editPost(

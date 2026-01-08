@@ -7,6 +7,7 @@ import {
   setInitialPosts,
   type BlogPost,
 } from "../client/lib/posts";
+import { translatePosts } from "../client/lib/translate";
 import {
   buildPath,
   defaultLang,
@@ -71,6 +72,16 @@ const loadPostsByLang = async (): Promise<PostsByLang> => {
           }
         }),
       );
+    }
+  }
+
+  const basePosts = initial.pt;
+  for (const lang of languages) {
+    if (lang === "pt") {
+      continue;
+    }
+    if (initial[lang].length === 0 && basePosts.length > 0) {
+      initial[lang] = await translatePosts(basePosts, lang);
     }
   }
 
