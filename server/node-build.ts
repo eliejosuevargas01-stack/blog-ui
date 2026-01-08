@@ -25,26 +25,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
-app.get("/pt/*", (req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ error: "API endpoint not found" });
-  }
-  res.sendFile(path.join(distPath, "index.html"));
-});
-
-app.get("/en/*", (req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ error: "API endpoint not found" });
-  }
-  res.sendFile(path.join(distPath, "index.html"));
-});
-
-app.get("/es/*", (req, res) => {
-  // Don't serve index.html for API routes
-  if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
-    return res.status(404).json({ error: "API endpoint not found" });
-  }
-
+app.get(/^\/(pt|en|es)(\/.*)?$/, (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
