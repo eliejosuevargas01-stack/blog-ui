@@ -276,6 +276,10 @@ export default function Index({ lang }: IndexProps) {
               <img
                 src={post.imageThumb ?? post.image}
                 alt={post.title}
+                width={640}
+                height={360}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
@@ -298,7 +302,7 @@ export default function Index({ lang }: IndexProps) {
               {post.title}
             </h3>
             {(post.excerpt || post.description) && (
-              <p className="text-base text-foreground/60 line-clamp-2 mb-4">
+              <p className="text-base text-foreground/70 line-clamp-2 mb-4">
                 {post.excerpt ?? post.description}
               </p>
             )}
@@ -354,7 +358,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.highlight.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.highlight.subtitle}
               </p>
             </div>
@@ -411,6 +415,11 @@ export default function Index({ lang }: IndexProps) {
                         portal.highlightPost.image
                       }
                       alt={portal.highlightPost.title}
+                      width={1200}
+                      height={675}
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
@@ -428,7 +437,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -442,7 +451,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.affectsYou.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.affectsYou.subtitle}
               </p>
             </div>
@@ -470,7 +479,7 @@ export default function Index({ lang }: IndexProps) {
                         <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
                           {topic.label}
                         </span>
-                        <p className="mt-4 text-base text-foreground/60">
+                        <p className="mt-4 text-base text-foreground/70">
                           {t.home.affectsYou.empty}
                         </p>
                       </div>
@@ -494,6 +503,10 @@ export default function Index({ lang }: IndexProps) {
                           <img
                             src={topic.post.imageThumb ?? topic.post.image}
                             alt={topic.post.title}
+                            width={640}
+                            height={360}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         </div>
@@ -510,7 +523,7 @@ export default function Index({ lang }: IndexProps) {
                           {topic.post.title}
                         </h3>
                         {(topic.post.excerpt || topic.post.description) && (
-                          <p className="mt-3 text-base text-foreground/60 line-clamp-3">
+                          <p className="mt-3 text-base text-foreground/70 line-clamp-3">
                             {topic.post.excerpt ?? topic.post.description}
                           </p>
                         )}
@@ -529,7 +542,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.ai.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.ai.subtitle}
               </p>
             </div>
@@ -556,7 +569,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -570,7 +583,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.curiosities.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.curiosities.subtitle}
               </p>
             </div>
@@ -597,7 +610,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -611,7 +624,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.latest.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.latest.subtitle}
               </p>
             </div>
@@ -638,7 +651,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -664,7 +677,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.guides.title}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.home.guides.subtitle}
               </p>
             </div>
@@ -693,7 +706,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.home.guides.empty}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {t.posts.emptyDescription}
                 </p>
               </div>

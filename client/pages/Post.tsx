@@ -318,7 +318,7 @@ export default function Post({ lang }: PostProps) {
 
             {showLoading && (
               <div className="mt-10 space-y-6">
-                <p className="text-sm text-foreground/60">{t.post.loading}</p>
+                <p className="text-sm text-foreground/70">{t.post.loading}</p>
                 <div className="h-64 rounded-2xl border border-border bg-card/50 animate-pulse" />
                 <div className="space-y-3">
                   <div className="h-8 w-2/3 bg-card/60 rounded" />
@@ -342,7 +342,7 @@ export default function Post({ lang }: PostProps) {
                 <h1 className="text-2xl font-bold text-foreground mb-3">
                   {t.post.notFoundTitle}
                 </h1>
-                <p className="text-foreground/60 mb-6">
+                <p className="text-foreground/70 mb-6">
                   {t.post.notFoundDescription}
                 </p>
                 <Link
@@ -393,7 +393,7 @@ export default function Post({ lang }: PostProps) {
                         })}
                       </div>
                     )}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-foreground/60">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-foreground/70">
                       {post.author && (
                         <span className="inline-flex items-center gap-2">
                           <User className="w-4 h-4" />
@@ -433,6 +433,11 @@ export default function Post({ lang }: PostProps) {
                           <img
                             src={coverImageThumb ?? coverImage}
                             alt={coverImageAlt}
+                            width={1200}
+                            height={675}
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -467,6 +472,10 @@ export default function Post({ lang }: PostProps) {
                               <img
                                 src={image}
                                 alt={`${post.title} ${index + 1}`}
+                                width={1200}
+                                height={675}
+                                loading="lazy"
+                                decoding="async"
                                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -526,7 +535,7 @@ export default function Post({ lang }: PostProps) {
                               {guidePost.title}
                             </h3>
                             {(guidePost.excerpt || guidePost.description) && (
-                              <p className="text-sm text-foreground/60 line-clamp-3">
+                              <p className="text-sm text-foreground/70 line-clamp-3">
                                 {guidePost.excerpt ?? guidePost.description}
                               </p>
                             )}
@@ -557,7 +566,7 @@ export default function Post({ lang }: PostProps) {
                                     {related.title}
                                   </h3>
                                   {(related.excerpt || related.description) && (
-                                    <p className="text-sm text-foreground/60 line-clamp-3">
+                                    <p className="text-sm text-foreground/70 line-clamp-3">
                                       {related.excerpt ?? related.description}
                                     </p>
                                   )}

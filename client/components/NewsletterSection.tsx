@@ -54,7 +54,7 @@ export function NewsletterSection({ t }: NewsletterSectionProps) {
           <h2 className="text-5xl sm:text-6xl font-bold text-foreground mb-6">
             {t.newsletter.title}
           </h2>
-          <p className="text-xl text-foreground/60 mb-8">
+          <p className="text-xl text-foreground/70 mb-8">
             {t.newsletter.subtitle}
           </p>
 

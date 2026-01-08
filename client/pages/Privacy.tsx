@@ -44,7 +44,7 @@ export default function Privacy({ lang }: PrivacyProps) {
               <p className="text-lg sm:text-xl text-foreground/70">
                 {t.privacy.subtitle}
               </p>
-              <p className="mt-4 text-sm text-foreground/60">
+              <p className="mt-4 text-sm text-foreground/70">
                 {t.privacy.updatedLabel}: {t.privacy.updatedAt}
               </p>
             </div>

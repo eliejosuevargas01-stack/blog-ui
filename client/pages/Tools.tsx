@@ -80,7 +80,7 @@ export default function Tools({ lang }: ToolsProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
                 {t.tools.gridTitle}
               </h2>
-              <p className="text-lg text-foreground/60">
+              <p className="text-lg text-foreground/70">
                 {t.tools.gridSubtitle}
               </p>
             </div>
@@ -106,7 +106,7 @@ export default function Tools({ lang }: ToolsProps) {
                       <h3 className="text-xl font-bold text-foreground mb-3">
                         {tool.title}
                       </h3>
-                      <p className="text-foreground/60 text-sm">
+                      <p className="text-foreground/70 text-sm">
                         {tool.description}
                       </p>
                     </div>

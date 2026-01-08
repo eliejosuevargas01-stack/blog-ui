@@ -175,7 +175,7 @@ export default function Contact({ lang }: ContactProps) {
                       <Button type="submit" className="w-full">
                         {t.contact.form.submitLabel}
                       </Button>
-                      <p className="text-xs text-foreground/60">{noteText}</p>
+                      <p className="text-xs text-foreground/70">{noteText}</p>
                     </div>
                   </form>
                 </CardContent>

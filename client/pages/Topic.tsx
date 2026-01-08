@@ -176,7 +176,7 @@ export default function Topic({ lang }: TopicProps) {
           <div className="container mx-auto px-4">
             {showLoading && (
               <div className="space-y-6">
-                <p className="text-sm text-foreground/60">{t.posts.loading}</p>
+                <p className="text-sm text-foreground/70">{t.posts.loading}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
@@ -202,7 +202,7 @@ export default function Topic({ lang }: TopicProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {replaceTopic(t.topic.minimumTitle, topicTitle)}
                 </p>
-                <p className="text-sm text-foreground/60">
+                <p className="text-sm text-foreground/70">
                   {replaceTopic(t.topic.minimumDescription, topicTitle)}
                 </p>
               </div>
@@ -227,6 +227,10 @@ export default function Topic({ lang }: TopicProps) {
                             <img
                               src={post.imageThumb ?? post.image}
                               alt={post.title}
+                              width={640}
+                              height={360}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
@@ -243,7 +247,7 @@ export default function Topic({ lang }: TopicProps) {
                             {post.title}
                           </h3>
                           {(post.excerpt || post.description) && (
-                            <p className="text-base text-foreground/60 line-clamp-2 mb-4">
+                            <p className="text-base text-foreground/70 line-clamp-2 mb-4">
                               {post.excerpt ?? post.description}
                             </p>
                           )}

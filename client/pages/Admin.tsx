@@ -292,7 +292,7 @@ const Field = ({
   <div className="space-y-2">
     <div className="text-sm font-medium text-foreground">{label}</div>
     {children}
-    {hint ? <p className="text-xs text-foreground/60">{hint}</p> : null}
+    {hint ? <p className="text-xs text-foreground/70">{hint}</p> : null}
   </div>
 );
 
@@ -790,7 +790,7 @@ export default function Admin({ lang }: AdminProps) {
                   </CardHeader>
                   <CardContent>
                     {isCheckingAuth ? (
-                      <p className="text-sm text-foreground/60">
+                      <p className="text-sm text-foreground/70">
                         {t.posts.loading}
                       </p>
                     ) : (
@@ -834,7 +834,7 @@ export default function Admin({ lang }: AdminProps) {
                             required
                           />
                         </div>
-                        <p className="text-sm text-foreground/60">
+                        <p className="text-sm text-foreground/70">
                           {t.auth.loginHint}
                         </p>
                         <Button
@@ -858,7 +858,7 @@ export default function Admin({ lang }: AdminProps) {
                     <h2 className="text-2xl font-semibold text-foreground">
                       {t.admin.listTitle}
                     </h2>
-                    <p className="text-sm text-foreground/60">
+                    <p className="text-sm text-foreground/70">
                       {t.admin.listSubtitle}
                     </p>
                   </div>
@@ -876,11 +876,11 @@ export default function Admin({ lang }: AdminProps) {
                       <h3 className="text-lg font-semibold text-foreground">
                         {t.admin.contentStrategy.title}
                       </h3>
-                      <p className="text-sm text-foreground/60">
+                      <p className="text-sm text-foreground/70">
                         {t.admin.contentStrategy.subtitle}
                       </p>
                     </div>
-                    <div className="text-xs text-foreground/60">
+                    <div className="text-xs text-foreground/70">
                       {validPosts.length} {t.admin.contentStrategy.countLabel}
                     </div>
                   </div>
@@ -905,7 +905,7 @@ export default function Admin({ lang }: AdminProps) {
                             <CardDescription>{card.description}</CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-xs text-foreground/60">
+                            <p className="text-xs text-foreground/70">
                               {count} {t.admin.contentStrategy.countLabel}
                             </p>
                             {isMissing && (
@@ -925,11 +925,11 @@ export default function Admin({ lang }: AdminProps) {
                       <h3 className="text-lg font-semibold text-foreground">
                         {t.admin.generated.title}
                       </h3>
-                      <p className="text-sm text-foreground/60">
+                      <p className="text-sm text-foreground/70">
                         {t.admin.generated.subtitle}
                       </p>
                       {generatedUpdatedAt && (
-                        <p className="text-xs text-foreground/60 mt-2">
+                        <p className="text-xs text-foreground/70 mt-2">
                           {t.admin.generated.updatedLabel}{" "}
                           {formatGeneratedTimestamp(generatedUpdatedAt)}
                         </p>
@@ -948,7 +948,7 @@ export default function Admin({ lang }: AdminProps) {
                   </div>
 
                   {generatedLoading && (
-                    <p className="text-sm text-foreground/60">
+                    <p className="text-sm text-foreground/70">
                       {t.posts.loading}
                     </p>
                   )}
@@ -976,7 +976,7 @@ export default function Admin({ lang }: AdminProps) {
                           </CardHeader>
                           <CardContent>
                             {generatedStatus.generatedPages.length === 0 ? (
-                              <p className="text-xs text-foreground/60">
+                              <p className="text-xs text-foreground/70">
                                 {t.admin.generated.emptyGenerated}
                               </p>
                             ) : (
@@ -1010,7 +1010,7 @@ export default function Admin({ lang }: AdminProps) {
                           </CardHeader>
                           <CardContent>
                             {generatedStatus.sitemapEntries.length === 0 ? (
-                              <p className="text-xs text-foreground/60">
+                              <p className="text-xs text-foreground/70">
                                 {t.admin.generated.emptySitemap}
                               </p>
                             ) : (
@@ -1041,7 +1041,7 @@ export default function Admin({ lang }: AdminProps) {
                               {generatedStatus.missingInSitemap.length})
                             </p>
                             {generatedStatus.missingInSitemap.length === 0 ? (
-                              <p className="text-xs text-foreground/60">
+                              <p className="text-xs text-foreground/70">
                                 {t.admin.generated.noneMissing}
                               </p>
                             ) : (
@@ -1060,7 +1060,7 @@ export default function Admin({ lang }: AdminProps) {
                               {generatedStatus.missingInGenerated.length})
                             </p>
                             {generatedStatus.missingInGenerated.length === 0 ? (
-                              <p className="text-xs text-foreground/60">
+                              <p className="text-xs text-foreground/70">
                                 {t.admin.generated.noneMissing}
                               </p>
                             ) : (
@@ -1082,7 +1082,7 @@ export default function Admin({ lang }: AdminProps) {
                 </div>
                 {showLoading && (
                   <div className="space-y-4">
-                    <p className="text-sm text-foreground/60">
+                    <p className="text-sm text-foreground/70">
                       {t.posts.loading}
                     </p>
                     {Array.from({ length: 4 }).map((_, index) => (
@@ -1110,7 +1110,7 @@ export default function Admin({ lang }: AdminProps) {
                     <p className="text-lg font-semibold text-foreground mb-2">
                       {t.admin.emptyTitle}
                     </p>
-                    <p className="text-sm text-foreground/60">
+                    <p className="text-sm text-foreground/70">
                       {t.admin.emptyDescription}
                     </p>
                   </div>
@@ -1142,8 +1142,11 @@ export default function Admin({ lang }: AdminProps) {
                                   <img
                                     src={previewSrc}
                                     alt={post.title}
+                                    width={280}
+                                    height={200}
                                     className="h-full w-full object-cover"
                                     loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   <ImageIcon className="h-6 w-6 text-foreground/40" />
@@ -1168,7 +1171,7 @@ export default function Admin({ lang }: AdminProps) {
                                     <Badge variant="outline">{post.category}</Badge>
                                   )}
                                 </div>
-                                <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
+                                <div className="flex flex-wrap gap-3 text-xs text-foreground/70">
                                   {post.author && <span>{post.author}</span>}
                                   {postDate && <span>{postDate}</span>}
                                   {post.readTime && <span>{post.readTime}</span>}
@@ -1208,7 +1211,7 @@ export default function Admin({ lang }: AdminProps) {
                         <div className="mt-6 border-t border-border pt-6 space-y-6">
                           <div className="grid grid-cols-1 gap-6">
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/60 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
                                 {t.admin.sectionBasics}
                               </h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1297,7 +1300,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/60 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
                                 {t.admin.sectionContent}
                               </h4>
                               <div className="grid grid-cols-1 gap-4">
@@ -1353,7 +1356,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/60 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
                                 {t.admin.sectionMedia}
                               </h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1419,7 +1422,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/60 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
                                 {t.admin.sectionSeo}
                               </h4>
                               <div className="grid grid-cols-1 gap-4">
