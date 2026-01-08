@@ -215,10 +215,6 @@ const normalizeImageUrl = (value: string | null) => {
   if (!trimmed) {
     return null;
   }
-  const driveId = extractDriveId(trimmed);
-  if (driveId) {
-    return buildDriveImage(driveId);
-  }
   return trimmed;
 };
 
@@ -232,10 +228,6 @@ const normalizeImageThumbnailUrl = (
   const trimmed = value.trim();
   if (!trimmed) {
     return null;
-  }
-  const driveId = extractDriveId(trimmed);
-  if (driveId) {
-    return buildDriveThumbnail(driveId, size);
   }
   return trimmed;
 };
