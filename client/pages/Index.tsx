@@ -50,7 +50,17 @@ const buildSearchText = (post: BlogPost) =>
 
 const postMatchesKeywords = (post: BlogPost, keywords: string[]) => {
   const haystack = buildSearchText(post);
-  return keywords.some((keyword) => haystack.includes(normalizeText(keyword)));
+  const tokens = new Set(haystack.match(/[a-z0-9]+/g) ?? []);
+  return keywords.some((keyword) => {
+    const normalized = normalizeText(keyword);
+    if (!normalized) {
+      return false;
+    }
+    if (normalized.length <= 2) {
+      return tokens.has(normalized);
+    }
+    return haystack.includes(normalized);
+  });
 };
 
 const aiKeywords = [
@@ -477,19 +487,34 @@ export default function Index({ lang }: IndexProps) {
                     <Link
                       key={topic.key}
                       to={postPath}
-                      className="group rounded-2xl border border-border bg-card/70 p-6 hover:border-secondary hover:shadow-xl transition-all"
+                      className="group rounded-2xl border border-border bg-card/70 overflow-hidden hover:border-secondary hover:shadow-xl transition-all"
                     >
-                      <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
-                        {topic.label}
-                      </span>
-                      <h3 className="mt-4 text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
-                        {topic.post.title}
-                      </h3>
-                      {(topic.post.excerpt || topic.post.description) && (
-                        <p className="mt-3 text-base text-foreground/60 line-clamp-3">
-                          {topic.post.excerpt ?? topic.post.description}
-                        </p>
+                      {topic.post.imageThumb || topic.post.image ? (
+                        <div className="h-40 bg-muted/60 overflow-hidden">
+                          <img
+                            src={topic.post.imageThumb ?? topic.post.image}
+                            alt={topic.post.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+                          <Sparkles className="w-10 h-10 text-secondary/30" />
+                        </div>
                       )}
+                      <div className="p-6">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
+                          {topic.label}
+                        </span>
+                        <h3 className="mt-4 text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                          {topic.post.title}
+                        </h3>
+                        {(topic.post.excerpt || topic.post.description) && (
+                          <p className="mt-3 text-base text-foreground/60 line-clamp-3">
+                            {topic.post.excerpt ?? topic.post.description}
+                          </p>
+                        )}
+                      </div>
                     </Link>
                   );
                 })}
