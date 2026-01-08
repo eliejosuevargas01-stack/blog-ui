@@ -2,14 +2,15 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { handlePublishPost, handleRebuildSitemap } from "./routes/publish-post";
 
 export function createServer() {
   const app = express();
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {
@@ -18,6 +19,8 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.post("/api/publish-post", handlePublishPost);
+  app.post("/api/rebuild-sitemap", handleRebuildSitemap);
 
   return app;
 }

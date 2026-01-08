@@ -1,18 +1,59 @@
-# Coolify Static SPA
+# Coolify Deployment (Indexação Garantida)
 
-This project is ready to deploy as a static SPA.
+Este projeto está preparado para **SSR leve + geração de HTML persistente** via API,
+garantindo indexação estável sem deploy por post.
 
-Build command:
+## 1) Tipo de Deploy
+- **Use Dockerfile** (o repo já possui `Dockerfile`).
+- O container roda Node e serve `dist/spa` + HTMLs gerados.
+
+## 2) Variáveis de Ambiente
+Defina no Coolify:
+- `SITE_ORIGIN=https://curiosotech.online`
+- `PUBLISH_TOKEN=crie_um_token_forte`
+- `GENERATED_DIR=/data/generated`
+
+## 3) Volume Persistente
+Crie um volume e monte no container:
+- Host path: (auto no Coolify)
+- Container path: `/data/generated`
+
+Esse volume armazena:
+- HTMLs gerados por post
+- `sitemap.xml`
+
+## 4) Endpoint para o n8n (publicação)
+Envie o JSON do post para:
 ```
-pnpm install
-pnpm run build
+POST https://curiosotech.online/api/publish-post
+Header: x-publish-token: <PUBLISH_TOKEN>
+Body: { ...post_json... }
+```
+Também aceita array:
+```
+Body: [{...}, {...}]
 ```
 
-Output directory:
-```
-dist/spa
-```
+O servidor:
+- gera `/data/generated/<lang>/post/<slug>/index.html`
+- atualiza `/data/generated/sitemap.xml`
 
-Notes:
-- Enable SPA fallback (rewrite to /index.html) in Coolify's static settings.
-- If you ever need the Express server build, run `pnpm run build:full`.
+## 5) Sitemap
+- `robots.txt` já aponta para `/sitemap.xml`
+- `/sitemap.xml` será servido do volume gerado
+
+## 6) Rotas
+Se existir HTML gerado, ele será servido **antes** do SPA.
+
+## Teste rápido (manual)
+```
+curl -X POST https://curiosotech.online/api/publish-post \
+  -H "Content-Type: application/json" \
+  -H "x-publish-token: <PUBLISH_TOKEN>" \
+  -d '{"slug":"teste","titulo":"Teste","conteudo":"# Olá","lang":"pt"}'
+```
+Depois:
+```
+https://curiosotech.online/pt/post/teste
+https://curiosotech.online/sitemap.xml
+```

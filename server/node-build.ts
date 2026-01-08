@@ -8,8 +8,16 @@ const port = process.env.PORT || 3000;
 // In production, serve the built SPA files
 const __dirname = import.meta.dirname;
 const distPath = path.join(__dirname, "../spa");
+const generatedPath =
+  process.env.GENERATED_DIR?.trim() || path.join(distPath, "generated");
 
 // Serve static files
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return next();
+  }
+  return express.static(generatedPath)(req, res, next);
+});
 app.use(express.static(distPath));
 
 // Handle React Router - serve index.html for all non-API routes
