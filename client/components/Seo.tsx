@@ -1,4 +1,4 @@
-import * as ReactHelmetAsync from "react-helmet-async";
+import ReactHelmetAsync from "react-helmet-async";
 
 import {
   type Language,
