@@ -47,6 +47,19 @@ type AdminSession = {
   loggedAt: number;
 };
 
+type GeneratedEntry = {
+  path: string;
+  url: string;
+  updatedAt: string;
+};
+
+type GeneratedStatus = {
+  generatedPages: GeneratedEntry[];
+  sitemapEntries: string[];
+  missingInSitemap: string[];
+  missingInGenerated: string[];
+};
+
 type PostDraft = {
   title: string;
   slug: string;
@@ -300,6 +313,14 @@ export default function Admin({ lang }: AdminProps) {
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [generatedStatus, setGeneratedStatus] = useState<GeneratedStatus | null>(
+    null,
+  );
+  const [generatedLoading, setGeneratedLoading] = useState(false);
+  const [generatedError, setGeneratedError] = useState<string | null>(null);
+  const [generatedUpdatedAt, setGeneratedUpdatedAt] = useState<string | null>(
+    null,
+  );
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
@@ -340,6 +361,42 @@ export default function Admin({ lang }: AdminProps) {
       setAuthStatus("unauthenticated");
     }
   }, []);
+
+  const formatGeneratedTimestamp = (value: string | null) => {
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return date.toLocaleString();
+  };
+
+  const loadGeneratedStatus = async () => {
+    setGeneratedLoading(true);
+    setGeneratedError(null);
+    try {
+      const response = await fetch("/api/generated-status");
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+      const data = (await response.json()) as GeneratedStatus;
+      setGeneratedStatus(data);
+      setGeneratedUpdatedAt(new Date().toISOString());
+    } catch (error) {
+      setGeneratedError(error instanceof Error ? error.message : "Request failed");
+      setGeneratedStatus(null);
+    } finally {
+      setGeneratedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadGeneratedStatus();
+    }
+  }, [isAuthenticated]);
 
   const resetPostsState = () => {
     setPosts([]);
@@ -861,6 +918,167 @@ export default function Admin({ lang }: AdminProps) {
                       );
                     })}
                   </div>
+                </div>
+                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {t.admin.generated.title}
+                      </h3>
+                      <p className="text-sm text-foreground/60">
+                        {t.admin.generated.subtitle}
+                      </p>
+                      {generatedUpdatedAt && (
+                        <p className="text-xs text-foreground/60 mt-2">
+                          {t.admin.generated.updatedLabel}{" "}
+                          {formatGeneratedTimestamp(generatedUpdatedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadGeneratedStatus}
+                      disabled={generatedLoading}
+                    >
+                      {generatedLoading
+                        ? `${t.admin.generated.refresh}...`
+                        : t.admin.generated.refresh}
+                    </Button>
+                  </div>
+
+                  {generatedLoading && (
+                    <p className="text-sm text-foreground/60">
+                      {t.posts.loading}
+                    </p>
+                  )}
+
+                  {generatedError && (
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {generatedError}
+                    </div>
+                  )}
+
+                  {!generatedLoading && !generatedError && generatedStatus && (
+                    <>
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between text-base">
+                              <span>{t.admin.generated.generatedLabel}</span>
+                              <Badge variant="secondary">
+                                {generatedStatus.generatedPages.length}
+                              </Badge>
+                            </CardTitle>
+                            <CardDescription>
+                              {t.admin.generated.generatedSubtitle}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {generatedStatus.generatedPages.length === 0 ? (
+                              <p className="text-xs text-foreground/60">
+                                {t.admin.generated.emptyGenerated}
+                              </p>
+                            ) : (
+                              <div className="max-h-72 overflow-auto text-xs text-foreground/70 space-y-2">
+                                {generatedStatus.generatedPages.map((page) => (
+                                  <a
+                                    key={page.url}
+                                    href={page.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block hover:text-primary"
+                                  >
+                                    {page.path}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between text-base">
+                              <span>{t.admin.generated.sitemapLabel}</span>
+                              <Badge variant="secondary">
+                                {generatedStatus.sitemapEntries.length}
+                              </Badge>
+                            </CardTitle>
+                            <CardDescription>
+                              {t.admin.generated.sitemapSubtitle}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {generatedStatus.sitemapEntries.length === 0 ? (
+                              <p className="text-xs text-foreground/60">
+                                {t.admin.generated.emptySitemap}
+                              </p>
+                            ) : (
+                              <div className="max-h-72 overflow-auto text-xs text-foreground/70 space-y-2">
+                                {generatedStatus.sitemapEntries.map((url) => (
+                                  <a
+                                    key={url}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block hover:text-primary"
+                                  >
+                                    {url}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {(generatedStatus.missingInSitemap.length > 0 ||
+                        generatedStatus.missingInGenerated.length > 0) && (
+                        <div className="mt-6 grid gap-4 md:grid-cols-2">
+                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                            <p className="text-xs font-semibold text-destructive mb-2">
+                              {t.admin.generated.missingInSitemapLabel} (
+                              {generatedStatus.missingInSitemap.length})
+                            </p>
+                            {generatedStatus.missingInSitemap.length === 0 ? (
+                              <p className="text-xs text-foreground/60">
+                                {t.admin.generated.noneMissing}
+                              </p>
+                            ) : (
+                              <div className="max-h-40 overflow-auto text-xs text-foreground/70 space-y-1">
+                                {generatedStatus.missingInSitemap.map((path) => (
+                                  <span key={path} className="block">
+                                    {path}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                            <p className="text-xs font-semibold text-destructive mb-2">
+                              {t.admin.generated.missingInGeneratedLabel} (
+                              {generatedStatus.missingInGenerated.length})
+                            </p>
+                            {generatedStatus.missingInGenerated.length === 0 ? (
+                              <p className="text-xs text-foreground/60">
+                                {t.admin.generated.noneMissing}
+                              </p>
+                            ) : (
+                              <div className="max-h-40 overflow-auto text-xs text-foreground/70 space-y-1">
+                                {generatedStatus.missingInGenerated.map(
+                                  (path) => (
+                                    <span key={path} className="block">
+                                      {path}
+                                    </span>
+                                  ),
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
                 {showLoading && (
                   <div className="space-y-4">

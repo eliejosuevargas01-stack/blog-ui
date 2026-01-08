@@ -413,6 +413,21 @@ export interface Translation {
         };
       };
     };
+    generated: {
+      title: string;
+      subtitle: string;
+      refresh: string;
+      updatedLabel: string;
+      generatedLabel: string;
+      generatedSubtitle: string;
+      sitemapLabel: string;
+      sitemapSubtitle: string;
+      emptyGenerated: string;
+      emptySitemap: string;
+      missingInSitemapLabel: string;
+      missingInGeneratedLabel: string;
+      noneMissing: string;
+    };
     actions: {
       edit: string;
       close: string;
@@ -859,6 +874,22 @@ export const translations: Record<Language, Translation> = {
           },
         },
       },
+      generated: {
+        title: "HTML gerado e sitemap",
+        subtitle:
+          "Veja o que já foi publicado no disco e o que está listado no sitemap.",
+        refresh: "Atualizar",
+        updatedLabel: "Atualizado em",
+        generatedLabel: "Páginas geradas",
+        generatedSubtitle: "HTMLs persistentes criados automaticamente.",
+        sitemapLabel: "URLs no sitemap",
+        sitemapSubtitle: "Entradas públicas visíveis para buscadores.",
+        emptyGenerated: "Nenhuma página gerada ainda.",
+        emptySitemap: "Nenhum sitemap disponível.",
+        missingInSitemapLabel: "Geradas fora do sitemap",
+        missingInGeneratedLabel: "Sitemap sem HTML gerado",
+        noneMissing: "Tudo certo por aqui.",
+      },
       actions: {
         edit: "Editar",
         close: "Fechar",
@@ -1298,6 +1329,22 @@ export const translations: Record<Language, Translation> = {
             description: "Long-form reference that stays relevant.",
           },
         },
+      },
+      generated: {
+        title: "Generated HTML and sitemap",
+        subtitle:
+          "Review what has been published on disk and what is listed in the sitemap.",
+        refresh: "Refresh",
+        updatedLabel: "Updated at",
+        generatedLabel: "Generated pages",
+        generatedSubtitle: "Persistent HTML files created automatically.",
+        sitemapLabel: "Sitemap URLs",
+        sitemapSubtitle: "Public entries visible to search engines.",
+        emptyGenerated: "No generated pages yet.",
+        emptySitemap: "No sitemap available.",
+        missingInSitemapLabel: "Generated outside the sitemap",
+        missingInGeneratedLabel: "Sitemap without generated HTML",
+        noneMissing: "Everything is in sync.",
       },
       actions: {
         edit: "Edit",
@@ -1741,6 +1788,22 @@ export const translations: Record<Language, Translation> = {
             description: "Referencia extensa y vigente para consulta.",
           },
         },
+      },
+      generated: {
+        title: "HTML generado y sitemap",
+        subtitle:
+          "Consulta lo publicado en disco y lo listado dentro del sitemap.",
+        refresh: "Actualizar",
+        updatedLabel: "Actualizado en",
+        generatedLabel: "Páginas generadas",
+        generatedSubtitle: "HTMLs persistentes creados automáticamente.",
+        sitemapLabel: "URLs en el sitemap",
+        sitemapSubtitle: "Entradas públicas visibles para buscadores.",
+        emptyGenerated: "Aún no hay páginas generadas.",
+        emptySitemap: "No hay sitemap disponible.",
+        missingInSitemapLabel: "Generadas fuera del sitemap",
+        missingInGeneratedLabel: "Sitemap sin HTML generado",
+        noneMissing: "Todo está sincronizado.",
       },
       actions: {
         edit: "Editar",
