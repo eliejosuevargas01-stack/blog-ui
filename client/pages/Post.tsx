@@ -536,16 +536,34 @@ export default function Post({ lang }: PostProps) {
                           </h2>
                           <Link
                             to={guidePath}
-                            className="block rounded-xl border border-border bg-background p-4 hover:border-secondary hover:shadow-lg transition-all"
+                            className="group block overflow-hidden rounded-xl border border-border bg-background transition-all hover:-translate-y-0.5 hover:border-secondary hover:shadow-lg"
                           >
-                            <h3 className="text-xl font-bold text-foreground mb-2">
-                              {guidePost.title}
-                            </h3>
-                            {(guidePost.excerpt || guidePost.description) && (
-                              <p className="text-sm text-foreground/80 line-clamp-3">
-                                {guidePost.excerpt ?? guidePost.description}
-                              </p>
-                            )}
+                            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+                              {guidePost.imageThumb || guidePost.image ? (
+                                <img
+                                  src={guidePost.imageThumb ?? guidePost.image ?? ""}
+                                  alt={guidePost.imageAlt ?? guidePost.title}
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted via-background to-muted">
+                                  <ImageIcon className="h-10 w-10 text-foreground/30" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                            </div>
+                            <div className="p-4">
+                              <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2">
+                                {guidePost.title}
+                              </h3>
+                              {(guidePost.excerpt || guidePost.description) && (
+                                <p className="text-sm text-foreground/80 line-clamp-3">
+                                  {guidePost.excerpt ?? guidePost.description}
+                                </p>
+                              )}
+                            </div>
                           </Link>
                         </div>
 
@@ -563,20 +581,40 @@ export default function Post({ lang }: PostProps) {
                               const relatedPath = relatedSlug
                                 ? buildPostPath(lang, relatedSlug)
                                 : buildPath(lang, "home");
+                              const relatedImage =
+                                related.imageThumb ?? related.image ?? null;
                               return (
                                 <Link
                                   key={related.id}
                                   to={relatedPath}
-                                  className="block rounded-xl border border-border bg-background p-4 hover:border-secondary hover:shadow-lg transition-all"
+                                  className="group block overflow-hidden rounded-xl border border-border bg-background transition-all hover:-translate-y-0.5 hover:border-secondary hover:shadow-lg"
                                 >
-                                  <h3 className="text-base font-semibold text-foreground mb-2 line-clamp-2">
-                                    {related.title}
-                                  </h3>
-                                  {(related.excerpt || related.description) && (
-                                    <p className="text-sm text-foreground/80 line-clamp-3">
-                                      {related.excerpt ?? related.description}
-                                    </p>
-                                  )}
+                                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                                    {relatedImage ? (
+                                      <img
+                                        src={relatedImage}
+                                        alt={related.imageAlt ?? related.title}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted via-background to-muted">
+                                        <ImageIcon className="h-8 w-8 text-foreground/30" />
+                                      </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                  </div>
+                                  <div className="p-4">
+                                    <h3 className="text-base font-semibold text-foreground mb-2 line-clamp-2">
+                                      {related.title}
+                                    </h3>
+                                    {(related.excerpt || related.description) && (
+                                      <p className="text-sm text-foreground/80 line-clamp-3">
+                                        {related.excerpt ?? related.description}
+                                      </p>
+                                    )}
+                                  </div>
                                 </Link>
                               );
                             })}
