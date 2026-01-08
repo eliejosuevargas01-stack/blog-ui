@@ -2,14 +2,12 @@ import "./global.css";
 
 import { BrowserRouter } from "react-router-dom";
 import { createRoot, hydrateRoot } from "react-dom/client";
-import ReactHelmetAsync from "react-helmet-async";
+import { HelmetProvider } from "@/lib/helmet";
 
 import { AppRoutes } from "@/AppRoutes";
 import { AppShell } from "@/AppShell";
 import { ScrollToHash } from "@/ScrollToHash";
 import { setInitialPosts } from "@/lib/posts";
-
-const { HelmetProvider } = ReactHelmetAsync;
 
 const container = document.getElementById("root");
 

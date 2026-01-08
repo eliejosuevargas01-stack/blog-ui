@@ -1,4 +1,4 @@
-import ReactHelmetAsync from "react-helmet-async";
+import { Helmet } from "@/lib/helmet";
 
 import {
   type Language,
@@ -52,8 +52,6 @@ const resolveSiteOrigin = () => {
   const env = viteOrigin ?? nodeOrigin ?? "";
   return env.replace(/\/+$/, "");
 };
-
-const { Helmet } = ReactHelmetAsync;
 
 export function Seo({
   lang,
