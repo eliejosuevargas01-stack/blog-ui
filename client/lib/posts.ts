@@ -202,7 +202,7 @@ const extractDriveId = (value: string) => {
 };
 
 const buildDriveImage = (id: string) =>
-  `https://lh3.googleusercontent.com/d/${id}`;
+  `https://drive.google.com/thumbnail?id=${id}&sz=w1200`;
 
 const buildDriveThumbnail = (id: string, size: string) =>
   `https://drive.google.com/thumbnail?id=${id}&sz=${size}`;
@@ -1276,7 +1276,8 @@ export const filterValidPosts = (posts: BlogPost[]) => {
 
 export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
   const posts = await fetchPosts(lang);
-  return filterValidPosts(posts);
+  const curated = filterValidPosts(posts);
+  return curated.length > 0 ? curated : posts;
 }
 
 export async function editPost(
