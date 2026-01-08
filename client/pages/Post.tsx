@@ -26,6 +26,7 @@ import {
 import {
   fetchPublicPosts,
   getRelatedPosts,
+  getInitialPosts,
   isGuidePost,
   pickGuidePost,
   type BlogPost,
@@ -60,8 +61,11 @@ export default function Post({ lang }: PostProps) {
       return params.slug;
     }
   }, [params.slug]);
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [status, setStatus] = useState<PostStatus>("loading");
+  const initialPosts = getInitialPosts(lang);
+  const [posts, setPosts] = useState<BlogPost[]>(() => initialPosts ?? []);
+  const [status, setStatus] = useState<PostStatus>(
+    initialPosts ? "idle" : "loading",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [activeAlt, setActiveAlt] = useState<string | null>(null);
@@ -69,6 +73,9 @@ export default function Post({ lang }: PostProps) {
   const articlesPath = buildPath(lang, "articles");
 
   useEffect(() => {
+    if (initialPosts) {
+      return;
+    }
     let isMounted = true;
 
     const loadPosts = async () => {
@@ -96,7 +103,7 @@ export default function Post({ lang }: PostProps) {
     return () => {
       isMounted = false;
     };
-  }, [lang]);
+  }, [lang, initialPosts]);
 
   const post = useMemo(() => {
     return posts.find((item) => {
@@ -244,7 +251,7 @@ export default function Post({ lang }: PostProps) {
     updatedDate,
   ]);
   const contentClassName =
-    "prose prose-neutral max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:mt-10 prose-h3:mt-8 prose-p:text-foreground/80 prose-strong:text-foreground prose-a:text-secondary prose-a:font-semibold hover:prose-a:text-secondary/80 prose-ul:my-6 prose-ol:my-6 prose-li:marker:text-secondary/70 prose-blockquote:border-l-4 prose-blockquote:border-secondary/40 prose-blockquote:bg-muted/60 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:text-foreground/70 prose-hr:border-border/70 prose-img:rounded-2xl prose-img:border prose-img:border-border/80 prose-img:shadow-sm";
+    "prose prose-neutral max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:mt-10 prose-h3:mt-8 prose-p:text-foreground/80 prose-strong:text-foreground prose-a:text-secondary prose-a:font-semibold hover:prose-a:text-secondary/80 prose-ul:my-6 prose-ol:my-6 prose-li:marker:text-secondary/70 prose-blockquote:border-l-4 prose-blockquote:border-secondary/40 prose-blockquote:bg-muted/60 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:text-foreground/80 prose-hr:border-border/70 prose-img:rounded-2xl prose-img:border prose-img:border-border/80 prose-img:shadow-sm";
   const markdownContent = useMemo(() => {
     if (!post?.content || post.contentHtml || hasInlineHtml) {
       return null;
@@ -318,7 +325,7 @@ export default function Post({ lang }: PostProps) {
 
             {showLoading && (
               <div className="mt-10 space-y-6">
-                <p className="text-sm text-foreground/70">{t.post.loading}</p>
+                <p className="text-sm text-foreground/80">{t.post.loading}</p>
                 <div className="h-64 rounded-2xl border border-border bg-card/50 animate-pulse" />
                 <div className="space-y-3">
                   <div className="h-8 w-2/3 bg-card/60 rounded" />
@@ -342,7 +349,7 @@ export default function Post({ lang }: PostProps) {
                 <h1 className="text-2xl font-bold text-foreground mb-3">
                   {t.post.notFoundTitle}
                 </h1>
-                <p className="text-foreground/70 mb-6">
+                <p className="text-foreground/80 mb-6">
                   {t.post.notFoundDescription}
                 </p>
                 <Link
@@ -367,7 +374,7 @@ export default function Post({ lang }: PostProps) {
                       {post.title}
                     </h1>
                     {(post.excerpt || post.description) && (
-                      <p className="text-lg sm:text-xl text-foreground/70 mb-6 rounded-2xl border border-border/70 bg-muted/60 px-6 py-4 italic">
+                      <p className="text-lg sm:text-xl text-foreground/80 mb-6 rounded-2xl border border-border/70 bg-muted/60 px-6 py-4 italic">
                         {post.excerpt ?? post.description}
                       </p>
                     )}
@@ -385,7 +392,7 @@ export default function Post({ lang }: PostProps) {
                                 pathname: articlesPath,
                                 search: `?tag=${encodeURIComponent(normalizedTag)}`,
                               }}
-                              className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground/70 hover:border-secondary hover:text-secondary transition-colors"
+                              className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground/80 hover:border-secondary hover:text-secondary transition-colors"
                             >
                               #{normalizedTag}
                             </Link>
@@ -393,7 +400,7 @@ export default function Post({ lang }: PostProps) {
                         })}
                       </div>
                     )}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-foreground/70">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-foreground/80">
                       {post.author && (
                         <span className="inline-flex items-center gap-2">
                           <User className="w-4 h-4" />
@@ -535,7 +542,7 @@ export default function Post({ lang }: PostProps) {
                               {guidePost.title}
                             </h3>
                             {(guidePost.excerpt || guidePost.description) && (
-                              <p className="text-sm text-foreground/70 line-clamp-3">
+                              <p className="text-sm text-foreground/80 line-clamp-3">
                                 {guidePost.excerpt ?? guidePost.description}
                               </p>
                             )}
@@ -566,7 +573,7 @@ export default function Post({ lang }: PostProps) {
                                     {related.title}
                                   </h3>
                                   {(related.excerpt || related.description) && (
-                                    <p className="text-sm text-foreground/70 line-clamp-3">
+                                    <p className="text-sm text-foreground/80 line-clamp-3">
                                       {related.excerpt ?? related.description}
                                     </p>
                                   )}

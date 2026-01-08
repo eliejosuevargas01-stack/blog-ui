@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 
 import {
   type Language,
@@ -33,45 +33,25 @@ interface SeoProps {
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
 
-function upsertMeta(selector: string, attrs: Record<string, string>) {
-  let element = document.head.querySelector(selector);
-  if (!element) {
-    element = document.createElement("meta");
-    document.head.appendChild(element);
+const resolveSiteOrigin = () => {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
   }
-  Object.entries(attrs).forEach(([key, value]) => {
-    element?.setAttribute(key, value);
-  });
-}
-
-function upsertLink(selector: string, attrs: Record<string, string>) {
-  let element = document.head.querySelector(selector);
-  if (!element) {
-    element = document.createElement("link");
-    document.head.appendChild(element);
-  }
-  Object.entries(attrs).forEach(([key, value]) => {
-    element?.setAttribute(key, value);
-  });
-}
-
-function upsertScript(
-  selector: string,
-  attrs: Record<string, string>,
-  text: string,
-) {
-  let element = document.head.querySelector(selector) as HTMLScriptElement | null;
-  if (!element) {
-    element = document.createElement("script");
-    document.head.appendChild(element);
-  }
-  Object.entries(attrs).forEach(([key, value]) => {
-    element?.setAttribute(key, value);
-  });
-  if (element && element.textContent !== text) {
-    element.textContent = text;
-  }
-}
+  const viteOrigin =
+    typeof import.meta !== "undefined"
+      ? (import.meta as { env?: Record<string, string> }).env?.VITE_SITE_ORIGIN
+      : undefined;
+  const nodeOrigin =
+    typeof process !== "undefined"
+      ? process.env.SITE_ORIGIN ??
+        process.env.COOLIFY_URL ??
+        (process.env.COOLIFY_FQDN
+          ? `https://${process.env.COOLIFY_FQDN}`
+          : "")
+      : "";
+  const env = viteOrigin ?? nodeOrigin ?? "";
+  return env.replace(/\/+$/, "");
+};
 
 export function Seo({
   lang,
@@ -83,151 +63,88 @@ export function Seo({
   metaTags,
   jsonLd,
 }: SeoProps) {
-  useEffect(() => {
-    document.documentElement.lang = hreflangMap[lang] ?? lang;
-    document.title = title;
-    const origin = window.location.origin;
-    const defaultOgImage = `${origin}${brandAssets.ogDefault}`;
-    const hasOgImage = metaTags?.some((tag) => tag.property === "og:image");
-    const hasTwitterImage = metaTags?.some(
-      (tag) => tag.name === "twitter:image",
-    );
+  const origin = resolveSiteOrigin();
+  const defaultOgImage = origin ? `${origin}${brandAssets.ogDefault}` : "";
+  const hasOgImage = metaTags?.some((tag) => tag.property === "og:image");
+  const hasTwitterImage = metaTags?.some(
+    (tag) => tag.name === "twitter:image",
+  );
+  const resolvedCanonicalPath =
+    canonicalPath ?? (page ? buildPath(lang, page) : "");
+  const canonicalUrl = origin
+    ? `${origin}${resolvedCanonicalPath}`
+    : resolvedCanonicalPath;
+  const alternates = alternatePaths ?? (page ? buildAlternatePaths(page) : null);
+  const defaultPath =
+    alternates?.[defaultLang] ??
+    (page ? buildPath(defaultLang, page) : resolvedCanonicalPath);
 
-    upsertMeta('meta[name="description"]', {
-      name: "description",
-      content: description,
-    });
-    upsertMeta('meta[name="robots"]', {
-      name: "robots",
-      content: "index, follow",
-    });
-    upsertMeta('meta[property="og:title"]', {
-      property: "og:title",
-      content: title,
-    });
-    upsertMeta('meta[property="og:description"]', {
-      property: "og:description",
-      content: description,
-    });
-    upsertMeta('meta[property="og:type"]', {
-      property: "og:type",
-      content: "website",
-    });
-    upsertMeta('meta[property="og:site_name"]', {
-      property: "og:site_name",
-      content: siteName,
-    });
-    upsertMeta('meta[property="og:locale"]', {
-      property: "og:locale",
-      content: localeMap[lang],
-    });
-    if (!hasOgImage) {
-      upsertMeta('meta[property="og:image"]', {
-        property: "og:image",
-        content: defaultOgImage,
-      });
-    }
-    upsertMeta('meta[name="twitter:card"]', {
-      name: "twitter:card",
-      content: "summary_large_image",
-    });
-    upsertMeta('meta[name="twitter:title"]', {
-      name: "twitter:title",
-      content: title,
-    });
-    upsertMeta('meta[name="twitter:description"]', {
-      name: "twitter:description",
-      content: description,
-    });
-    if (!hasTwitterImage) {
-      upsertMeta('meta[name="twitter:image"]', {
-        name: "twitter:image",
-        content: defaultOgImage,
-      });
-    }
-
-    if (metaTags) {
-      metaTags.forEach((tag) => {
+  return (
+    <Helmet htmlAttributes={{ lang: hreflangMap[lang] ?? lang }}>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <meta name="robots" content="index, follow" />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content={siteName} />
+      <meta property="og:locale" content={localeMap[lang]} />
+      {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
+      {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+      {!hasOgImage && defaultOgImage ? (
+        <meta property="og:image" content={defaultOgImage} />
+      ) : null}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      {!hasTwitterImage && defaultOgImage ? (
+        <meta name="twitter:image" content={defaultOgImage} />
+      ) : null}
+      {metaTags?.map((tag, index) => {
         if (!tag.content) {
-          return;
+          return null;
         }
         if (tag.name) {
-          upsertMeta(`meta[name="${tag.name}"]`, {
-            name: tag.name,
-            content: tag.content,
-          });
-          return;
+          return (
+            <meta key={`${tag.name}-${index}`} name={tag.name} content={tag.content} />
+          );
         }
         if (tag.property) {
-          upsertMeta(`meta[property="${tag.property}"]`, {
-            property: tag.property,
-            content: tag.content,
-          });
+          return (
+            <meta
+              key={`${tag.property}-${index}`}
+              property={tag.property}
+              content={tag.content}
+            />
+          );
         }
-      });
-    }
-
-    const resolvedCanonicalPath =
-      canonicalPath ?? (page ? buildPath(lang, page) : window.location.pathname);
-    const canonicalUrl = `${origin}${resolvedCanonicalPath}`;
-    upsertMeta('meta[property="og:url"]', {
-      property: "og:url",
-      content: canonicalUrl,
-    });
-    upsertLink('link[rel="canonical"]', {
-      rel: "canonical",
-      href: canonicalUrl,
-    });
-
-    const alternates = alternatePaths ?? (page ? buildAlternatePaths(page) : null);
-    if (alternates) {
-      (Object.entries(alternates) as Array<[Language, string]>).forEach(
-        ([langCode, path]) => {
-          if (!path) {
-            return;
-          }
-          const hreflang = hreflangMap[langCode] ?? langCode;
-          upsertLink(`link[rel="alternate"][hreflang="${hreflang}"]`, {
-            rel: "alternate",
-            hreflang,
-            href: `${origin}${path}`,
-          });
-        },
-      );
-
-      const defaultPath =
-        alternates[defaultLang] ??
-        (page ? buildPath(defaultLang, page) : resolvedCanonicalPath);
-      upsertLink('link[rel="alternate"][hreflang="x-default"]', {
-        rel: "alternate",
-        hreflang: "x-default",
-        href: `${origin}${defaultPath}`,
-      });
-    }
-
-    const jsonLdSelector = 'script[data-seo="jsonld"]';
-    if (jsonLd) {
-      upsertScript(
-        jsonLdSelector,
-        {
-          type: "application/ld+json",
-          "data-seo": "jsonld",
-        },
-        JSON.stringify(jsonLd),
-      );
-    } else {
-      document.head.querySelector(jsonLdSelector)?.remove();
-    }
-  }, [
-    lang,
-    page,
-    title,
-    description,
-    canonicalPath,
-    alternatePaths,
-    metaTags,
-    jsonLd,
-  ]);
-
-  return null;
+        return null;
+      })}
+      {alternates
+        ? (Object.entries(alternates) as Array<[Language, string]>).map(
+            ([langCode, path]) =>
+              path ? (
+                <link
+                  key={langCode}
+                  rel="alternate"
+                  hrefLang={hreflangMap[langCode] ?? langCode}
+                  href={origin ? `${origin}${path}` : path}
+                />
+              ) : null,
+          )
+        : null}
+      {defaultPath ? (
+        <link
+          rel="alternate"
+          hrefLang="x-default"
+          href={origin ? `${origin}${defaultPath}` : defaultPath}
+        />
+      ) : null}
+      {jsonLd ? (
+        <script type="application/ld+json">
+          {JSON.stringify(jsonLd)}
+        </script>
+      ) : null}
+    </Helmet>
+  );
 }

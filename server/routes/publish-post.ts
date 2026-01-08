@@ -95,7 +95,7 @@ const renderPostHtml = (payload: PostPayload) => {
           .join(", ")
       : pickString(payload, ["keywords"]) ?? "";
   const origin = resolveSiteOrigin();
-  const canonical = `${origin}/${lang}/post/${normalizeSlug(slug)}`;
+  const canonical = `${origin}/posts/${normalizeSlug(slug)}`;
   const publishedIso = formatIsoDate(publishedAt);
   const updatedIso = formatIsoDate(updatedAt ?? publishedAt);
   const safeTitle = escapeHtml(title);
@@ -295,7 +295,7 @@ const buildSitemap = async (rootDir: string, origin: string) => {
         .replace(/index\.html$/i, "")
         .replace(/\.html$/i, "");
       return {
-        loc: `${origin}${routePath}`,
+        loc: `${origin}/posts${routePath}`,
         lastmod: formatSitemapDate(stat.mtime),
       };
     }),
@@ -317,7 +317,7 @@ const publishPost = async (payload: PostPayload, rootDir: string) => {
   if (!slug) {
     throw new Error("Missing slug");
   }
-  const postDir = path.join(rootDir, lang, "post", slug);
+  const postDir = path.join(rootDir, slug);
   await fs.mkdir(postDir, { recursive: true });
   await fs.writeFile(path.join(postDir, "index.html"), html, "utf-8");
 
@@ -347,7 +347,7 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
   }
 
   const rootDir =
-    process.env.GENERATED_DIR?.trim() || path.resolve(process.cwd(), "generated");
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const origin = resolveSiteOrigin();
 
   try {
@@ -373,7 +373,7 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
 
 export const handleRebuildSitemap: RequestHandler = async (_req, res) => {
   const rootDir =
-    process.env.GENERATED_DIR?.trim() || path.resolve(process.cwd(), "generated");
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const origin = resolveSiteOrigin();
   try {
     await buildSitemap(rootDir, origin);

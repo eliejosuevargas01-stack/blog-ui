@@ -41,7 +41,7 @@ export default function About({ lang }: AboutProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mt-6 mb-4">
                 {t.about.title}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70">
+              <p className="text-lg sm:text-xl text-foreground/80">
                 {t.about.subtitle}
               </p>
             </div>
@@ -55,7 +55,7 @@ export default function About({ lang }: AboutProps) {
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
                   {t.about.identityTitle}
                 </h2>
-                <p className="text-lg text-foreground/70 leading-relaxed">
+                <p className="text-lg text-foreground/80 leading-relaxed">
                   {t.about.identityText}
                 </p>
               </div>
@@ -64,7 +64,7 @@ export default function About({ lang }: AboutProps) {
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
                   {t.about.focusTitle}
                 </h2>
-                <ul className="space-y-3 text-base text-foreground/70">
+                <ul className="space-y-3 text-base text-foreground/80">
                   {t.about.focusItems.map((item) => (
                     <li key={item} className="flex items-start gap-3">
                       <span className="mt-1 h-2.5 w-2.5 rounded-full bg-secondary" />

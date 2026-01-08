@@ -143,7 +143,7 @@ export default function Auth({ lang }: AuthProps) {
               <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
                 {t.auth.title}
               </h1>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.auth.subtitle}
               </p>
             </div>
@@ -196,7 +196,7 @@ export default function Auth({ lang }: AuthProps) {
                           required
                         />
                       </div>
-                      <p className="text-sm text-foreground/70">
+                      <p className="text-sm text-foreground/80">
                         {t.auth.loginHint}
                       </p>
                       <Button
@@ -263,7 +263,7 @@ export default function Auth({ lang }: AuthProps) {
                           required
                         />
                       </div>
-                      <p className="text-sm text-foreground/70">
+                      <p className="text-sm text-foreground/80">
                         {t.auth.signupHint}
                       </p>
                       <Button

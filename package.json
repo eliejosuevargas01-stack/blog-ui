@@ -15,7 +15,8 @@
     "build": "pnpm run build:full",
     "build:client": "vite build",
     "build:server": "vite build --config vite.config.server.ts",
-    "build:full": "pnpm run build:client && pnpm run build:server",
+    "build:full": "pnpm run build:client && pnpm run build:server && pnpm run ssg",
+    "ssg": "tsx scripts/ssg.ts",
     "start": "node dist/server/node-build.mjs",
     "test": "vitest --run",
     "format.fix": "prettier --write .",
@@ -26,6 +27,7 @@
     "express": "^5.1.0",
     "cors": "^2.8.5",
     "marked": "^17.0.1",
+    "react-helmet-async": "^2.0.5",
     "translate": "^3.0.1",
     "zod": "^3.25.76"
   },

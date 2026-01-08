@@ -27,7 +27,7 @@ const NotFound = () => {
         <p className="text-2xl font-semibold text-foreground mb-3">
           {t.notFound.title}
         </p>
-        <p className="text-lg text-foreground/70 mb-6">
+        <p className="text-lg text-foreground/80 mb-6">
           {t.notFound.description}
         </p>
         <Link

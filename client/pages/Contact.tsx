@@ -87,7 +87,7 @@ export default function Contact({ lang }: ContactProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mt-6 mb-4">
                 {t.contact.title}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70">
+              <p className="text-lg sm:text-xl text-foreground/80">
                 {t.contact.subtitle}
               </p>
             </div>
@@ -175,7 +175,7 @@ export default function Contact({ lang }: ContactProps) {
                       <Button type="submit" className="w-full">
                         {t.contact.form.submitLabel}
                       </Button>
-                      <p className="text-xs text-foreground/70">{noteText}</p>
+                      <p className="text-xs text-foreground/80">{noteText}</p>
                     </div>
                   </form>
                 </CardContent>
@@ -202,7 +202,7 @@ export default function Contact({ lang }: ContactProps) {
                             {item.value}
                           </a>
                         ) : (
-                          <p className="text-sm text-foreground/70">{item.value}</p>
+                          <p className="text-sm text-foreground/80">{item.value}</p>
                         )}
                       </div>
                     );

@@ -9,14 +9,18 @@ const port = process.env.PORT || 3000;
 const __dirname = import.meta.dirname;
 const distPath = path.join(__dirname, "../spa");
 const generatedPath =
-  process.env.GENERATED_DIR?.trim() || path.join(distPath, "generated");
+  process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
 
 // Serve static files
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return next();
   }
-  return express.static(generatedPath)(req, res, next);
+  return next();
+});
+app.use("/posts", express.static(generatedPath));
+app.get("/sitemap.xml", (_req, res) => {
+  res.sendFile(path.join(generatedPath, "sitemap.xml"));
 });
 app.use(express.static(distPath));
 

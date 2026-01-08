@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
-import { fetchPublicPosts, type BlogPost } from "@/lib/posts";
+import { fetchPublicPosts, getInitialPosts, type BlogPost } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 
 interface ArticlesProps {
@@ -20,8 +20,11 @@ export default function Articles({ lang }: ArticlesProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
   const location = useLocation();
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [status, setStatus] = useState<PostsStatus>("loading");
+  const initialPosts = getInitialPosts(lang);
+  const [posts, setPosts] = useState<BlogPost[]>(() => initialPosts ?? []);
+  const [status, setStatus] = useState<PostsStatus>(
+    initialPosts ? "idle" : "loading",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const tagFilter = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -34,6 +37,9 @@ export default function Articles({ lang }: ArticlesProps) {
   }, [location.search]);
 
   useEffect(() => {
+    if (initialPosts) {
+      return;
+    }
     let isMounted = true;
 
     const loadPosts = async () => {
@@ -61,7 +67,7 @@ export default function Articles({ lang }: ArticlesProps) {
     return () => {
       isMounted = false;
     };
-  }, [lang]);
+  }, [lang, initialPosts]);
 
   const showLoading = status === "loading";
   const showError = status === "error";
@@ -112,7 +118,7 @@ export default function Articles({ lang }: ArticlesProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mt-4 mb-4">
                 {t.articles.title}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70">
+              <p className="text-lg sm:text-xl text-foreground/80">
                 {t.articles.subtitle}
               </p>
             </div>
@@ -123,7 +129,7 @@ export default function Articles({ lang }: ArticlesProps) {
           <div className="container mx-auto px-4">
             {showLoading && (
               <div className="space-y-6">
-                <p className="text-sm text-foreground/70">{t.posts.loading}</p>
+                <p className="text-sm text-foreground/80">{t.posts.loading}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 9 }).map((_, index) => (
                     <div
@@ -149,7 +155,7 @@ export default function Articles({ lang }: ArticlesProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -196,7 +202,7 @@ export default function Articles({ lang }: ArticlesProps) {
                             {post.title}
                           </h3>
                           {(post.excerpt || post.description) && (
-                            <p className="text-base text-foreground/70 line-clamp-2 mb-4">
+                            <p className="text-base text-foreground/80 line-clamp-2 mb-4">
                               {post.excerpt ?? post.description}
                             </p>
                           )}

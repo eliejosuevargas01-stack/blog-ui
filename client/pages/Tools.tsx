@@ -59,7 +59,7 @@ export default function Tools({ lang }: ToolsProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mb-6">
                 {t.tools.heroTitle}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70 mb-8">
+              <p className="text-lg sm:text-xl text-foreground/80 mb-8">
                 {t.tools.heroSubtitle}
               </p>
 
@@ -80,7 +80,7 @@ export default function Tools({ lang }: ToolsProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
                 {t.tools.gridTitle}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.tools.gridSubtitle}
               </p>
             </div>
@@ -106,7 +106,7 @@ export default function Tools({ lang }: ToolsProps) {
                       <h3 className="text-xl font-bold text-foreground mb-3">
                         {tool.title}
                       </h3>
-                      <p className="text-foreground/70 text-sm">
+                      <p className="text-foreground/80 text-sm">
                         {tool.description}
                       </p>
                     </div>
@@ -124,7 +124,7 @@ export default function Tools({ lang }: ToolsProps) {
                 <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
                   {t.tools.ctaTitle}
                 </h3>
-                <p className="text-foreground/70 mb-6">
+                <p className="text-foreground/80 mb-6">
                   {t.tools.ctaSubtitle}
                 </p>
                 <Link

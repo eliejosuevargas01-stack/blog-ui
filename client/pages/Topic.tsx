@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { buildPath, buildPostPath, translations, type Language } from "@/lib/i18n";
-import { fetchPublicPosts, type BlogPost } from "@/lib/posts";
+import { fetchPublicPosts, getInitialPosts, type BlogPost } from "@/lib/posts";
 import { buildTopicPath, normalizeTopicKey } from "@/lib/topics";
 import { formatPostDate } from "@/lib/utils";
 import NotFound from "@/pages/NotFound";
@@ -29,11 +29,17 @@ export default function Topic({ lang }: TopicProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
   const { topicSlug } = useParams<TopicParams>();
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [status, setStatus] = useState<PostsStatus>("loading");
+  const initialPosts = getInitialPosts(lang);
+  const [posts, setPosts] = useState<BlogPost[]>(() => initialPosts ?? []);
+  const [status, setStatus] = useState<PostsStatus>(
+    initialPosts ? "idle" : "loading",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialPosts) {
+      return;
+    }
     let isMounted = true;
 
     const loadPosts = async () => {
@@ -61,7 +67,7 @@ export default function Topic({ lang }: TopicProps) {
     return () => {
       isMounted = false;
     };
-  }, [lang]);
+  }, [lang, initialPosts]);
 
   const normalizedTopic = useMemo(
     () => normalizeTopicKey(topicSlug),
@@ -155,7 +161,7 @@ export default function Topic({ lang }: TopicProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mt-4 mb-4">
                 {topicTitle}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70">
+              <p className="text-lg sm:text-xl text-foreground/80">
                 {topicDescription}
               </p>
             </div>
@@ -165,7 +171,7 @@ export default function Topic({ lang }: TopicProps) {
         {topicIntro && (
           <section className="py-12 sm:py-16 border-b border-border">
             <div className="container mx-auto px-4">
-              <div className="max-w-4xl text-base sm:text-lg text-foreground/70 leading-relaxed whitespace-pre-line">
+              <div className="max-w-4xl text-base sm:text-lg text-foreground/80 leading-relaxed whitespace-pre-line">
                 {topicIntro}
               </div>
             </div>
@@ -176,7 +182,7 @@ export default function Topic({ lang }: TopicProps) {
           <div className="container mx-auto px-4">
             {showLoading && (
               <div className="space-y-6">
-                <p className="text-sm text-foreground/70">{t.posts.loading}</p>
+                <p className="text-sm text-foreground/80">{t.posts.loading}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div
@@ -202,7 +208,7 @@ export default function Topic({ lang }: TopicProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {replaceTopic(t.topic.minimumTitle, topicTitle)}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {replaceTopic(t.topic.minimumDescription, topicTitle)}
                 </p>
               </div>
@@ -247,7 +253,7 @@ export default function Topic({ lang }: TopicProps) {
                             {post.title}
                           </h3>
                           {(post.excerpt || post.description) && (
-                            <p className="text-base text-foreground/70 line-clamp-2 mb-4">
+                            <p className="text-base text-foreground/80 line-clamp-2 mb-4">
                               {post.excerpt ?? post.description}
                             </p>
                           )}

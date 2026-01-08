@@ -1,21 +1,23 @@
-# Coolify Deployment (Indexação Garantida)
+# Coolify Deployment (SSG + HTML Persistente)
 
-Este projeto está preparado para **SSR leve + geração de HTML persistente** via API,
-garantindo indexação estável sem deploy por post.
+Este projeto está preparado para **SSG das páginas fixas** + **HTML persistente**
+para posts, garantindo indexação estável e rápida.
 
 ## 1) Tipo de Deploy
 - **Use Dockerfile** (o repo já possui `Dockerfile`).
 - O container roda Node e serve `dist/spa` + HTMLs gerados.
+- As páginas fixas são pré-renderizadas no build (`pnpm run ssg`).
 
 ## 2) Variáveis de Ambiente
 Defina no Coolify:
 - `SITE_ORIGIN=https://curiosotech.online`
 - `PUBLISH_TOKEN=crie_um_token_forte`
 - `GENERATED_DIR=/data/generated`
+- `SSG_ORIGIN=https://curiosotech.online` (opcional, ajuda o build a carregar posts)
 
 ## 3) Volume Persistente
-Crie um volume e monte no container:
-- Host path: (auto no Coolify)
+Crie um volume persistente e monte no container:
+- Host path: (defina no VPS)
 - Container path: `/data/generated`
 
 Esse volume armazena:
@@ -44,6 +46,7 @@ O servidor:
 
 ## 6) Rotas
 Se existir HTML gerado, ele será servido **antes** do SPA.
+Se não existir, o SPA é usado como fallback.
 
 ## Teste rápido (manual)
 ```

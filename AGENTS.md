@@ -18,7 +18,8 @@ While the starter comes with a express server, only create endpoint when strictl
 client/                   # React SPA frontend
 ├── pages/                # Route components (Index.tsx = home)
 ├── components/ui/        # Pre-built UI component library
-├── App.tsx                # App entry point and with SPA routing setup
+├── AppRoutes.tsx           # SPA routing setup shared by client + SSG
+├── entry-client.tsx        # Browser entry (hydrate/render)
 └── global.css            # TailwindCSS 3 theming and global styles
 
 server/                   # Express API backend
@@ -36,7 +37,7 @@ shared/                   # Types used by both client & server
 The routing system is powered by React Router 6:
 
 - `client/pages/Index.tsx` represents the home page.
-- Routes are defined in `client/App.tsx` using the `react-router-dom` import
+- Routes are defined in `client/AppRoutes.tsx` using the `react-router-dom` import
 - Route files are located in the `client/pages/` directory
 
 For example, routes can be defined with:
@@ -143,7 +144,7 @@ const data: MyRouteResponse = await response.json();
 
 ### New Page Route
 1. Create component in `client/pages/MyPage.tsx`
-2. Add route in `client/App.tsx`:
+2. Add route in `client/AppRoutes.tsx`:
 ```typescript
 <Route path="/my-page" element={<MyPage />} />
 ```

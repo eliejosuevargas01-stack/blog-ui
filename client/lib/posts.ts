@@ -28,6 +28,23 @@ export interface BlogPost {
   metaTags?: Array<{ name?: string; property?: string; content: string }>;
 }
 
+type InitialPostsPayload = Partial<Record<Language, BlogPost[]>>;
+
+let initialPostsCache: InitialPostsPayload | null = null;
+
+export const setInitialPosts = (payload: InitialPostsPayload | null) => {
+  initialPostsCache = payload;
+};
+
+export const getInitialPosts = (lang: Language): BlogPost[] | null => {
+  if (typeof window !== "undefined") {
+    const payload = (window as Window & { __INITIAL_POSTS__?: InitialPostsPayload })
+      .__INITIAL_POSTS__;
+    return payload?.[lang] ?? null;
+  }
+  return initialPostsCache?.[lang] ?? null;
+};
+
 const stringValue = (value: unknown) => {
   const normalized =
     typeof value === "number"

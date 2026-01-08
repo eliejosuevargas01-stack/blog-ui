@@ -41,10 +41,10 @@ export default function Privacy({ lang }: PrivacyProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mt-6 mb-4">
                 {t.privacy.title}
               </h1>
-              <p className="text-lg sm:text-xl text-foreground/70">
+              <p className="text-lg sm:text-xl text-foreground/80">
                 {t.privacy.subtitle}
               </p>
-              <p className="mt-4 text-sm text-foreground/70">
+              <p className="mt-4 text-sm text-foreground/80">
                 {t.privacy.updatedLabel}: {t.privacy.updatedAt}
               </p>
             </div>
@@ -62,7 +62,7 @@ export default function Privacy({ lang }: PrivacyProps) {
                   <h2 className="text-2xl font-semibold text-foreground mb-3">
                     {section.title}
                   </h2>
-                  <p className="text-base text-foreground/70 leading-relaxed whitespace-pre-line">
+                  <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-line">
                     {section.body}
                   </p>
                 </div>

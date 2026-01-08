@@ -19,7 +19,7 @@ const loadPostIndex = async (rootDir: string): Promise<PostIndex> => {
 
 export const handleGetPosts: RequestHandler = async (req, res) => {
   const rootDir =
-    process.env.GENERATED_DIR?.trim() || path.resolve(process.cwd(), "generated");
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const lang = typeof req.query.lang === "string" ? req.query.lang : null;
 
   try {

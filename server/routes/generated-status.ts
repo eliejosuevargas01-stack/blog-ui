@@ -25,7 +25,7 @@ const resolveSiteOrigin = () => {
 };
 
 const getGeneratedRoot = () =>
-  process.env.GENERATED_DIR?.trim() || path.resolve(process.cwd(), "generated");
+  process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
 
 const collectHtmlFiles = async (rootDir: string) => {
   const entries: string[] = [];
@@ -55,7 +55,7 @@ const toRoutePath = (rootDir: string, filePath: string) => {
     .join("/");
   const withoutIndex = relative.replace(/index\\.html$/i, "");
   const withoutExt = withoutIndex.replace(/\\.html$/i, "");
-  const normalized = `/${withoutExt}`.replace(/\/+$/, "");
+  const normalized = `/posts/${withoutExt}`.replace(/\/+$/, "");
   return normalized || "/";
 };
 

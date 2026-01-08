@@ -292,7 +292,7 @@ const Field = ({
   <div className="space-y-2">
     <div className="text-sm font-medium text-foreground">{label}</div>
     {children}
-    {hint ? <p className="text-xs text-foreground/70">{hint}</p> : null}
+    {hint ? <p className="text-xs text-foreground/80">{hint}</p> : null}
   </div>
 );
 
@@ -761,14 +761,14 @@ export default function Admin({ lang }: AdminProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground">
                 {t.admin.title}
               </h1>
-              <p className="mt-3 text-lg sm:text-xl text-foreground/70">
+              <p className="mt-3 text-lg sm:text-xl text-foreground/80">
                 {t.admin.subtitle}
               </p>
               <div className="mt-6 rounded-lg border border-secondary/20 bg-secondary/5 px-4 py-3 text-sm text-secondary">
                 {t.admin.notice}
               </div>
               {isAuthenticated && (
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-foreground/70">
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-foreground/80">
                   {session?.email ? <span>{session.email}</span> : null}
                   <Button variant="outline" size="sm" onClick={handleLogout}>
                     {t.admin.logout}
@@ -790,7 +790,7 @@ export default function Admin({ lang }: AdminProps) {
                   </CardHeader>
                   <CardContent>
                     {isCheckingAuth ? (
-                      <p className="text-sm text-foreground/70">
+                      <p className="text-sm text-foreground/80">
                         {t.posts.loading}
                       </p>
                     ) : (
@@ -834,7 +834,7 @@ export default function Admin({ lang }: AdminProps) {
                             required
                           />
                         </div>
-                        <p className="text-sm text-foreground/70">
+                        <p className="text-sm text-foreground/80">
                           {t.auth.loginHint}
                         </p>
                         <Button
@@ -858,7 +858,7 @@ export default function Admin({ lang }: AdminProps) {
                     <h2 className="text-2xl font-semibold text-foreground">
                       {t.admin.listTitle}
                     </h2>
-                    <p className="text-sm text-foreground/70">
+                    <p className="text-sm text-foreground/80">
                       {t.admin.listSubtitle}
                     </p>
                   </div>
@@ -876,11 +876,11 @@ export default function Admin({ lang }: AdminProps) {
                       <h3 className="text-lg font-semibold text-foreground">
                         {t.admin.contentStrategy.title}
                       </h3>
-                      <p className="text-sm text-foreground/70">
+                      <p className="text-sm text-foreground/80">
                         {t.admin.contentStrategy.subtitle}
                       </p>
                     </div>
-                    <div className="text-xs text-foreground/70">
+                    <div className="text-xs text-foreground/80">
                       {validPosts.length} {t.admin.contentStrategy.countLabel}
                     </div>
                   </div>
@@ -905,7 +905,7 @@ export default function Admin({ lang }: AdminProps) {
                             <CardDescription>{card.description}</CardDescription>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-xs text-foreground/70">
+                            <p className="text-xs text-foreground/80">
                               {count} {t.admin.contentStrategy.countLabel}
                             </p>
                             {isMissing && (
@@ -925,11 +925,11 @@ export default function Admin({ lang }: AdminProps) {
                       <h3 className="text-lg font-semibold text-foreground">
                         {t.admin.generated.title}
                       </h3>
-                      <p className="text-sm text-foreground/70">
+                      <p className="text-sm text-foreground/80">
                         {t.admin.generated.subtitle}
                       </p>
                       {generatedUpdatedAt && (
-                        <p className="text-xs text-foreground/70 mt-2">
+                        <p className="text-xs text-foreground/80 mt-2">
                           {t.admin.generated.updatedLabel}{" "}
                           {formatGeneratedTimestamp(generatedUpdatedAt)}
                         </p>
@@ -948,7 +948,7 @@ export default function Admin({ lang }: AdminProps) {
                   </div>
 
                   {generatedLoading && (
-                    <p className="text-sm text-foreground/70">
+                    <p className="text-sm text-foreground/80">
                       {t.posts.loading}
                     </p>
                   )}
@@ -976,11 +976,11 @@ export default function Admin({ lang }: AdminProps) {
                           </CardHeader>
                           <CardContent>
                             {generatedStatus.generatedPages.length === 0 ? (
-                              <p className="text-xs text-foreground/70">
+                              <p className="text-xs text-foreground/80">
                                 {t.admin.generated.emptyGenerated}
                               </p>
                             ) : (
-                              <div className="max-h-72 overflow-auto text-xs text-foreground/70 space-y-2">
+                              <div className="max-h-72 overflow-auto text-xs text-foreground/80 space-y-2">
                                 {generatedStatus.generatedPages.map((page) => (
                                   <a
                                     key={page.url}
@@ -1010,11 +1010,11 @@ export default function Admin({ lang }: AdminProps) {
                           </CardHeader>
                           <CardContent>
                             {generatedStatus.sitemapEntries.length === 0 ? (
-                              <p className="text-xs text-foreground/70">
+                              <p className="text-xs text-foreground/80">
                                 {t.admin.generated.emptySitemap}
                               </p>
                             ) : (
-                              <div className="max-h-72 overflow-auto text-xs text-foreground/70 space-y-2">
+                              <div className="max-h-72 overflow-auto text-xs text-foreground/80 space-y-2">
                                 {generatedStatus.sitemapEntries.map((url) => (
                                   <a
                                     key={url}
@@ -1041,11 +1041,11 @@ export default function Admin({ lang }: AdminProps) {
                               {generatedStatus.missingInSitemap.length})
                             </p>
                             {generatedStatus.missingInSitemap.length === 0 ? (
-                              <p className="text-xs text-foreground/70">
+                              <p className="text-xs text-foreground/80">
                                 {t.admin.generated.noneMissing}
                               </p>
                             ) : (
-                              <div className="max-h-40 overflow-auto text-xs text-foreground/70 space-y-1">
+                              <div className="max-h-40 overflow-auto text-xs text-foreground/80 space-y-1">
                                 {generatedStatus.missingInSitemap.map((path) => (
                                   <span key={path} className="block">
                                     {path}
@@ -1060,11 +1060,11 @@ export default function Admin({ lang }: AdminProps) {
                               {generatedStatus.missingInGenerated.length})
                             </p>
                             {generatedStatus.missingInGenerated.length === 0 ? (
-                              <p className="text-xs text-foreground/70">
+                              <p className="text-xs text-foreground/80">
                                 {t.admin.generated.noneMissing}
                               </p>
                             ) : (
-                              <div className="max-h-40 overflow-auto text-xs text-foreground/70 space-y-1">
+                              <div className="max-h-40 overflow-auto text-xs text-foreground/80 space-y-1">
                                 {generatedStatus.missingInGenerated.map(
                                   (path) => (
                                     <span key={path} className="block">
@@ -1082,7 +1082,7 @@ export default function Admin({ lang }: AdminProps) {
                 </div>
                 {showLoading && (
                   <div className="space-y-4">
-                    <p className="text-sm text-foreground/70">
+                    <p className="text-sm text-foreground/80">
                       {t.posts.loading}
                     </p>
                     {Array.from({ length: 4 }).map((_, index) => (
@@ -1110,7 +1110,7 @@ export default function Admin({ lang }: AdminProps) {
                     <p className="text-lg font-semibold text-foreground mb-2">
                       {t.admin.emptyTitle}
                     </p>
-                    <p className="text-sm text-foreground/70">
+                    <p className="text-sm text-foreground/80">
                       {t.admin.emptyDescription}
                     </p>
                   </div>
@@ -1171,13 +1171,13 @@ export default function Admin({ lang }: AdminProps) {
                                     <Badge variant="outline">{post.category}</Badge>
                                   )}
                                 </div>
-                                <div className="flex flex-wrap gap-3 text-xs text-foreground/70">
+                                <div className="flex flex-wrap gap-3 text-xs text-foreground/80">
                                   {post.author && <span>{post.author}</span>}
                                   {postDate && <span>{postDate}</span>}
                                   {post.readTime && <span>{post.readTime}</span>}
                                 </div>
                                 {(post.excerpt || post.description) && (
-                                  <p className="text-sm text-foreground/70 max-w-3xl line-clamp-2">
+                                  <p className="text-sm text-foreground/80 max-w-3xl line-clamp-2">
                                     {post.excerpt ?? post.description}
                                   </p>
                                 )}
@@ -1211,7 +1211,7 @@ export default function Admin({ lang }: AdminProps) {
                         <div className="mt-6 border-t border-border pt-6 space-y-6">
                           <div className="grid grid-cols-1 gap-6">
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
                                 {t.admin.sectionBasics}
                               </h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1300,7 +1300,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
                                 {t.admin.sectionContent}
                               </h4>
                               <div className="grid grid-cols-1 gap-4">
@@ -1356,7 +1356,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
                                 {t.admin.sectionMedia}
                               </h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1422,7 +1422,7 @@ export default function Admin({ lang }: AdminProps) {
                             </div>
 
                             <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 mb-4">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
                                 {t.admin.sectionSeo}
                               </h4>
                               <div className="grid grid-cols-1 gap-4">

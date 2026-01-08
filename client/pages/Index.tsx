@@ -11,7 +11,7 @@ import {
   translations,
   type Language,
 } from "@/lib/i18n";
-import { fetchPublicPosts, isGuidePost, type BlogPost } from "@/lib/posts";
+import { fetchPublicPosts, getInitialPosts, isGuidePost, type BlogPost } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 
 interface IndexProps {
@@ -83,11 +83,17 @@ export default function Index({ lang }: IndexProps) {
   const articlesPath = buildPath(lang, "articles");
   const latestPath = buildPath(lang, "latest");
   const formatDate = (value?: string) => formatPostDate(value, lang);
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [status, setStatus] = useState<PostsStatus>("loading");
+  const initialPosts = getInitialPosts(lang);
+  const [posts, setPosts] = useState<BlogPost[]>(() => initialPosts ?? []);
+  const [status, setStatus] = useState<PostsStatus>(
+    initialPosts ? "idle" : "loading",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialPosts) {
+      return;
+    }
     let isMounted = true;
 
     const loadPosts = async () => {
@@ -115,7 +121,7 @@ export default function Index({ lang }: IndexProps) {
     return () => {
       isMounted = false;
     };
-  }, [lang]);
+  }, [lang, initialPosts]);
 
   const portal = useMemo(() => {
     const sorted = [...posts].sort(
@@ -302,7 +308,7 @@ export default function Index({ lang }: IndexProps) {
               {post.title}
             </h3>
             {(post.excerpt || post.description) && (
-              <p className="text-base text-foreground/70 line-clamp-2 mb-4">
+              <p className="text-base text-foreground/80 line-clamp-2 mb-4">
                 {post.excerpt ?? post.description}
               </p>
             )}
@@ -349,7 +355,7 @@ export default function Index({ lang }: IndexProps) {
               <h1 className="text-4xl sm:text-6xl font-bold text-foreground mb-4">
                 {t.hero.title}
               </h1>
-              <p className="text-base sm:text-lg text-foreground/70 leading-relaxed">
+              <p className="text-base sm:text-lg text-foreground/80 leading-relaxed">
                 {t.hero.institutional}
               </p>
             </div>
@@ -358,7 +364,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.highlight.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.highlight.subtitle}
               </p>
             </div>
@@ -397,7 +403,7 @@ export default function Index({ lang }: IndexProps) {
                   </h3>
                   {(portal.highlightPost.excerpt ||
                     portal.highlightPost.description) && (
-                    <p className="text-lg text-foreground/70 mb-6">
+                    <p className="text-lg text-foreground/80 mb-6">
                       {portal.highlightPost.excerpt ??
                         portal.highlightPost.description}
                     </p>
@@ -437,7 +443,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -451,7 +457,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.affectsYou.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.affectsYou.subtitle}
               </p>
             </div>
@@ -479,7 +485,7 @@ export default function Index({ lang }: IndexProps) {
                         <span className="text-xs font-semibold uppercase tracking-wide text-secondary">
                           {topic.label}
                         </span>
-                        <p className="mt-4 text-base text-foreground/70">
+                        <p className="mt-4 text-base text-foreground/80">
                           {t.home.affectsYou.empty}
                         </p>
                       </div>
@@ -523,7 +529,7 @@ export default function Index({ lang }: IndexProps) {
                           {topic.post.title}
                         </h3>
                         {(topic.post.excerpt || topic.post.description) && (
-                          <p className="mt-3 text-base text-foreground/70 line-clamp-3">
+                          <p className="mt-3 text-base text-foreground/80 line-clamp-3">
                             {topic.post.excerpt ?? topic.post.description}
                           </p>
                         )}
@@ -542,7 +548,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.ai.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.ai.subtitle}
               </p>
             </div>
@@ -569,7 +575,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -583,7 +589,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.curiosities.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.curiosities.subtitle}
               </p>
             </div>
@@ -610,7 +616,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -624,7 +630,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.latest.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.latest.subtitle}
               </p>
             </div>
@@ -651,7 +657,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.posts.emptyTitle}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
@@ -677,7 +683,7 @@ export default function Index({ lang }: IndexProps) {
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                 {t.home.guides.title}
               </h2>
-              <p className="text-lg text-foreground/70">
+              <p className="text-lg text-foreground/80">
                 {t.home.guides.subtitle}
               </p>
             </div>
@@ -706,7 +712,7 @@ export default function Index({ lang }: IndexProps) {
                 <p className="text-lg font-semibold text-foreground mb-2">
                   {t.home.guides.empty}
                 </p>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-foreground/80">
                   {t.posts.emptyDescription}
                 </p>
               </div>
