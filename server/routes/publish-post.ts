@@ -106,6 +106,17 @@ const renderPostHtml = (payload: PostPayload) => {
   return {
     lang,
     slug: normalizeSlug(slug),
+    meta: {
+      title,
+      description,
+      image,
+      imageAlt,
+      publishedAt,
+      updatedAt,
+      contentRaw,
+      contentHtml,
+      keywords,
+    },
     html: `<!doctype html>
 <html lang="${lang}">
   <head>
@@ -157,6 +168,93 @@ const renderPostHtml = (payload: PostPayload) => {
     </main>
   </body>
 </html>`,
+  };
+};
+
+const normalizeArray = (value: unknown): string[] | null => {
+  if (!value) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    const values = value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean);
+    return values.length > 0 ? values : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed.split(/[,;]+/g).map((item) => item.trim()).filter(Boolean);
+  }
+  return null;
+};
+
+const loadPostIndex = async (rootDir: string) => {
+  const indexPath = path.join(rootDir, "posts.json");
+  try {
+    const raw = await fs.readFile(indexPath, "utf-8");
+    const parsed = JSON.parse(raw) as { posts?: PostPayload[] };
+    return Array.isArray(parsed.posts) ? parsed.posts : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePostIndex = async (rootDir: string, posts: PostPayload[]) => {
+  const indexPath = path.join(rootDir, "posts.json");
+  const payload = { posts };
+  await fs.writeFile(indexPath, JSON.stringify(payload, null, 2), "utf-8");
+};
+
+const buildIndexEntry = (
+  payload: PostPayload,
+  lang: string,
+  slug: string,
+  meta: {
+    title: string;
+    description: string;
+    image: string;
+    imageAlt: string;
+    publishedAt: string | null;
+    updatedAt: string | null;
+    contentRaw: string;
+    contentHtml: string;
+    keywords: string;
+  },
+) => {
+  const id = pickString(payload, ["id", "uuid"]) ?? `post-${lang}-${slug}`;
+  const tags =
+    normalizeArray(payload.tags ?? payload.tag) ??
+    normalizeArray(payload.etiquetas ?? payload.palavras_chave) ??
+    normalizeArray(payload.keywords);
+  const images =
+    normalizeArray(payload.images ?? payload.imagens) ??
+    normalizeArray(payload.galeria);
+
+  return {
+    ...payload,
+    id,
+    lang,
+    slug,
+    title: meta.title,
+    excerpt: meta.description,
+    description: meta.description,
+    content: meta.contentRaw,
+    contentHtml: meta.contentHtml,
+    image: meta.image,
+    imageAlt: meta.imageAlt,
+    images: images ?? undefined,
+    tags: tags ?? undefined,
+    keywords: meta.keywords
+      ? meta.keywords
+          .split(/[,;]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : undefined,
+    publishedAt: meta.publishedAt ?? undefined,
+    updatedAt: meta.updatedAt ?? undefined,
   };
 };
 
@@ -215,13 +313,25 @@ const buildSitemap = async (rootDir: string, origin: string) => {
 };
 
 const publishPost = async (payload: PostPayload, rootDir: string) => {
-  const { lang, slug, html } = renderPostHtml(payload);
+  const { lang, slug, html, meta } = renderPostHtml(payload);
   if (!slug) {
     throw new Error("Missing slug");
   }
   const postDir = path.join(rootDir, lang, "post", slug);
   await fs.mkdir(postDir, { recursive: true });
   await fs.writeFile(path.join(postDir, "index.html"), html, "utf-8");
+
+  const posts = await loadPostIndex(rootDir);
+  const entry = buildIndexEntry(payload, lang, slug, meta);
+  const existingIndex = posts.findIndex(
+    (item) => item.slug === slug && item.lang === lang,
+  );
+  if (existingIndex >= 0) {
+    posts[existingIndex] = { ...posts[existingIndex], ...entry };
+  } else {
+    posts.unshift(entry);
+  }
+  await savePostIndex(rootDir, posts);
 };
 
 export const handlePublishPost: RequestHandler = async (req, res) => {

@@ -1,5 +1,5 @@
 import { allowedCategories, defaultLang, languages, type Language } from "@/lib/i18n";
-import { sendWebhook } from "@/lib/webhook";
+const POSTS_API_PATH = "/api/posts";
 
 export interface BlogPost {
   id: string;
@@ -982,8 +982,12 @@ export function normalizePosts(
 }
 
 export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
-  const response = await sendWebhook({ action: "get_posts", lang });
-  return normalizePosts(response, lang);
+  const response = await fetch(`${POSTS_API_PATH}?lang=${lang}`);
+  if (!response.ok) {
+    throw new Error("Failed to load posts");
+  }
+  const payload = (await response.json()) as unknown;
+  return normalizePosts(payload, lang);
 }
 
 export const MIN_POST_WORDS = 900;
@@ -1273,49 +1277,17 @@ export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
 }
 
 export async function editPost(
-  post: BlogPost,
-  lang: Language,
-  token?: string,
+  _post: BlogPost,
+  _lang: Language,
+  _token?: string,
 ) {
-  const categoria = post.category ?? undefined;
-  return sendWebhook({
-    action: "edit_post",
-    lang,
-    id: post.id,
-    title: post.title,
-    slug: post.slug ?? undefined,
-    excerpt: post.excerpt ?? undefined,
-    description: post.description ?? undefined,
-    content: post.content ?? undefined,
-    contentHtml: post.contentHtml ?? undefined,
-    categoria,
-    category: categoria,
-    image: post.image ?? undefined,
-    imageAlt: post.imageAlt ?? undefined,
-    imageThumb: post.imageThumb ?? undefined,
-    images: post.images ?? undefined,
-    tags: post.tags ?? undefined,
-    date: post.date ?? undefined,
-    author: post.author ?? undefined,
-    readTime: post.readTime ?? undefined,
-    featured: post.featured ?? undefined,
-    metaTitle: post.metaTitle ?? undefined,
-    metaDescription: post.metaDescription ?? undefined,
-    metaTags: post.metaTags ?? undefined,
-    token,
-  });
+  throw new Error("Post editing is disabled without n8n integration.");
 }
 
 export async function deletePost(
-  post: BlogPost,
-  lang: Language,
-  token?: string,
+  _post: BlogPost,
+  _lang: Language,
+  _token?: string,
 ) {
-  return sendWebhook({
-    action: "delete_post",
-    lang,
-    id: post.id,
-    slug: post.slug ?? undefined,
-    token,
-  });
+  throw new Error("Post deletion is disabled without n8n integration.");
 }

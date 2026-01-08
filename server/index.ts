@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { handleGeneratedStatus } from "./routes/generated-status";
+import { handleGetPosts } from "./routes/posts";
 import { handlePublishPost, handleRebuildSitemap } from "./routes/publish-post";
 
 export function createServer() {
@@ -20,6 +21,7 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.get("/api/posts", handleGetPosts);
   app.post("/api/publish-post", handlePublishPost);
   app.post("/api/rebuild-sitemap", handleRebuildSitemap);
   app.get("/api/generated-status", handleGeneratedStatus);
