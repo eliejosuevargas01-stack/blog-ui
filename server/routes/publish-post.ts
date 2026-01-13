@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { createHash } from "crypto";
 import { marked } from "marked";
 import type { RequestHandler } from "express";
 
@@ -26,6 +27,13 @@ const normalizeSlug = (value: string) =>
     .replace(/^\/+|\/+$/g, "")
     .replace(/\s+/g, "-")
     .toLowerCase();
+
+const resolvePostIdentity = (payload: PostPayload) => {
+  const slugRaw = pickString(payload, ["slug"]) ?? "";
+  const langRaw = pickString(payload, ["lang"]) ?? "pt";
+  const lang = supportedLangs.has(langRaw) ? langRaw : "pt";
+  return { lang, slug: normalizeSlug(slugRaw) };
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -62,6 +70,199 @@ const resolveSiteOrigin = () => {
   return "http://localhost:3000";
 };
 
+const IMAGE_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".avif",
+  ".gif",
+  ".svg",
+]);
+
+const CONTENT_TYPE_EXTENSIONS = new Map<string, string>([
+  ["image/jpeg", ".jpg"],
+  ["image/jpg", ".jpg"],
+  ["image/png", ".png"],
+  ["image/webp", ".webp"],
+  ["image/avif", ".avif"],
+  ["image/gif", ".gif"],
+  ["image/svg+xml", ".svg"],
+]);
+
+const decodeHtmlEntities = (value: string) =>
+  value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+
+const isRemoteUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const resolveImageExtensionFromUrl = (value: string) => {
+  try {
+    const ext = path.extname(new URL(value).pathname).toLowerCase();
+    return IMAGE_EXTENSIONS.has(ext) ? ext : null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveImageExtensionFromContentType = (value: string | null) => {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.split(";")[0].trim().toLowerCase();
+  return CONTENT_TYPE_EXTENSIONS.get(normalized) ?? null;
+};
+
+const fileExists = async (filePath: string) => {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const buildMediaPublicPath = (lang: string, slug: string, fileName: string) =>
+  path.posix.join("/media", lang, slug, fileName);
+
+const localizeImageUrl = async (
+  url: string | null,
+  options: {
+    rootDir: string;
+    lang: string;
+    slug: string;
+    prefix: string;
+    cache: Map<string, string>;
+  },
+) => {
+  if (!url) {
+    return null;
+  }
+  const decoded = decodeHtmlEntities(url);
+  if (!isRemoteUrl(decoded)) {
+    return url;
+  }
+  const cached = options.cache.get(decoded);
+  if (cached) {
+    return cached;
+  }
+
+  const mediaDir = path.join(options.rootDir, "media", options.lang, options.slug);
+  await fs.mkdir(mediaDir, { recursive: true });
+
+  const hash = createHash("sha1").update(decoded).digest("hex").slice(0, 12);
+  const extFromUrl = resolveImageExtensionFromUrl(decoded);
+  if (extFromUrl) {
+    const candidateName = `${options.prefix}-${hash}${extFromUrl}`;
+    const candidatePath = path.join(mediaDir, candidateName);
+    if (await fileExists(candidatePath)) {
+      const publicPath = buildMediaPublicPath(
+        options.lang,
+        options.slug,
+        candidateName,
+      );
+      options.cache.set(decoded, publicPath);
+      return publicPath;
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(decoded);
+  } catch {
+    return url;
+  }
+  if (!response.ok) {
+    return url;
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && !contentType.toLowerCase().startsWith("image/")) {
+    return url;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const extFromType = resolveImageExtensionFromContentType(contentType);
+  const finalExt = extFromType ?? extFromUrl ?? ".jpg";
+  const fileName = `${options.prefix}-${hash}${finalExt}`;
+  const filePath = path.join(mediaDir, fileName);
+
+  if (!(await fileExists(filePath))) {
+    await fs.writeFile(filePath, buffer);
+  }
+
+  const publicPath = buildMediaPublicPath(options.lang, options.slug, fileName);
+  options.cache.set(decoded, publicPath);
+  return publicPath;
+};
+
+const parseSrcsetUrls = (value: string) =>
+  value
+    .split(",")
+    .map((part) => part.trim().split(/\s+/)[0])
+    .filter(Boolean);
+
+const collectHtmlImageUrls = (html: string) => {
+  const matches = new Map<string, Set<string>>();
+  const addUrl = (raw: string) => {
+    const decoded = decodeHtmlEntities(raw);
+    if (!isRemoteUrl(decoded)) {
+      return;
+    }
+    const bucket = matches.get(decoded) ?? new Set<string>();
+    bucket.add(raw);
+    matches.set(decoded, bucket);
+  };
+
+  const srcRegex = /<img\b[^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
+  const srcsetRegex = /\bsrcset=["']([^"']+)["']/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = srcRegex.exec(html)) !== null) {
+    addUrl(match[1]);
+  }
+  while ((match = srcsetRegex.exec(html)) !== null) {
+    parseSrcsetUrls(match[1]).forEach(addUrl);
+  }
+
+  return matches;
+};
+
+const localizeHtmlImages = async (
+  html: string,
+  options: {
+    rootDir: string;
+    lang: string;
+    slug: string;
+    cache: Map<string, string>;
+  },
+) => {
+  const matches = collectHtmlImageUrls(html);
+  if (matches.size === 0) {
+    return html;
+  }
+
+  let updated = html;
+  for (const [decoded, raws] of matches) {
+    const localized = await localizeImageUrl(decoded, {
+      ...options,
+      prefix: "image",
+    });
+    if (!localized || localized === decoded) {
+      continue;
+    }
+    raws.forEach((raw) => {
+      updated = updated.split(raw).join(localized);
+    });
+  }
+
+  return updated;
+};
+
 const renderPostHtml = (payload: PostPayload) => {
   const title =
     pickString(payload, ["meta_title", "metaTitle", "seo_title", "seoTitle"]) ??
@@ -71,9 +272,8 @@ const renderPostHtml = (payload: PostPayload) => {
     pickString(payload, ["meta_description", "metaDescription"]) ??
     pickString(payload, ["resumo", "excerpt", "summary", "description"]) ??
     "";
-  const slug = pickString(payload, ["slug"]) ?? "";
-  const langRaw = pickString(payload, ["lang"]) ?? "pt";
-  const lang = supportedLangs.has(langRaw) ? langRaw : "pt";
+  const { lang, slug } = resolvePostIdentity(payload);
+  const postSegment = "post";
   const image =
     pickString(payload, ["cover_image_url", "image", "imageUrl"]) ?? "";
   const imageAlt =
@@ -95,7 +295,7 @@ const renderPostHtml = (payload: PostPayload) => {
           .join(", ")
       : pickString(payload, ["keywords"]) ?? "";
   const origin = resolveSiteOrigin();
-  const canonical = `${origin}/posts/${normalizeSlug(slug)}`;
+  const canonical = `${origin}/${lang}/${postSegment}/${slug}`;
   const publishedIso = formatIsoDate(publishedAt);
   const updatedIso = formatIsoDate(updatedAt ?? publishedAt);
   const safeTitle = escapeHtml(title);
@@ -105,7 +305,7 @@ const renderPostHtml = (payload: PostPayload) => {
 
   return {
     lang,
-    slug: normalizeSlug(slug),
+    slug,
     meta: {
       title,
       description,
@@ -189,6 +389,113 @@ const normalizeArray = (value: unknown): string[] | null => {
     return trimmed.split(/[,;]+/g).map((item) => item.trim()).filter(Boolean);
   }
   return null;
+};
+
+const resolveContentHtml = (payload: PostPayload) => {
+  const html =
+    pickString(payload, [
+      "contentHtml",
+      "conteudo_html",
+      "html",
+      "bodyHtml",
+      "content_html",
+      "conteudoHtml",
+    ]) ?? "";
+  if (html) {
+    return html;
+  }
+  const content =
+    pickString(payload, ["conteudo", "content", "body", "texto"]) ?? "";
+  if (!content) {
+    return "";
+  }
+  const hasHtml = /<[^>]+>/.test(content);
+  if (hasHtml) {
+    return content;
+  }
+  try {
+    return marked.parse(content, { async: false });
+  } catch {
+    return "";
+  }
+};
+
+const localizePostAssets = async (payload: PostPayload, rootDir: string) => {
+  const { lang, slug } = resolvePostIdentity(payload);
+  if (!slug) {
+    return payload;
+  }
+
+  const cache = new Map<string, string>();
+  const prefix = "image";
+  const localize = (url: string | null) =>
+    localizeImageUrl(url, { rootDir, lang, slug, prefix, cache });
+
+  const coverImage =
+    pickString(payload, ["cover_image_url", "image", "imageUrl"]) ?? null;
+  const localizedCover = coverImage ? await localize(coverImage) : null;
+  if (localizedCover) {
+    payload.cover_image_url = localizedCover;
+    payload.image = localizedCover;
+    payload.imageUrl = localizedCover;
+  }
+
+  const thumbImage =
+    pickString(payload, [
+      "imageThumb",
+      "image_thumb",
+      "thumbnailUrl",
+      "thumbnail_url",
+      "thumb",
+      "thumbUrl",
+      "thumb_url",
+      "imageThumbUrl",
+      "image_thumb_url",
+    ]) ?? null;
+  const localizedThumb = thumbImage ? await localize(thumbImage) : null;
+  if (localizedThumb) {
+    payload.imageThumb = localizedThumb;
+    payload.image_thumb = localizedThumb;
+    payload.thumbnailUrl = localizedThumb;
+    payload.thumbnail_url = localizedThumb;
+    payload.thumb = localizedThumb;
+    payload.thumbUrl = localizedThumb;
+    payload.thumb_url = localizedThumb;
+    payload.imageThumbUrl = localizedThumb;
+    payload.image_thumb_url = localizedThumb;
+  }
+
+  const images =
+    normalizeArray(payload.images ?? payload.imagens) ??
+    normalizeArray(payload.galeria);
+  if (images && images.length > 0) {
+    const localizedImages: string[] = [];
+    for (const image of images) {
+      const localized = await localize(image);
+      if (localized) {
+        localizedImages.push(localized);
+      }
+    }
+    if (localizedImages.length > 0) {
+      payload.images = localizedImages;
+      payload.imagens = localizedImages;
+      payload.galeria = localizedImages;
+    }
+  }
+
+  const contentHtml = resolveContentHtml(payload);
+  if (contentHtml) {
+    const localizedContent = await localizeHtmlImages(contentHtml, {
+      rootDir,
+      lang,
+      slug,
+      cache,
+    });
+    payload.contentHtml = localizedContent;
+    payload.conteudo_html = localizedContent;
+  }
+
+  return payload;
 };
 
 const loadPostIndex = async (rootDir: string) => {
@@ -295,7 +602,7 @@ const buildSitemap = async (rootDir: string, origin: string) => {
         .replace(/index\.html$/i, "")
         .replace(/\.html$/i, "");
       return {
-        loc: `${origin}/posts${routePath}`,
+        loc: `${origin}${routePath}`,
         lastmod: formatSitemapDate(stat.mtime),
       };
     }),
@@ -313,16 +620,17 @@ const buildSitemap = async (rootDir: string, origin: string) => {
 };
 
 const publishPost = async (payload: PostPayload, rootDir: string) => {
-  const { lang, slug, html, meta } = renderPostHtml(payload);
+  const normalizedPayload = await localizePostAssets(payload, rootDir);
+  const { lang, slug, html, meta } = renderPostHtml(normalizedPayload);
   if (!slug) {
     throw new Error("Missing slug");
   }
-  const postDir = path.join(rootDir, slug);
+  const postDir = path.join(rootDir, lang, "post", slug);
   await fs.mkdir(postDir, { recursive: true });
   await fs.writeFile(path.join(postDir, "index.html"), html, "utf-8");
 
   const posts = await loadPostIndex(rootDir);
-  const entry = buildIndexEntry(payload, lang, slug, meta);
+  const entry = buildIndexEntry(normalizedPayload, lang, slug, meta);
   const existingIndex = posts.findIndex(
     (item) => item.slug === slug && item.lang === lang,
   );

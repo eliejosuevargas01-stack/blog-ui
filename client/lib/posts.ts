@@ -37,13 +37,18 @@ export const setInitialPosts = (payload: InitialPostsPayload | null) => {
   initialPostsCache = payload;
 };
 
+const hasInitialPosts = (posts?: BlogPost[] | null) =>
+  Array.isArray(posts) && posts.length > 0;
+
 export const getInitialPosts = (lang: Language): BlogPost[] | null => {
   if (typeof window !== "undefined") {
     const payload = (window as Window & { __INITIAL_POSTS__?: InitialPostsPayload })
       .__INITIAL_POSTS__;
-    return payload?.[lang] ?? null;
+    const posts = payload?.[lang];
+    return hasInitialPosts(posts) ? posts : null;
   }
-  return initialPostsCache?.[lang] ?? null;
+  const posts = initialPostsCache?.[lang];
+  return hasInitialPosts(posts) ? posts : null;
 };
 
 const stringValue = (value: unknown) => {
