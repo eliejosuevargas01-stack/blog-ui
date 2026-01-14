@@ -25,7 +25,9 @@ if (container) {
     </HelmetProvider>
   );
 
-  if (container.hasChildNodes()) {
+  const shouldHydrate = container.firstElementChild !== null;
+
+  if (shouldHydrate) {
     hydrateRoot(container, app);
   } else {
     createRoot(container).render(app);

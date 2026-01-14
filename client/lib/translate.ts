@@ -9,9 +9,11 @@ const resolveEnv = () => {
     (import.meta as { env?: Record<string, string> }).env
       ? (import.meta as { env?: Record<string, string> }).env
       : undefined;
+  const nodeEnv =
+    typeof process !== "undefined" ? process.env : undefined;
   return {
-    url: env?.VITE_TRANSLATE_URL ?? process.env.VITE_TRANSLATE_URL,
-    key: env?.VITE_TRANSLATE_KEY ?? process.env.VITE_TRANSLATE_KEY,
+    url: env?.VITE_TRANSLATE_URL ?? nodeEnv?.VITE_TRANSLATE_URL,
+    key: env?.VITE_TRANSLATE_KEY ?? nodeEnv?.VITE_TRANSLATE_KEY,
   };
 };
 

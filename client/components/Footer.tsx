@@ -25,8 +25,8 @@ export function Footer({ lang, t }: FooterProps) {
               <img
                 src={brandAssets.logo}
                 alt={siteName}
-                width={1408}
-                height={736}
+                width={96}
+                height={96}
                 loading="lazy"
                 decoding="async"
                 className="h-9 w-auto"

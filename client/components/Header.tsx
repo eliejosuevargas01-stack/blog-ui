@@ -52,8 +52,8 @@ export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
             <img
               src={brandAssets.logo}
               alt={siteName}
-              width={1408}
-              height={736}
+              width={96}
+              height={96}
               decoding="async"
               className="h-8 sm:h-9 w-auto"
             />
