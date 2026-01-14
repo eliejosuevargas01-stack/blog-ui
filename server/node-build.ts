@@ -18,7 +18,7 @@ app.use((req, res, next) => {
   }
   return next();
 });
-app.use("/posts", express.static(generatedPath));
+app.use(express.static(generatedPath));
 app.get("/sitemap.xml", (_req, res) => {
   res.sendFile(path.join(generatedPath, "sitemap.xml"));
 });

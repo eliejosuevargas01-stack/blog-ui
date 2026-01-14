@@ -263,6 +263,78 @@ const localizeHtmlImages = async (
   return updated;
 };
 
+const parseStructuredContent = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+  const paragraphs: string[] = [];
+  const numberedKeys = Object.keys(record)
+    .filter((key) => /^paragrafo_\d+$/.test(key))
+    .sort((a, b) => {
+      const left = Number(a.split("_")[1]);
+      const right = Number(b.split("_")[1]);
+      return left - right;
+    });
+  numberedKeys.forEach((key) => {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      paragraphs.push(value.trim());
+    }
+  });
+  const tech = record.paragrafos_explicacao_tecnologica;
+  if (Array.isArray(tech)) {
+    tech.forEach((value) => {
+      if (typeof value === "string" && value.trim()) {
+        paragraphs.push(value.trim());
+      }
+    });
+  }
+  const finalParagraph = record.paragrafo_final;
+  if (typeof finalParagraph === "string" && finalParagraph.trim()) {
+    paragraphs.push(finalParagraph.trim());
+  }
+  if (paragraphs.length === 0) {
+    return null;
+  }
+  return {
+    text: paragraphs.join("\n\n"),
+    html: paragraphs.map((text) => `<p>${escapeHtml(text)}</p>`).join("\n"),
+  };
+};
+
+const resolveContentParts = (payload: PostPayload) => {
+  const htmlInput =
+    pickString(payload, ["contentHtml", "conteudo_html"]) ?? "";
+  if (htmlInput) {
+    return { raw: htmlInput, html: htmlInput };
+  }
+  const contentInput =
+    pickString(payload, ["conteudo", "content", "body", "texto"]) ?? "";
+  if (!contentInput) {
+    return { raw: "", html: "" };
+  }
+  const structured = parseStructuredContent(contentInput);
+  if (structured) {
+    return { raw: structured.text, html: structured.html };
+  }
+  const hasHtml = /<[^>]+>/.test(contentInput);
+  if (hasHtml) {
+    return { raw: contentInput, html: contentInput };
+  }
+  return { raw: contentInput, html: marked.parse(contentInput) };
+};
+
 const renderPostHtml = (payload: PostPayload) => {
   const title =
     pickString(payload, ["meta_title", "metaTitle", "seo_title", "seoTitle"]) ??
@@ -282,12 +354,7 @@ const renderPostHtml = (payload: PostPayload) => {
     pickString(payload, ["publicado_em", "publishedAt", "date"]) ??
     pickString(payload, ["criado_em", "createdAt"]);
   const updatedAt = pickString(payload, ["atualizado_em", "updatedAt"]);
-  const contentRaw =
-    pickString(payload, ["contentHtml", "conteudo_html"]) ??
-    pickString(payload, ["conteudo", "content", "body", "texto"]) ??
-    "";
-  const hasHtml = /<[^>]+>/.test(contentRaw);
-  const contentHtml = hasHtml ? contentRaw : marked.parse(contentRaw);
+  const { raw: contentRaw, html: contentHtml } = resolveContentParts(payload);
   const keywords =
     Array.isArray(payload.palavras_chave) && payload.palavras_chave.length > 0
       ? payload.palavras_chave
@@ -391,34 +458,8 @@ const normalizeArray = (value: unknown): string[] | null => {
   return null;
 };
 
-const resolveContentHtml = (payload: PostPayload) => {
-  const html =
-    pickString(payload, [
-      "contentHtml",
-      "conteudo_html",
-      "html",
-      "bodyHtml",
-      "content_html",
-      "conteudoHtml",
-    ]) ?? "";
-  if (html) {
-    return html;
-  }
-  const content =
-    pickString(payload, ["conteudo", "content", "body", "texto"]) ?? "";
-  if (!content) {
-    return "";
-  }
-  const hasHtml = /<[^>]+>/.test(content);
-  if (hasHtml) {
-    return content;
-  }
-  try {
-    return marked.parse(content, { async: false });
-  } catch {
-    return "";
-  }
-};
+const resolveContentHtml = (payload: PostPayload) =>
+  resolveContentParts(payload).html;
 
 const localizePostAssets = async (payload: PostPayload, rootDir: string) => {
   const { lang, slug } = resolvePostIdentity(payload);

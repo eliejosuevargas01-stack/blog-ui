@@ -55,7 +55,7 @@ const toRoutePath = (rootDir: string, filePath: string) => {
     .join("/");
   const withoutIndex = relative.replace(/index\\.html$/i, "");
   const withoutExt = withoutIndex.replace(/\\.html$/i, "");
-  const normalized = `/posts/${withoutExt}`.replace(/\/+$/, "");
+  const normalized = `/${withoutExt}`.replace(/\/+$/, "");
   return normalized || "/";
 };
 
