@@ -20,6 +20,19 @@ type PostsByLang = Record<(typeof languages)[number], BlogPost[]>;
 const serializeJson = (value: unknown) =>
   JSON.stringify(value).replace(/</g, "\\u003c");
 
+const prunePostForSsg = (post: BlogPost): BlogPost => {
+  const { content, contentHtml, metaTags, images, ...rest } = post;
+  return rest;
+};
+
+const prunePostsForSsg = (postsByLang: PostsByLang): PostsByLang => {
+  const pruned = { ...postsByLang };
+  languages.forEach((lang) => {
+    pruned[lang] = postsByLang[lang].map(prunePostForSsg);
+  });
+  return pruned;
+};
+
 const resolveOrigin = () => {
   const env =
     process.env.SSG_ORIGIN ??
@@ -146,7 +159,7 @@ const run = async () => {
   const distDir = path.resolve(process.cwd(), "dist", "spa");
   const templatePath = path.join(distDir, "index.html");
   const template = await fs.readFile(templatePath, "utf-8");
-  const initialPosts = await loadPostsByLang();
+  const initialPosts = prunePostsForSsg(await loadPostsByLang());
   const routes = buildStaticRoutes();
 
   for (const route of routes) {

@@ -11,7 +11,12 @@ import {
   translations,
   type Language,
 } from "@/lib/i18n";
-import { fetchPublicPosts, getInitialPosts, isGuidePost, type BlogPost } from "@/lib/posts";
+import {
+  fetchLivePosts,
+  getInitialPosts,
+  isGuidePost,
+  type BlogPost,
+} from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
 
 interface IndexProps {
@@ -91,16 +96,16 @@ export default function Index({ lang }: IndexProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialPosts) {
-      return;
-    }
     let isMounted = true;
+    const shouldSurfaceError = !initialPosts;
 
     const loadPosts = async () => {
-      setStatus("loading");
+      if (!initialPosts) {
+        setStatus("loading");
+      }
       setErrorMessage(null);
       try {
-        const response = await fetchPublicPosts(lang);
+        const response = await fetchLivePosts(lang);
         if (!isMounted) {
           return;
         }
@@ -110,9 +115,13 @@ export default function Index({ lang }: IndexProps) {
         if (!isMounted) {
           return;
         }
-        setPosts([]);
-        setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : null);
+        if (shouldSurfaceError) {
+          setPosts([]);
+          setStatus("error");
+          setErrorMessage(error instanceof Error ? error.message : null);
+          return;
+        }
+        setStatus("idle");
       }
     };
 

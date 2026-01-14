@@ -24,7 +24,7 @@ import {
   type Language,
 } from "@/lib/i18n";
 import {
-  fetchPublicPosts,
+  fetchLivePosts,
   getRelatedPosts,
   getInitialPosts,
   isGuidePost,
@@ -73,16 +73,16 @@ export default function Post({ lang }: PostProps) {
   const articlesPath = buildPath(lang, "articles");
 
   useEffect(() => {
-    if (initialPosts) {
-      return;
-    }
     let isMounted = true;
+    const shouldSurfaceError = !initialPosts;
 
     const loadPosts = async () => {
-      setStatus("loading");
+      if (!initialPosts) {
+        setStatus("loading");
+      }
       setErrorMessage(null);
       try {
-        const response = await fetchPublicPosts(lang);
+        const response = await fetchLivePosts(lang);
         if (!isMounted) {
           return;
         }
@@ -92,9 +92,13 @@ export default function Post({ lang }: PostProps) {
         if (!isMounted) {
           return;
         }
-        setPosts([]);
-        setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : null);
+        if (shouldSurfaceError) {
+          setPosts([]);
+          setStatus("error");
+          setErrorMessage(error instanceof Error ? error.message : null);
+          return;
+        }
+        setStatus("idle");
       }
     };
 

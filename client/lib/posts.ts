@@ -1306,6 +1306,15 @@ export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
   return effective;
 }
 
+export async function fetchLivePosts(lang: Language): Promise<BlogPost[]> {
+  const posts = await fetchPosts(lang);
+  if (lang !== defaultLang && posts.length === 0) {
+    const basePosts = await fetchPosts(defaultLang);
+    return translatePosts(basePosts, lang);
+  }
+  return posts;
+}
+
 export async function editPost(
   _post: BlogPost,
   _lang: Language,
