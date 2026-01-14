@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
-    sourcemap: false,
+    sourcemap: true,
   },
   plugins: [react(), expressPlugin()],
   resolve: {
