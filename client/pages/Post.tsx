@@ -169,6 +169,8 @@ export default function Post({ lang }: PostProps) {
     post?.description ??
     post?.excerpt ??
     t.post.notFoundDescription;
+  const contentHtmlHasTags =
+    post?.contentHtml ? /<[^>]+>/.test(post.contentHtml) : false;
   const hasInlineHtml =
     post?.content && /<[^>]+>/.test(post.content) ? true : false;
   const publishedDate = post?.publishedAt ?? post?.date;
@@ -267,6 +269,20 @@ export default function Post({ lang }: PostProps) {
       return null;
     }
   }, [post?.content, post?.contentHtml, hasInlineHtml]);
+  const resolvedContentHtml = useMemo(() => {
+    if (!post?.contentHtml) {
+      return null;
+    }
+    if (contentHtmlHasTags) {
+      return normalizeHeadingHtml(post.contentHtml);
+    }
+    try {
+      const html = marked.parse(post.contentHtml, { async: false });
+      return normalizeHeadingHtml(html);
+    } catch {
+      return null;
+    }
+  }, [post?.contentHtml, contentHtmlHasTags]);
 
   const openImage = useCallback(
     (src: string, alt?: string) => {
@@ -502,12 +518,22 @@ export default function Post({ lang }: PostProps) {
 
                   <div className="mt-10">
                     {post.contentHtml ? (
-                      <div
-                        className={contentClassName}
-                        dangerouslySetInnerHTML={{
-                          __html: normalizeHeadingHtml(post.contentHtml),
-                        }}
-                      />
+                      resolvedContentHtml ? (
+                        <div
+                          className={contentClassName}
+                          dangerouslySetInnerHTML={{
+                            __html: resolvedContentHtml,
+                          }}
+                        />
+                      ) : (
+                        <div className={contentClassName}>
+                          {post.contentHtml
+                            .split(/\n\s*\n/)
+                            .map((paragraph, index) => (
+                              <p key={index}>{paragraph}</p>
+                            ))}
+                        </div>
+                      )
                     ) : post.content && hasInlineHtml ? (
                       <div
                         className={contentClassName}

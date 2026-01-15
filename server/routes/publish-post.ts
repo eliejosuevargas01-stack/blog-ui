@@ -6,7 +6,9 @@ import type { RequestHandler } from "express";
 
 type PostPayload = Record<string, unknown>;
 
-const supportedLangs = new Set(["pt", "en", "es"]);
+const languages = ["pt", "en", "es"] as const;
+type Language = (typeof languages)[number];
+const supportedLangs = new Set<Language>(languages);
 
 const pickString = (record: PostPayload, keys: string[]) => {
   for (const key of keys) {
@@ -69,6 +71,11 @@ const resolveSiteOrigin = () => {
   }
   return "http://localhost:3000";
 };
+
+const resolveTranslateConfig = () => ({
+  url: process.env.VITE_TRANSLATE_URL ?? "https://libretranslate.com/translate",
+  key: process.env.VITE_TRANSLATE_KEY ?? undefined,
+});
 
 const IMAGE_EXTENSIONS = new Set([
   ".jpg",
@@ -317,7 +324,11 @@ const resolveContentParts = (payload: PostPayload) => {
   const htmlInput =
     pickString(payload, ["contentHtml", "conteudo_html"]) ?? "";
   if (htmlInput) {
-    return { raw: htmlInput, html: htmlInput };
+    const hasHtml = /<[^>]+>/.test(htmlInput);
+    if (hasHtml) {
+      return { raw: htmlInput, html: htmlInput };
+    }
+    return { raw: htmlInput, html: marked.parse(htmlInput) };
   }
   const contentInput =
     pickString(payload, ["conteudo", "content", "body", "texto"]) ?? "";
@@ -456,6 +467,186 @@ const normalizeArray = (value: unknown): string[] | null => {
     return trimmed.split(/[,;]+/g).map((item) => item.trim()).filter(Boolean);
   }
   return null;
+};
+
+const MAX_TRANSLATE_CHARS = 4000;
+const HTML_SPLIT_REGEX =
+  /(<\/(?:p|h[1-6]|li|blockquote|pre|code|section|article|div)>|<br\s*\/?>)/gi;
+const HTML_BOUNDARY_REGEX =
+  /^(<\/(?:p|h[1-6]|li|blockquote|pre|code|section|article|div)>|<br\s*\/?>)$/i;
+
+const splitTextUnits = (value: string) => {
+  const parts = value.split(/\n\s*\n+/g).filter((part) => part.trim());
+  return parts.length > 0 ? parts : [value];
+};
+
+const splitHtmlUnits = (value: string) => {
+  const parts = value.split(HTML_SPLIT_REGEX).filter(Boolean);
+  if (parts.length <= 1) {
+    return [value];
+  }
+  const units: string[] = [];
+  let buffer = "";
+  for (const part of parts) {
+    buffer += part;
+    if (HTML_BOUNDARY_REGEX.test(part)) {
+      units.push(buffer);
+      buffer = "";
+    }
+  }
+  if (buffer) {
+    units.push(buffer);
+  }
+  return units.length > 0 ? units : [value];
+};
+
+const splitByLength = (value: string, maxLength: number) => {
+  const chunks: string[] = [];
+  for (let index = 0; index < value.length; index += maxLength) {
+    chunks.push(value.slice(index, index + maxLength));
+  }
+  return chunks.length > 0 ? chunks : [value];
+};
+
+const splitBySentences = (value: string) => {
+  const matches = value.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
+  if (!matches) {
+    return [value];
+  }
+  const sentences = matches.map((sentence) => sentence.trim()).filter(Boolean);
+  return sentences.length > 0 ? sentences : [value];
+};
+
+const splitLongTextUnits = (units: string[], maxLength: number) => {
+  const expanded: string[] = [];
+  for (const unit of units) {
+    if (unit.length <= maxLength) {
+      expanded.push(unit);
+      continue;
+    }
+    const sentences = splitBySentences(unit);
+    for (const sentence of sentences) {
+      if (sentence.length <= maxLength) {
+        expanded.push(sentence);
+      } else {
+        expanded.push(...splitByLength(sentence, maxLength));
+      }
+    }
+  }
+  return expanded.length > 0 ? expanded : units;
+};
+
+const groupUnits = (
+  units: string[],
+  maxLength: number,
+  separator: string,
+) => {
+  const chunks: string[] = [];
+  let buffer = "";
+
+  for (const unit of units) {
+    const candidate = buffer ? `${buffer}${separator}${unit}` : unit;
+    if (candidate.length > maxLength && buffer) {
+      chunks.push(buffer);
+      buffer = unit;
+      continue;
+    }
+    buffer = candidate;
+  }
+
+  if (buffer) {
+    chunks.push(buffer);
+  }
+
+  return chunks.length > 0 ? chunks : [units.join(separator)];
+};
+
+const translateChunk = async (
+  value: string,
+  from: Language,
+  to: Language,
+  format: "text" | "html",
+) => {
+  const { url, key } = resolveTranslateConfig();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      q: value,
+      source: from,
+      target: to,
+      api_key: key,
+      format,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Translate failed (${response.status})`);
+  }
+  const data = (await response.json()) as { translatedText?: string; error?: string };
+  if (!data || data.error || !data.translatedText) {
+    throw new Error(data?.error ?? "Translate failed");
+  }
+  return data.translatedText;
+};
+
+const safeTranslateChunk = async (
+  value: string,
+  from: Language,
+  to: Language,
+  format: "text" | "html",
+) => {
+  try {
+    return await translateChunk(value, from, to, format);
+  } catch {
+    return value;
+  }
+};
+
+const translateInChunks = async (
+  value: string,
+  from: Language,
+  to: Language,
+  format: "text" | "html",
+) => {
+  const separator = format === "text" ? "\n\n" : "";
+  const baseUnits =
+    format === "html" ? splitHtmlUnits(value) : splitTextUnits(value);
+  const units =
+    format === "html"
+      ? baseUnits
+      : splitLongTextUnits(baseUnits, MAX_TRANSLATE_CHARS);
+  const chunks = groupUnits(units, MAX_TRANSLATE_CHARS, separator);
+  if (chunks.length === 1) {
+    return safeTranslateChunk(chunks[0] ?? value, from, to, format);
+  }
+  const translated: string[] = [];
+  for (const chunk of chunks) {
+    translated.push(await safeTranslateChunk(chunk, from, to, format));
+  }
+  return translated.join(separator);
+};
+
+const translateValue = async (
+  value: string | undefined,
+  from: Language,
+  to: Language,
+  format: "text" | "html",
+) => {
+  if (!value) {
+    return value;
+  }
+  if (from === to) {
+    return value;
+  }
+  if (!value.trim()) {
+    return value;
+  }
+  if (value.length > MAX_TRANSLATE_CHARS) {
+    return translateInChunks(value, from, to, format);
+  }
+  return safeTranslateChunk(value, from, to, format);
 };
 
 const resolveContentHtml = (payload: PostPayload) =>
@@ -660,6 +851,77 @@ const buildSitemap = async (rootDir: string, origin: string) => {
   await fs.writeFile(path.join(rootDir, "sitemap.xml"), xml, "utf-8");
 };
 
+const buildSlugMap = (slug: string): Record<Language, string> => ({
+  pt: slug,
+  en: slug,
+  es: slug,
+});
+
+const applyTranslatedValue = (
+  payload: PostPayload,
+  keys: string[],
+  value?: string,
+) => {
+  if (!value) {
+    return;
+  }
+  keys.forEach((key) => {
+    payload[key] = value;
+  });
+};
+
+const translatePostPayload = async (
+  payload: PostPayload,
+  sourceLang: Language,
+  targetLang: Language,
+  slugMap: Record<Language, string>,
+) => {
+  const { meta } = renderPostHtml(payload);
+  const translated: PostPayload = {
+    ...payload,
+    lang: targetLang,
+    slug: slugMap[targetLang],
+    slugs: slugMap,
+  };
+
+  const [title, description, contentRaw, contentHtml, imageAlt] =
+    await Promise.all([
+      translateValue(meta.title, sourceLang, targetLang, "text"),
+      translateValue(meta.description, sourceLang, targetLang, "text"),
+      translateValue(meta.contentRaw, sourceLang, targetLang, "text"),
+      translateValue(meta.contentHtml, sourceLang, targetLang, "html"),
+      translateValue(meta.imageAlt, sourceLang, targetLang, "text"),
+    ]);
+
+  applyTranslatedValue(
+    translated,
+    ["meta_title", "metaTitle", "seo_title", "seoTitle", "titulo", "title", "headline"],
+    title,
+  );
+  applyTranslatedValue(
+    translated,
+    ["meta_description", "metaDescription", "resumo", "excerpt", "summary", "description"],
+    description,
+  );
+  applyTranslatedValue(
+    translated,
+    ["contentHtml", "conteudo_html"],
+    contentHtml,
+  );
+  applyTranslatedValue(
+    translated,
+    ["conteudo", "content", "body", "texto"],
+    contentRaw,
+  );
+  applyTranslatedValue(
+    translated,
+    ["cover_image_alt", "imageAlt", "image_alt"],
+    imageAlt,
+  );
+
+  return translated;
+};
+
 const publishPost = async (payload: PostPayload, rootDir: string) => {
   const normalizedPayload = await localizePostAssets(payload, rootDir);
   const { lang, slug, html, meta } = renderPostHtml(normalizedPayload);
@@ -707,12 +969,46 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
         ? payload.posts
         : [payload];
 
+    const published = [];
+
     for (const post of posts) {
-      await publishPost(post as PostPayload, rootDir);
+      const basePayload = post as PostPayload;
+      const { lang: sourceLang, slug } = resolvePostIdentity(basePayload);
+      if (!slug) {
+        throw new Error("Missing slug");
+      }
+      const slugMap = buildSlugMap(slug);
+      const seedPayload: PostPayload = {
+        ...basePayload,
+        lang: sourceLang,
+        slug,
+        slugs: slugMap,
+      };
+
+      const variants = await Promise.all(
+        languages.map(async (targetLang) =>
+          targetLang === sourceLang
+            ? seedPayload
+            : translatePostPayload(seedPayload, sourceLang, targetLang, slugMap),
+        ),
+      );
+
+      for (const variant of variants) {
+        await publishPost(variant, rootDir);
+      }
+
+      published.push({
+        slug,
+        links: {
+          pt: `${origin}/pt/post/${slugMap.pt}`,
+          en: `${origin}/en/post/${slugMap.en}`,
+          es: `${origin}/es/post/${slugMap.es}`,
+        },
+      });
     }
     await buildSitemap(rootDir, origin);
 
-    res.json({ ok: true, count: posts.length });
+    res.json({ ok: true, count: posts.length, posts: published });
   } catch (error) {
     res
       .status(500)
