@@ -428,6 +428,21 @@ export interface Translation {
       missingInGeneratedLabel: string;
       noneMissing: string;
     };
+    backend: {
+      title: string;
+      subtitle: string;
+      rebuildLabel: string;
+      rebuildSuccessTitle: string;
+      rebuildSuccessDescription: string;
+      rebuildErrorTitle: string;
+      htmlTitle: string;
+      htmlSubtitle: string;
+      htmlEmpty: string;
+      tipsTitle: string;
+      tipsSubtitle: string;
+      tipRebuild: string;
+      tipLinks: string;
+    };
     actions: {
       edit: string;
       close: string;
@@ -890,6 +905,25 @@ export const translations: Record<Language, Translation> = {
         missingInGeneratedLabel: "Sitemap sem HTML gerado",
         noneMissing: "Tudo certo por aqui.",
       },
+      backend: {
+        title: "Tarefas do backend",
+        subtitle:
+          "Ações rápidas para manter os HTMLs e o sitemap sincronizados.",
+        rebuildLabel: "Reconstruir sitemap",
+        rebuildSuccessTitle: "Sitemap reconstruído",
+        rebuildSuccessDescription:
+          "O sitemap foi atualizado com o HTML gerado mais recente.",
+        rebuildErrorTitle: "Falha ao reconstruir sitemap",
+        htmlTitle: "HTMLs por idioma",
+        htmlSubtitle: "Acesse as versões publicadas em cada idioma.",
+        htmlEmpty: "Nenhum HTML disponível para exibir.",
+        tipsTitle: "Dicas rápidas",
+        tipsSubtitle: "Boas práticas para manter o blog sincronizado.",
+        tipRebuild:
+          "Reconstrua o sitemap após grandes lotes de publicação para garantir indexação.",
+        tipLinks:
+          "Use os links por idioma para validar traduções e conteúdos publicados.",
+      },
       actions: {
         edit: "Editar",
         close: "Fechar",
@@ -1345,6 +1379,24 @@ export const translations: Record<Language, Translation> = {
         missingInSitemapLabel: "Generated outside the sitemap",
         missingInGeneratedLabel: "Sitemap without generated HTML",
         noneMissing: "Everything is in sync.",
+      },
+      backend: {
+        title: "Backend tasks",
+        subtitle: "Quick actions to keep HTMLs and sitemap in sync.",
+        rebuildLabel: "Rebuild sitemap",
+        rebuildSuccessTitle: "Sitemap rebuilt",
+        rebuildSuccessDescription:
+          "The sitemap was updated with the latest generated HTML.",
+        rebuildErrorTitle: "Failed to rebuild sitemap",
+        htmlTitle: "HTMLs by language",
+        htmlSubtitle: "Access the published versions per language.",
+        htmlEmpty: "No HTML available to display.",
+        tipsTitle: "Quick tips",
+        tipsSubtitle: "Best practices to keep the blog aligned.",
+        tipRebuild:
+          "Rebuild the sitemap after large publish batches to ensure indexing.",
+        tipLinks:
+          "Use language links to validate translations and published content.",
       },
       actions: {
         edit: "Edit",
@@ -1804,6 +1856,25 @@ export const translations: Record<Language, Translation> = {
         missingInSitemapLabel: "Generadas fuera del sitemap",
         missingInGeneratedLabel: "Sitemap sin HTML generado",
         noneMissing: "Todo está sincronizado.",
+      },
+      backend: {
+        title: "Tareas del backend",
+        subtitle:
+          "Acciones rápidas para mantener los HTML y el sitemap sincronizados.",
+        rebuildLabel: "Reconstruir sitemap",
+        rebuildSuccessTitle: "Sitemap reconstruido",
+        rebuildSuccessDescription:
+          "El sitemap se actualizó con el HTML generado más reciente.",
+        rebuildErrorTitle: "Fallo al reconstruir sitemap",
+        htmlTitle: "HTML por idioma",
+        htmlSubtitle: "Accede a las versiones publicadas en cada idioma.",
+        htmlEmpty: "No hay HTML disponible para mostrar.",
+        tipsTitle: "Consejos rápidos",
+        tipsSubtitle: "Buenas prácticas para mantener el blog sincronizado.",
+        tipRebuild:
+          "Reconstruye el sitemap después de grandes lotes para garantizar indexación.",
+        tipLinks:
+          "Usa los enlaces por idioma para validar traducciones y contenidos publicados.",
       },
       actions: {
         edit: "Editar",

@@ -20,7 +20,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { allowedCategories, buildPath, translations, type Language } from "@/lib/i18n";
+import {
+  allowedCategories,
+  buildPath,
+  buildPostPath,
+  languageLabels,
+  languages,
+  translations,
+  type Language,
+} from "@/lib/i18n";
 import {
   deletePost,
   editPost,
@@ -321,6 +329,7 @@ export default function Admin({ lang }: AdminProps) {
   const [generatedUpdatedAt, setGeneratedUpdatedAt] = useState<string | null>(
     null,
   );
+  const [tasksLoading, setTasksLoading] = useState(false);
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
@@ -389,6 +398,29 @@ export default function Admin({ lang }: AdminProps) {
       setGeneratedStatus(null);
     } finally {
       setGeneratedLoading(false);
+    }
+  };
+
+  const handleRebuildSitemap = async () => {
+    setTasksLoading(true);
+    try {
+      const response = await fetch("/api/rebuild-sitemap", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+      await loadGeneratedStatus();
+      toast({
+        title: t.admin.backend.rebuildSuccessTitle,
+        description: t.admin.backend.rebuildSuccessDescription,
+      });
+    } catch (error) {
+      toast({
+        title: t.admin.backend.rebuildErrorTitle,
+        description: error instanceof Error ? error.message : "Request failed",
+        variant: "destructive",
+      });
+    } finally {
+      setTasksLoading(false);
     }
   };
 
@@ -511,6 +543,25 @@ export default function Admin({ lang }: AdminProps) {
   const showError = isAuthenticated && status === "error";
   const showEmpty =
     isAuthenticated && status === "idle" && filteredPosts.length === 0;
+
+  const htmlLinks = useMemo(() => {
+    return posts
+      .map((post) => {
+        const links: Partial<Record<Language, string>> = {};
+        languages.forEach((code) => {
+          const slug = post.slugs?.[code] ?? post.slug ?? post.id;
+          if (slug) {
+            links[code] = buildPostPath(code, slug);
+          }
+        });
+        return {
+          id: post.id,
+          title: post.title,
+          links,
+        };
+      })
+      .filter((entry) => Object.keys(entry.links).length > 0);
+  }, [posts]);
 
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1079,6 +1130,107 @@ export default function Admin({ lang }: AdminProps) {
                       )}
                     </>
                   )}
+                </div>
+                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {t.admin.backend.title}
+                      </h3>
+                      <p className="text-sm text-foreground/80">
+                        {t.admin.backend.subtitle}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadGeneratedStatus}
+                        disabled={generatedLoading || tasksLoading}
+                      >
+                        {generatedLoading
+                          ? `${t.admin.generated.refresh}...`
+                          : t.admin.generated.refresh}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleRebuildSitemap}
+                        disabled={tasksLoading}
+                      >
+                        {tasksLoading
+                          ? `${t.admin.backend.rebuildLabel}...`
+                          : t.admin.backend.rebuildLabel}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          {t.admin.backend.htmlTitle}
+                        </CardTitle>
+                        <CardDescription>
+                          {t.admin.backend.htmlSubtitle}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {htmlLinks.length === 0 ? (
+                          <p className="text-xs text-foreground/80">
+                            {t.admin.backend.htmlEmpty}
+                          </p>
+                        ) : (
+                          <div className="max-h-80 space-y-3 overflow-auto text-xs text-foreground/80">
+                            {htmlLinks.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3"
+                              >
+                                <div className="text-sm font-semibold text-foreground">
+                                  {entry.title}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {languages.map((code) => {
+                                    const href = entry.links[code];
+                                    if (!href) {
+                                      return null;
+                                    }
+                                    return (
+                                      <a
+                                        key={`${entry.id}-${code}`}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground hover:text-primary"
+                                      >
+                                        {languageLabels[code]}
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          {t.admin.backend.tipsTitle}
+                        </CardTitle>
+                        <CardDescription>
+                          {t.admin.backend.tipsSubtitle}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 text-xs text-foreground/80">
+                          <p>{t.admin.backend.tipRebuild}</p>
+                          <p>{t.admin.backend.tipLinks}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
                 {showLoading && (
                   <div className="space-y-4">
