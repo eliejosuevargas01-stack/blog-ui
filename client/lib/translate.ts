@@ -238,6 +238,9 @@ const translateValue = async (
   lang: Language,
   format: "text" | "html",
 ) => {
+  if (typeof window !== "undefined") {
+    return value;
+  }
   if (!value) {
     return value;
   }
@@ -260,6 +263,9 @@ export async function translatePosts(
   posts: BlogPost[],
   lang: Language,
 ): Promise<BlogPost[]> {
+  if (typeof window !== "undefined") {
+    return posts;
+  }
   if (lang === "pt") {
     return posts;
   }
