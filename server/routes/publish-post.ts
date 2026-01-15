@@ -37,6 +37,15 @@ const resolvePostIdentity = (payload: PostPayload) => {
   return { lang, slug: normalizeSlug(slugRaw) };
 };
 
+const slugifyFromText = (value: string) => {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, " ")
+    .replace(/\s+/g, "-");
+  return normalizeSlug(normalized);
+};
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -851,11 +860,37 @@ const buildSitemap = async (rootDir: string, origin: string) => {
   await fs.writeFile(path.join(rootDir, "sitemap.xml"), xml, "utf-8");
 };
 
-const buildSlugMap = (slug: string): Record<Language, string> => ({
-  pt: slug,
-  en: slug,
-  es: slug,
-});
+const buildSlugMap = async (
+  payload: PostPayload,
+  sourceLang: Language,
+  slug: string,
+) => {
+  const { meta } = renderPostHtml(payload);
+  const map: Record<Language, string> = {
+    pt: slug,
+    en: slug,
+    es: slug,
+  };
+
+  for (const lang of languages) {
+    if (lang === sourceLang) {
+      continue;
+    }
+    const translatedTitle = await translateValue(
+      meta.title,
+      sourceLang,
+      lang,
+      "text",
+    );
+    const candidate =
+      translatedTitle && translatedTitle.trim()
+        ? slugifyFromText(translatedTitle)
+        : "";
+    map[lang] = candidate || slug;
+  }
+
+  return map;
+};
 
 const applyTranslatedValue = (
   payload: PostPayload,
@@ -884,14 +919,31 @@ const translatePostPayload = async (
     slugs: slugMap,
   };
 
-  const [title, description, contentRaw, contentHtml, imageAlt] =
-    await Promise.all([
-      translateValue(meta.title, sourceLang, targetLang, "text"),
-      translateValue(meta.description, sourceLang, targetLang, "text"),
-      translateValue(meta.contentRaw, sourceLang, targetLang, "text"),
-      translateValue(meta.contentHtml, sourceLang, targetLang, "html"),
-      translateValue(meta.imageAlt, sourceLang, targetLang, "text"),
-    ]);
+  const title = await translateValue(meta.title, sourceLang, targetLang, "text");
+  const description = await translateValue(
+    meta.description,
+    sourceLang,
+    targetLang,
+    "text",
+  );
+  const contentRaw = await translateValue(
+    meta.contentRaw,
+    sourceLang,
+    targetLang,
+    "text",
+  );
+  const contentHtml = await translateValue(
+    meta.contentHtml,
+    sourceLang,
+    targetLang,
+    "html",
+  );
+  const imageAlt = await translateValue(
+    meta.imageAlt,
+    sourceLang,
+    targetLang,
+    "text",
+  );
 
   applyTranslatedValue(
     translated,
@@ -970,6 +1022,7 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
         : [payload];
 
     const published = [];
+    const logs: string[] = [];
 
     for (const post of posts) {
       const basePayload = post as PostPayload;
@@ -977,7 +1030,8 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
       if (!slug) {
         throw new Error("Missing slug");
       }
-      const slugMap = buildSlugMap(slug);
+      logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
+      const slugMap = await buildSlugMap(basePayload, sourceLang, slug);
       const seedPayload: PostPayload = {
         ...basePayload,
         lang: sourceLang,
@@ -995,6 +1049,9 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
 
       for (const variant of variants) {
         await publishPost(variant, rootDir);
+        const targetLang = resolvePostIdentity(variant).lang;
+        const targetSlug = resolvePostIdentity(variant).slug || slugMap[targetLang];
+        logs.push(`publish:done lang=${targetLang} slug=${targetSlug}`);
       }
 
       published.push({
@@ -1005,10 +1062,12 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
           es: `${origin}/es/post/${slugMap.es}`,
         },
       });
+      logs.push(`publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`);
     }
     await buildSitemap(rootDir, origin);
+    logs.push("sitemap:rebuilt");
 
-    res.json({ ok: true, count: posts.length, posts: published });
+    res.json({ ok: true, count: posts.length, posts: published, logs });
   } catch (error) {
     res
       .status(500)
