@@ -790,85 +790,71 @@ const publishPost = async (payload: PostPayload, rootDir: string) => {
   await savePostIndex(rootDir, posts);
 };
 
-const createPublishHandler = (forcedLang?: Language): RequestHandler => {
-  return async (req, res) => {
-    const token = process.env.PUBLISH_TOKEN;
-    if (token) {
-      const incoming =
-        req.header("x-publish-token") ??
-        req.header("authorization")?.replace(/^Bearer\\s+/i, "") ??
-        "";
-      if (incoming !== token) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
+export const handlePublishPost: RequestHandler = async (req, res) => {
+  const token = process.env.PUBLISH_TOKEN;
+  if (token) {
+    const incoming =
+      req.header("x-publish-token") ??
+      req.header("authorization")?.replace(/^Bearer\\s+/i, "") ??
+      "";
+    if (incoming !== token) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
+  }
 
-    const rootDir =
-      process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
-    const origin = resolveSiteOrigin();
+  const rootDir =
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
+  const origin = resolveSiteOrigin();
 
-    try {
-      const payload = req.body;
-      const posts = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.posts)
-          ? payload.posts
-          : [payload];
+  try {
+    const payload = req.body;
+    const posts = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.posts)
+        ? payload.posts
+        : [payload];
 
-      const published = [];
-      const logs: string[] = [];
+    const published = [];
+    const logs: string[] = [];
 
-      for (const post of posts) {
-        const basePayload = post as PostPayload;
-        const preparedPayload = forcedLang
-          ? { ...basePayload, lang: forcedLang }
-          : basePayload;
-        const { lang: sourceLang, slug } = resolvePostIdentity(preparedPayload);
-        if (!slug) {
-          throw new Error("Missing slug");
-        }
-        logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
-        const slugMap = buildSlugMap(preparedPayload, slug);
-        const entryPayload: PostPayload = {
-          ...preparedPayload,
-          lang: sourceLang,
-          slug,
-          slugs: slugMap,
-        };
-
-        await publishPost(entryPayload, rootDir);
-        logs.push(`publish:done lang=${sourceLang} slug=${slug}`);
-
-        published.push({
-          slug,
-          links: {
-            pt: `${origin}/pt/post/${slugMap.pt}`,
-            en: `${origin}/en/post/${slugMap.en}`,
-            es: `${origin}/es/post/${slugMap.es}`,
-          },
-        });
-        logs.push(
-          `publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`,
-        );
+    for (const post of posts) {
+      const basePayload = post as PostPayload;
+      const { lang: sourceLang, slug } = resolvePostIdentity(basePayload);
+      if (!slug) {
+        throw new Error("Missing slug");
       }
-      await buildSitemap(rootDir, origin);
-      logs.push("sitemap:rebuilt");
+      logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
+      const slugMap = buildSlugMap(basePayload, slug);
+      const entryPayload: PostPayload = {
+        ...basePayload,
+        lang: sourceLang,
+        slug,
+        slugs: slugMap,
+      };
 
-      res.json({ ok: true, count: posts.length, posts: published, logs });
-    } catch (error) {
-      res
-        .status(500)
-        .json({
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+      await publishPost(entryPayload, rootDir);
+      logs.push(`publish:done lang=${sourceLang} slug=${slug}`);
+
+      published.push({
+        slug,
+        links: {
+          pt: `${origin}/pt/post/${slugMap.pt}`,
+          en: `${origin}/en/post/${slugMap.en}`,
+          es: `${origin}/es/post/${slugMap.es}`,
+        },
+      });
+      logs.push(`publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`);
     }
-  };
+    await buildSitemap(rootDir, origin);
+    logs.push("sitemap:rebuilt");
+
+    res.json({ ok: true, count: posts.length, posts: published, logs });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
 };
-
-export const handlePublishPost = createPublishHandler();
-export const handlePublishPostPt = createPublishHandler("pt");
-export const handlePublishPostEn = createPublishHandler("en");
-export const handlePublishPostEs = createPublishHandler("es");
 
 export const handleRebuildSitemap: RequestHandler = async (_req, res) => {
   const rootDir =
