@@ -671,6 +671,7 @@ export default function Admin({ lang }: AdminProps) {
         return next;
       });
       toast({ title: t.admin.toast.deleteSuccess });
+      await loadGeneratedStatus();
     } catch (error) {
       toast({
         title: t.admin.toast.deleteError,

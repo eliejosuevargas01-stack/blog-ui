@@ -37,14 +37,6 @@ const resolvePostIdentity = (payload: PostPayload) => {
   return { lang, slug: normalizeSlug(slugRaw) };
 };
 
-const slugifyFromText = (value: string) => {
-  const normalized = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9\s-]/g, " ")
-    .replace(/\s+/g, "-");
-  return normalizeSlug(normalized);
-};
 
 const escapeHtml = (value: string) =>
   value
@@ -81,10 +73,6 @@ const resolveSiteOrigin = () => {
   return "http://localhost:3000";
 };
 
-const resolveTranslateConfig = () => ({
-  url: process.env.VITE_TRANSLATE_URL ?? "https://libretranslate.com/translate",
-  key: process.env.VITE_TRANSLATE_KEY ?? undefined,
-});
 
 const IMAGE_EXTENSIONS = new Set([
   ".jpg",
@@ -478,186 +466,6 @@ const normalizeArray = (value: unknown): string[] | null => {
   return null;
 };
 
-const MAX_TRANSLATE_CHARS = 4000;
-const HTML_SPLIT_REGEX =
-  /(<\/(?:p|h[1-6]|li|blockquote|pre|code|section|article|div)>|<br\s*\/?>)/gi;
-const HTML_BOUNDARY_REGEX =
-  /^(<\/(?:p|h[1-6]|li|blockquote|pre|code|section|article|div)>|<br\s*\/?>)$/i;
-
-const splitTextUnits = (value: string) => {
-  const parts = value.split(/\n\s*\n+/g).filter((part) => part.trim());
-  return parts.length > 0 ? parts : [value];
-};
-
-const splitHtmlUnits = (value: string) => {
-  const parts = value.split(HTML_SPLIT_REGEX).filter(Boolean);
-  if (parts.length <= 1) {
-    return [value];
-  }
-  const units: string[] = [];
-  let buffer = "";
-  for (const part of parts) {
-    buffer += part;
-    if (HTML_BOUNDARY_REGEX.test(part)) {
-      units.push(buffer);
-      buffer = "";
-    }
-  }
-  if (buffer) {
-    units.push(buffer);
-  }
-  return units.length > 0 ? units : [value];
-};
-
-const splitByLength = (value: string, maxLength: number) => {
-  const chunks: string[] = [];
-  for (let index = 0; index < value.length; index += maxLength) {
-    chunks.push(value.slice(index, index + maxLength));
-  }
-  return chunks.length > 0 ? chunks : [value];
-};
-
-const splitBySentences = (value: string) => {
-  const matches = value.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
-  if (!matches) {
-    return [value];
-  }
-  const sentences = matches.map((sentence) => sentence.trim()).filter(Boolean);
-  return sentences.length > 0 ? sentences : [value];
-};
-
-const splitLongTextUnits = (units: string[], maxLength: number) => {
-  const expanded: string[] = [];
-  for (const unit of units) {
-    if (unit.length <= maxLength) {
-      expanded.push(unit);
-      continue;
-    }
-    const sentences = splitBySentences(unit);
-    for (const sentence of sentences) {
-      if (sentence.length <= maxLength) {
-        expanded.push(sentence);
-      } else {
-        expanded.push(...splitByLength(sentence, maxLength));
-      }
-    }
-  }
-  return expanded.length > 0 ? expanded : units;
-};
-
-const groupUnits = (
-  units: string[],
-  maxLength: number,
-  separator: string,
-) => {
-  const chunks: string[] = [];
-  let buffer = "";
-
-  for (const unit of units) {
-    const candidate = buffer ? `${buffer}${separator}${unit}` : unit;
-    if (candidate.length > maxLength && buffer) {
-      chunks.push(buffer);
-      buffer = unit;
-      continue;
-    }
-    buffer = candidate;
-  }
-
-  if (buffer) {
-    chunks.push(buffer);
-  }
-
-  return chunks.length > 0 ? chunks : [units.join(separator)];
-};
-
-const translateChunk = async (
-  value: string,
-  from: Language,
-  to: Language,
-  format: "text" | "html",
-) => {
-  const { url, key } = resolveTranslateConfig();
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      q: value,
-      source: from,
-      target: to,
-      api_key: key,
-      format,
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Translate failed (${response.status})`);
-  }
-  const data = (await response.json()) as { translatedText?: string; error?: string };
-  if (!data || data.error || !data.translatedText) {
-    throw new Error(data?.error ?? "Translate failed");
-  }
-  return data.translatedText;
-};
-
-const safeTranslateChunk = async (
-  value: string,
-  from: Language,
-  to: Language,
-  format: "text" | "html",
-) => {
-  try {
-    return await translateChunk(value, from, to, format);
-  } catch {
-    return value;
-  }
-};
-
-const translateInChunks = async (
-  value: string,
-  from: Language,
-  to: Language,
-  format: "text" | "html",
-) => {
-  const separator = format === "text" ? "\n\n" : "";
-  const baseUnits =
-    format === "html" ? splitHtmlUnits(value) : splitTextUnits(value);
-  const units =
-    format === "html"
-      ? baseUnits
-      : splitLongTextUnits(baseUnits, MAX_TRANSLATE_CHARS);
-  const chunks = groupUnits(units, MAX_TRANSLATE_CHARS, separator);
-  if (chunks.length === 1) {
-    return safeTranslateChunk(chunks[0] ?? value, from, to, format);
-  }
-  const translated: string[] = [];
-  for (const chunk of chunks) {
-    translated.push(await safeTranslateChunk(chunk, from, to, format));
-  }
-  return translated.join(separator);
-};
-
-const translateValue = async (
-  value: string | undefined,
-  from: Language,
-  to: Language,
-  format: "text" | "html",
-) => {
-  if (!value) {
-    return value;
-  }
-  if (from === to) {
-    return value;
-  }
-  if (!value.trim()) {
-    return value;
-  }
-  if (value.length > MAX_TRANSLATE_CHARS) {
-    return translateInChunks(value, from, to, format);
-  }
-  return safeTranslateChunk(value, from, to, format);
-};
-
 const resolveContentHtml = (payload: PostPayload) =>
   resolveContentParts(payload).html;
 
@@ -860,119 +668,104 @@ const buildSitemap = async (rootDir: string, origin: string) => {
   await fs.writeFile(path.join(rootDir, "sitemap.xml"), xml, "utf-8");
 };
 
-const buildSlugMap = async (
+const resolveDeleteCandidates = (
   payload: PostPayload,
-  sourceLang: Language,
-  slug: string,
+  posts: PostPayload[],
 ) => {
-  const { meta } = renderPostHtml(payload);
-  const map: Record<Language, string> = {
-    pt: slug,
-    en: slug,
-    es: slug,
-  };
+  const slugRaw = pickString(payload, ["slug", "postSlug"]) ?? "";
+  const slug = slugRaw ? normalizeSlug(slugRaw) : "";
+  const id = pickString(payload, ["id", "uuid"]) ?? "";
+  const slugsPayload = payload.slugs;
+  const slugs =
+    slugsPayload && typeof slugsPayload === "object"
+      ? Object.values(slugsPayload as Record<string, unknown>)
+          .map((value) => (typeof value === "string" ? normalizeSlug(value) : ""))
+          .filter(Boolean)
+      : [];
 
-  for (const lang of languages) {
-    if (lang === sourceLang) {
-      continue;
+  return posts.filter((post) => {
+    if (!post || typeof post !== "object") {
+      return false;
     }
-    const translatedTitle = await translateValue(
-      meta.title,
-      sourceLang,
-      lang,
-      "text",
-    );
-    const candidate =
-      translatedTitle && translatedTitle.trim()
-        ? slugifyFromText(translatedTitle)
-        : "";
-    map[lang] = candidate || slug;
-  }
+    const record = post as Record<string, unknown>;
+    const postId = pickString(record, ["id", "uuid"]) ?? "";
+    const postSlug = pickString(record, ["slug"]) ?? "";
+    const postSlugsRaw = record.slugs;
+    const postSlugs =
+      postSlugsRaw && typeof postSlugsRaw === "object"
+        ? Object.values(postSlugsRaw as Record<string, unknown>)
+            .map((value) =>
+              typeof value === "string" ? normalizeSlug(value) : "",
+            )
+            .filter(Boolean)
+        : [];
 
-  return map;
-};
-
-const applyTranslatedValue = (
-  payload: PostPayload,
-  keys: string[],
-  value?: string,
-) => {
-  if (!value) {
-    return;
-  }
-  keys.forEach((key) => {
-    payload[key] = value;
+    if (id && postId === id) {
+      return true;
+    }
+    if (slug && normalizeSlug(postSlug) === slug) {
+      return true;
+    }
+    if (slug && postSlugs.includes(slug)) {
+      return true;
+    }
+    if (slugs.length > 0 && postSlugs.some((value) => slugs.includes(value))) {
+      return true;
+    }
+    if (slugs.length > 0 && slugs.includes(normalizeSlug(postSlug))) {
+      return true;
+    }
+    return false;
   });
 };
 
-const translatePostPayload = async (
-  payload: PostPayload,
-  sourceLang: Language,
-  targetLang: Language,
-  slugMap: Record<Language, string>,
-) => {
-  const { meta } = renderPostHtml(payload);
-  const translated: PostPayload = {
-    ...payload,
-    lang: targetLang,
-    slug: slugMap[targetLang],
-    slugs: slugMap,
-  };
-
-  const title = await translateValue(meta.title, sourceLang, targetLang, "text");
-  const description = await translateValue(
-    meta.description,
-    sourceLang,
-    targetLang,
-    "text",
-  );
-  const contentRaw = await translateValue(
-    meta.contentRaw,
-    sourceLang,
-    targetLang,
-    "text",
-  );
-  const contentHtml = await translateValue(
-    meta.contentHtml,
-    sourceLang,
-    targetLang,
-    "html",
-  );
-  const imageAlt = await translateValue(
-    meta.imageAlt,
-    sourceLang,
-    targetLang,
-    "text",
-  );
-
-  applyTranslatedValue(
-    translated,
-    ["meta_title", "metaTitle", "seo_title", "seoTitle", "titulo", "title", "headline"],
-    title,
-  );
-  applyTranslatedValue(
-    translated,
-    ["meta_description", "metaDescription", "resumo", "excerpt", "summary", "description"],
-    description,
-  );
-  applyTranslatedValue(
-    translated,
-    ["contentHtml", "conteudo_html"],
-    contentHtml,
-  );
-  applyTranslatedValue(
-    translated,
-    ["conteudo", "content", "body", "texto"],
-    contentRaw,
-  );
-  applyTranslatedValue(
-    translated,
-    ["cover_image_alt", "imageAlt", "image_alt"],
-    imageAlt,
-  );
-
-  return translated;
+const deletePostAssets = async (rootDir: string, entry: PostPayload) => {
+  const record = entry as Record<string, unknown>;
+  const lang = pickString(record, ["lang"]) ?? "pt";
+  const slug = pickString(record, ["slug"]) ?? "";
+  if (!slug) {
+    return [];
+  }
+  const postDir = path.join(rootDir, lang, "post", slug);
+  const mediaDir = path.join(rootDir, "media", lang, slug);
+  await fs.rm(postDir, { recursive: true, force: true });
+  await fs.rm(mediaDir, { recursive: true, force: true });
+  return [postDir, mediaDir];
 };
+
+const resolveSlugForLang = (
+  payload: PostPayload,
+  lang: Language,
+  fallback: string,
+) => {
+  const record = payload as Record<string, unknown>;
+  const slugMapRaw = record.slugs;
+  if (slugMapRaw && typeof slugMapRaw === "object") {
+    const fromMap = slugMapRaw as Record<string, unknown>;
+    const mapped = fromMap[lang];
+    if (typeof mapped === "string" && mapped.trim()) {
+      return normalizeSlug(mapped);
+    }
+  }
+
+  const direct = pickString(record, [
+    `slug_${lang}`,
+    `slug-${lang}`,
+    `slug${lang.toUpperCase()}`,
+    `slug${lang.charAt(0).toUpperCase()}${lang.slice(1)}`,
+  ]);
+  if (direct) {
+    return normalizeSlug(direct);
+  }
+
+  return fallback;
+};
+
+const buildSlugMap = (payload: PostPayload, slug: string) => ({
+  pt: resolveSlugForLang(payload, "pt", slug),
+  en: resolveSlugForLang(payload, "en", slug),
+  es: resolveSlugForLang(payload, "es", slug),
+});
 
 const publishPost = async (payload: PostPayload, rootDir: string) => {
   const normalizedPayload = await localizePostAssets(payload, rootDir);
@@ -997,12 +790,106 @@ const publishPost = async (payload: PostPayload, rootDir: string) => {
   await savePostIndex(rootDir, posts);
 };
 
-export const handlePublishPost: RequestHandler = async (req, res) => {
+const createPublishHandler = (forcedLang?: Language): RequestHandler => {
+  return async (req, res) => {
+    const token = process.env.PUBLISH_TOKEN;
+    if (token) {
+      const incoming =
+        req.header("x-publish-token") ??
+        req.header("authorization")?.replace(/^Bearer\\s+/i, "") ??
+        "";
+      if (incoming !== token) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+    }
+
+    const rootDir =
+      process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
+    const origin = resolveSiteOrigin();
+
+    try {
+      const payload = req.body;
+      const posts = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.posts)
+          ? payload.posts
+          : [payload];
+
+      const published = [];
+      const logs: string[] = [];
+
+      for (const post of posts) {
+        const basePayload = post as PostPayload;
+        const preparedPayload = forcedLang
+          ? { ...basePayload, lang: forcedLang }
+          : basePayload;
+        const { lang: sourceLang, slug } = resolvePostIdentity(preparedPayload);
+        if (!slug) {
+          throw new Error("Missing slug");
+        }
+        logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
+        const slugMap = buildSlugMap(preparedPayload, slug);
+        const entryPayload: PostPayload = {
+          ...preparedPayload,
+          lang: sourceLang,
+          slug,
+          slugs: slugMap,
+        };
+
+        await publishPost(entryPayload, rootDir);
+        logs.push(`publish:done lang=${sourceLang} slug=${slug}`);
+
+        published.push({
+          slug,
+          links: {
+            pt: `${origin}/pt/post/${slugMap.pt}`,
+            en: `${origin}/en/post/${slugMap.en}`,
+            es: `${origin}/es/post/${slugMap.es}`,
+          },
+        });
+        logs.push(
+          `publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`,
+        );
+      }
+      await buildSitemap(rootDir, origin);
+      logs.push("sitemap:rebuilt");
+
+      res.json({ ok: true, count: posts.length, posts: published, logs });
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+  };
+};
+
+export const handlePublishPost = createPublishHandler();
+export const handlePublishPostPt = createPublishHandler("pt");
+export const handlePublishPostEn = createPublishHandler("en");
+export const handlePublishPostEs = createPublishHandler("es");
+
+export const handleRebuildSitemap: RequestHandler = async (_req, res) => {
+  const rootDir =
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
+  const origin = resolveSiteOrigin();
+  try {
+    await buildSitemap(rootDir, origin);
+    res.json({ ok: true });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
+};
+
+export const handleDeletePost: RequestHandler = async (req, res) => {
   const token = process.env.PUBLISH_TOKEN;
   if (token) {
     const incoming =
       req.header("x-publish-token") ??
-      req.header("authorization")?.replace(/^Bearer\\s+/i, "") ??
+      req.header("authorization")?.replace(/^Bearer\s+/i, "") ??
       "";
     if (incoming !== token) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -1012,76 +899,40 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
   const rootDir =
     process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const origin = resolveSiteOrigin();
+  const logs: string[] = [];
 
   try {
-    const payload = req.body;
-    const posts = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.posts)
-        ? payload.posts
-        : [payload];
+    const payload = (req.body ?? {}) as PostPayload;
+    const posts = await loadPostIndex(rootDir);
+    const targets = resolveDeleteCandidates(payload, posts);
 
-    const published = [];
-    const logs: string[] = [];
-
-    for (const post of posts) {
-      const basePayload = post as PostPayload;
-      const { lang: sourceLang, slug } = resolvePostIdentity(basePayload);
-      if (!slug) {
-        throw new Error("Missing slug");
-      }
-      logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
-      const slugMap = await buildSlugMap(basePayload, sourceLang, slug);
-      const seedPayload: PostPayload = {
-        ...basePayload,
-        lang: sourceLang,
-        slug,
-        slugs: slugMap,
-      };
-
-      const variants = await Promise.all(
-        languages.map(async (targetLang) =>
-          targetLang === sourceLang
-            ? seedPayload
-            : translatePostPayload(seedPayload, sourceLang, targetLang, slugMap),
-        ),
-      );
-
-      for (const variant of variants) {
-        await publishPost(variant, rootDir);
-        const targetLang = resolvePostIdentity(variant).lang;
-        const targetSlug = resolvePostIdentity(variant).slug || slugMap[targetLang];
-        logs.push(`publish:done lang=${targetLang} slug=${targetSlug}`);
-      }
-
-      published.push({
-        slug,
-        links: {
-          pt: `${origin}/pt/post/${slugMap.pt}`,
-          en: `${origin}/en/post/${slugMap.en}`,
-          es: `${origin}/es/post/${slugMap.es}`,
-        },
-      });
-      logs.push(`publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`);
+    if (targets.length === 0) {
+      return res.status(404).json({ error: "Post not found" });
     }
+
+    const deleted: Array<{ lang: string; slug: string }> = [];
+    for (const entry of targets) {
+      const record = entry as Record<string, unknown>;
+      const lang = pickString(record, ["lang"]) ?? "pt";
+      const slug = pickString(record, ["slug"]) ?? "";
+      logs.push(`delete:start lang=${lang} slug=${slug}`);
+      const removedPaths = await deletePostAssets(rootDir, entry);
+      removedPaths.forEach((pathItem) => logs.push(`delete:file ${pathItem}`));
+      deleted.push({ lang, slug });
+      logs.push(`delete:done lang=${lang} slug=${slug}`);
+    }
+
+    const remaining = posts.filter((entry) => !targets.includes(entry));
+    await savePostIndex(rootDir, remaining);
     await buildSitemap(rootDir, origin);
     logs.push("sitemap:rebuilt");
 
-    res.json({ ok: true, count: posts.length, posts: published, logs });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ error: error instanceof Error ? error.message : "Unknown error" });
-  }
-};
-
-export const handleRebuildSitemap: RequestHandler = async (_req, res) => {
-  const rootDir =
-    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
-  const origin = resolveSiteOrigin();
-  try {
-    await buildSitemap(rootDir, origin);
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      deletedCount: deleted.length,
+      deleted,
+      logs,
+    });
   } catch (error) {
     res
       .status(500)

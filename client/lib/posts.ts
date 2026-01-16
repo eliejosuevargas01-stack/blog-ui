@@ -1,5 +1,4 @@
 import { allowedCategories, defaultLang, languages, type Language } from "@/lib/i18n";
-import { translatePosts } from "@/lib/translate";
 const POSTS_API_PATH = "/api/posts";
 
 export interface BlogPost {
@@ -1296,22 +1295,11 @@ export const filterValidPosts = (posts: BlogPost[]) => {
 export async function fetchPublicPosts(lang: Language): Promise<BlogPost[]> {
   const posts = await fetchPosts(lang);
   const curated = filterValidPosts(posts);
-  const effective = curated.length > 0 ? curated : posts;
-  if (lang !== defaultLang && effective.length === 0) {
-    const basePosts = await fetchPosts(defaultLang);
-    const baseCurated = filterValidPosts(basePosts);
-    const baseEffective = baseCurated.length > 0 ? baseCurated : basePosts;
-    return translatePosts(baseEffective, lang);
-  }
-  return effective;
+  return curated.length > 0 ? curated : posts;
 }
 
 export async function fetchLivePosts(lang: Language): Promise<BlogPost[]> {
   const posts = await fetchPosts(lang);
-  if (lang !== defaultLang && posts.length === 0) {
-    const basePosts = await fetchPosts(defaultLang);
-    return translatePosts(basePosts, lang);
-  }
   return posts;
 }
 
@@ -1324,9 +1312,24 @@ export async function editPost(
 }
 
 export async function deletePost(
-  _post: BlogPost,
+  post: BlogPost,
   _lang: Language,
-  _token?: string,
+  token?: string,
 ) {
-  throw new Error("Post deletion is disabled without n8n integration.");
+  const response = await fetch("/api/delete-post", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      id: post.id,
+      slug: post.slug ?? post.id,
+      slugs: post.slugs ?? undefined,
+    }),
+  });
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string } | null;
+    throw new Error(payload?.error ?? "Failed to delete post");
+  }
 }

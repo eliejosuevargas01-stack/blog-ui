@@ -854,7 +854,7 @@ export const translations: Record<Language, Translation> = {
       subtitle:
         "Gerencie todos os posts, edite campos e organize as categorias.",
       notice:
-        "Edições e exclusões feitas aqui são enviadas para o servidor.",
+        "Edições e exclusões feitas aqui são enviadas para o servidor e removem os HTMLs publicados.",
       loginTitle: "Acesso administrativo",
       loginSubtitle: "Entre com seu usuário admin para gerenciar os posts.",
       logout: "Sair",
@@ -1329,7 +1329,8 @@ export const translations: Record<Language, Translation> = {
     admin: {
       title: "Blog Admin",
       subtitle: "Manage every post, edit fields, and organize categories.",
-      notice: "Edits and deletions here are sent to the server.",
+      notice:
+        "Edits and deletions here are sent to the server and remove published HTMLs.",
       loginTitle: "Admin access",
       loginSubtitle: "Sign in with your admin account to manage posts.",
       logout: "Sign out",
@@ -1806,7 +1807,8 @@ export const translations: Record<Language, Translation> = {
     admin: {
       title: "Administrador del Blog",
       subtitle: "Gestiona los posts, edita campos y organiza categorías.",
-      notice: "Las ediciones y eliminaciones se envían al servidor.",
+      notice:
+        "Las ediciones y eliminaciones se envían al servidor y eliminan los HTML publicados.",
       loginTitle: "Acceso administrativo",
       loginSubtitle: "Inicia sesión con tu cuenta admin para gestionar posts.",
       logout: "Cerrar sesión",
