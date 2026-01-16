@@ -432,6 +432,11 @@ export interface Translation {
       title: string;
       subtitle: string;
       rebuildLabel: string;
+      deleteAllLabel: string;
+      deleteAllConfirm: string;
+      deleteAllSuccessTitle: string;
+      deleteAllSuccessDescription: string;
+      deleteAllErrorTitle: string;
       rebuildSuccessTitle: string;
       rebuildSuccessDescription: string;
       rebuildErrorTitle: string;
@@ -910,6 +915,13 @@ export const translations: Record<Language, Translation> = {
         subtitle:
           "Ações rápidas para manter os HTMLs e o sitemap sincronizados.",
         rebuildLabel: "Reconstruir sitemap",
+        deleteAllLabel: "Apagar todos os posts",
+        deleteAllConfirm:
+          "Tem certeza? Isso remove todos os posts e HTMLs publicados.",
+        deleteAllSuccessTitle: "Posts removidos",
+        deleteAllSuccessDescription:
+          "Todos os posts e HTMLs foram removidos.",
+        deleteAllErrorTitle: "Falha ao apagar posts",
         rebuildSuccessTitle: "Sitemap reconstruído",
         rebuildSuccessDescription:
           "O sitemap foi atualizado com o HTML gerado mais recente.",
@@ -1385,6 +1397,13 @@ export const translations: Record<Language, Translation> = {
         title: "Backend tasks",
         subtitle: "Quick actions to keep HTMLs and sitemap in sync.",
         rebuildLabel: "Rebuild sitemap",
+        deleteAllLabel: "Delete all posts",
+        deleteAllConfirm:
+          "Are you sure? This removes all posts and published HTML.",
+        deleteAllSuccessTitle: "Posts deleted",
+        deleteAllSuccessDescription:
+          "All posts and HTML files were removed.",
+        deleteAllErrorTitle: "Failed to delete posts",
         rebuildSuccessTitle: "Sitemap rebuilt",
         rebuildSuccessDescription:
           "The sitemap was updated with the latest generated HTML.",
@@ -1864,6 +1883,13 @@ export const translations: Record<Language, Translation> = {
         subtitle:
           "Acciones rápidas para mantener los HTML y el sitemap sincronizados.",
         rebuildLabel: "Reconstruir sitemap",
+        deleteAllLabel: "Eliminar todos los posts",
+        deleteAllConfirm:
+          "¿Seguro? Esto elimina todos los posts y HTML publicados.",
+        deleteAllSuccessTitle: "Posts eliminados",
+        deleteAllSuccessDescription:
+          "Todos los posts y HTML fueron eliminados.",
+        deleteAllErrorTitle: "Fallo al eliminar posts",
         rebuildSuccessTitle: "Sitemap reconstruido",
         rebuildSuccessDescription:
           "El sitemap se actualizó con el HTML generado más reciente.",

@@ -1333,3 +1333,17 @@ export async function deletePost(
     throw new Error(payload?.error ?? "Failed to delete post");
   }
 }
+
+export async function deleteAllPosts(token?: string) {
+  const response = await fetch("/api/delete-all-posts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string } | null;
+    throw new Error(payload?.error ?? "Failed to delete posts");
+  }
+}

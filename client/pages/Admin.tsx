@@ -31,6 +31,7 @@ import {
 } from "@/lib/i18n";
 import {
   deletePost,
+  deleteAllPosts,
   editPost,
   fetchPosts,
   filterValidPosts,
@@ -330,6 +331,7 @@ export default function Admin({ lang }: AdminProps) {
     null,
   );
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
@@ -421,6 +423,30 @@ export default function Admin({ lang }: AdminProps) {
       });
     } finally {
       setTasksLoading(false);
+    }
+  };
+
+  const handleDeleteAllPosts = async () => {
+    if (!window.confirm(t.admin.backend.deleteAllConfirm)) {
+      return;
+    }
+    setDeleteAllLoading(true);
+    try {
+      await deleteAllPosts(session?.token);
+      resetPostsState();
+      await loadGeneratedStatus();
+      toast({
+        title: t.admin.backend.deleteAllSuccessTitle,
+        description: t.admin.backend.deleteAllSuccessDescription,
+      });
+    } catch (error) {
+      toast({
+        title: t.admin.backend.deleteAllErrorTitle,
+        description: error instanceof Error ? error.message : "Request failed",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteAllLoading(false);
     }
   };
 
@@ -1161,6 +1187,16 @@ export default function Admin({ lang }: AdminProps) {
                         {tasksLoading
                           ? `${t.admin.backend.rebuildLabel}...`
                           : t.admin.backend.rebuildLabel}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleDeleteAllPosts}
+                        disabled={deleteAllLoading}
+                      >
+                        {deleteAllLoading
+                          ? `${t.admin.backend.deleteAllLabel}...`
+                          : t.admin.backend.deleteAllLabel}
                       </Button>
                     </div>
                   </div>

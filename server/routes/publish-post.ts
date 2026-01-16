@@ -736,7 +736,6 @@ const deletePostAssets = async (rootDir: string, entry: PostPayload) => {
 const resolveSlugForLang = (
   payload: PostPayload,
   lang: Language,
-  fallback: string,
 ) => {
   const record = payload as Record<string, unknown>;
   const slugMapRaw = record.slugs;
@@ -758,14 +757,26 @@ const resolveSlugForLang = (
     return normalizeSlug(direct);
   }
 
-  return fallback;
+  return null;
 };
 
-const buildSlugMap = (payload: PostPayload, slug: string) => ({
-  pt: resolveSlugForLang(payload, "pt", slug),
-  en: resolveSlugForLang(payload, "en", slug),
-  es: resolveSlugForLang(payload, "es", slug),
-});
+const buildSlugMap = (
+  payload: PostPayload,
+  lang: Language,
+  slug: string,
+): Partial<Record<Language, string>> => {
+  const map: Partial<Record<Language, string>> = { [lang]: slug };
+  languages.forEach((code) => {
+    if (code === lang) {
+      return;
+    }
+    const resolved = resolveSlugForLang(payload, code);
+    if (resolved) {
+      map[code] = resolved;
+    }
+  });
+  return map;
+};
 
 const publishPost = async (payload: PostPayload, rootDir: string) => {
   const normalizedPayload = await localizePostAssets(payload, rootDir);
@@ -824,7 +835,7 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
         throw new Error("Missing slug");
       }
       logs.push(`publish:start slug=${slug} lang=${sourceLang}`);
-      const slugMap = buildSlugMap(basePayload, slug);
+      const slugMap = buildSlugMap(basePayload, sourceLang, slug);
       const entryPayload: PostPayload = {
         ...basePayload,
         lang: sourceLang,
@@ -835,15 +846,21 @@ export const handlePublishPost: RequestHandler = async (req, res) => {
       await publishPost(entryPayload, rootDir);
       logs.push(`publish:done lang=${sourceLang} slug=${slug}`);
 
-      published.push({
-        slug,
-        links: {
-          pt: `${origin}/pt/post/${slugMap.pt}`,
-          en: `${origin}/en/post/${slugMap.en}`,
-          es: `${origin}/es/post/${slugMap.es}`,
-        },
-      });
-      logs.push(`publish:links pt=${slugMap.pt} en=${slugMap.en} es=${slugMap.es}`);
+      const links: Partial<Record<Language, string>> = {};
+      if (slugMap.pt) {
+        links.pt = `${origin}/pt/post/${slugMap.pt}`;
+      }
+      if (slugMap.en) {
+        links.en = `${origin}/en/post/${slugMap.en}`;
+      }
+      if (slugMap.es) {
+        links.es = `${origin}/es/post/${slugMap.es}`;
+      }
+
+      published.push({ slug, links });
+      logs.push(
+        `publish:links pt=${slugMap.pt ?? ""} en=${slugMap.en ?? ""} es=${slugMap.es ?? ""}`,
+      );
     }
     await buildSitemap(rootDir, origin);
     logs.push("sitemap:rebuilt");
@@ -919,6 +936,51 @@ export const handleDeletePost: RequestHandler = async (req, res) => {
       deleted,
       logs,
     });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
+};
+
+export const handleDeleteAllPosts: RequestHandler = async (req, res) => {
+  const token = process.env.PUBLISH_TOKEN;
+  if (token) {
+    const incoming =
+      req.header("x-publish-token") ??
+      req.header("authorization")?.replace(/^Bearer\s+/i, "") ??
+      "";
+    if (incoming !== token) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  }
+
+  const rootDir =
+    process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
+  const origin = resolveSiteOrigin();
+  const logs: string[] = [];
+
+  try {
+    await fs.mkdir(rootDir, { recursive: true });
+    const targets = [
+      "posts.json",
+      "sitemap.xml",
+      "pt",
+      "en",
+      "es",
+      "media",
+    ].map((entry) => path.join(rootDir, entry));
+
+    for (const target of targets) {
+      await fs.rm(target, { recursive: true, force: true });
+      logs.push(`delete-all:removed ${target}`);
+    }
+
+    await savePostIndex(rootDir, []);
+    await buildSitemap(rootDir, origin);
+    logs.push("sitemap:rebuilt");
+
+    res.json({ ok: true, logs });
   } catch (error) {
     res
       .status(500)

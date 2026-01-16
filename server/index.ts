@@ -7,6 +7,7 @@ import { handleGeneratedStatus } from "./routes/generated-status";
 import { handleGetPosts } from "./routes/posts";
 import {
   handleDeletePost,
+  handleDeleteAllPosts,
   handlePublishPost,
   handleRebuildSitemap,
 } from "./routes/publish-post";
@@ -32,6 +33,7 @@ export function createServer() {
   app.post("/api/publish-post", handlePublishPost);
   app.post("/api/rebuild-sitemap", handleRebuildSitemap);
   app.post("/api/delete-post", handleDeletePost);
+  app.post("/api/delete-all-posts", handleDeleteAllPosts);
   app.get("/api/generated-status", handleGeneratedStatus);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
