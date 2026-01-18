@@ -44,26 +44,45 @@ const resolveOrigin = () => {
 const loadPostsByLang = async (): Promise<PostsByLang> => {
   const rootDir =
     process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
-  const indexPath = path.join(rootDir, "posts.json");
   const initial: PostsByLang = { pt: [], en: [], es: [] };
 
-  try {
-    const raw = await fs.readFile(indexPath, "utf-8");
-    const parsed = JSON.parse(raw) as { posts?: unknown[] };
-    const list = Array.isArray(parsed.posts) ? parsed.posts : [];
+  const readIndexFile = async (indexPath: string) => {
+    try {
+      const raw = await fs.readFile(indexPath, "utf-8");
+      const parsed = JSON.parse(raw) as { posts?: unknown[] };
+      return Array.isArray(parsed.posts) ? parsed.posts : [];
+    } catch {
+      return null;
+    }
+  };
 
-    languages.forEach((lang) => {
-      const filtered = list.filter((item) => {
-        if (!item || typeof item !== "object") {
-          return false;
-        }
-        const record = item as Record<string, unknown>;
-        return record.lang === lang;
+  let loadedAny = false;
+  await Promise.all(
+    languages.map(async (lang) => {
+      const indexPath = path.join(rootDir, lang, "posts.json");
+      const list = await readIndexFile(indexPath);
+      if (!list) {
+        return;
+      }
+      loadedAny = true;
+      initial[lang] = normalizePosts(list, lang);
+    }),
+  );
+
+  if (!loadedAny) {
+    const legacyList = await readIndexFile(path.join(rootDir, "posts.json"));
+    if (legacyList) {
+      languages.forEach((lang) => {
+        const filtered = legacyList.filter((item) => {
+          if (!item || typeof item !== "object") {
+            return false;
+          }
+          const record = item as Record<string, unknown>;
+          return record.lang === lang;
+        });
+        initial[lang] = normalizePosts(filtered, lang);
       });
-      initial[lang] = normalizePosts(filtered, lang);
-    });
-  } catch {
-    // If the posts index isn't available, fall back to remote fetch if possible.
+    }
   }
 
   const hasPosts = languages.some((lang) => initial[lang].length > 0);

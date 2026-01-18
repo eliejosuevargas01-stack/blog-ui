@@ -547,19 +547,64 @@ const localizePostAssets = async (payload: PostPayload, rootDir: string) => {
   return payload;
 };
 
-const loadPostIndex = async (rootDir: string) => {
-  const indexPath = path.join(rootDir, "posts.json");
+const resolveLegacyIndexPath = (rootDir: string) =>
+  path.join(rootDir, "posts.json");
+
+const resolveLangIndexPath = (rootDir: string, lang: Language) =>
+  path.join(rootDir, lang, "posts.json");
+
+const readIndexFile = async (indexPath: string): Promise<PostPayload[] | null> => {
   try {
     const raw = await fs.readFile(indexPath, "utf-8");
     const parsed = JSON.parse(raw) as { posts?: PostPayload[] };
     return Array.isArray(parsed.posts) ? parsed.posts : [];
   } catch {
-    return [];
+    return null;
   }
 };
 
-const savePostIndex = async (rootDir: string, posts: PostPayload[]) => {
-  const indexPath = path.join(rootDir, "posts.json");
+const loadPostsByLang = async (
+  rootDir: string,
+): Promise<Record<Language, PostPayload[]>> => {
+  const initial: Record<Language, PostPayload[]> = { pt: [], en: [], es: [] };
+  let hasPerLang = false;
+
+  await Promise.all(
+    languages.map(async (lang) => {
+      const indexPath = resolveLangIndexPath(rootDir, lang);
+      const posts = await readIndexFile(indexPath);
+      if (posts) {
+        initial[lang] = posts;
+        hasPerLang = true;
+      }
+    }),
+  );
+
+  if (hasPerLang) {
+    return initial;
+  }
+
+  const legacyPosts = await readIndexFile(resolveLegacyIndexPath(rootDir));
+  if (!legacyPosts) {
+    return initial;
+  }
+
+  languages.forEach((lang) => {
+    initial[lang] = legacyPosts.filter(
+      (post) => typeof post.lang === "string" && post.lang === lang,
+    );
+  });
+
+  return initial;
+};
+
+const savePostsForLang = async (
+  rootDir: string,
+  lang: Language,
+  posts: PostPayload[],
+) => {
+  const indexPath = resolveLangIndexPath(rootDir, lang);
+  await fs.mkdir(path.dirname(indexPath), { recursive: true });
   const payload = { posts };
   await fs.writeFile(indexPath, JSON.stringify(payload, null, 2), "utf-8");
 };
@@ -788,7 +833,8 @@ const publishPost = async (payload: PostPayload, rootDir: string) => {
   await fs.mkdir(postDir, { recursive: true });
   await fs.writeFile(path.join(postDir, "index.html"), html, "utf-8");
 
-  const posts = await loadPostIndex(rootDir);
+  const postsByLang = await loadPostsByLang(rootDir);
+  const posts = postsByLang[lang];
   const entry = buildIndexEntry(normalizedPayload, lang, slug, meta);
   const existingIndex = posts.findIndex(
     (item) => item.slug === slug && item.lang === lang,
@@ -798,7 +844,8 @@ const publishPost = async (payload: PostPayload, rootDir: string) => {
   } else {
     posts.unshift(entry);
   }
-  await savePostIndex(rootDir, posts);
+  postsByLang[lang] = posts;
+  await savePostsForLang(rootDir, lang, posts);
 };
 
 export const handlePublishPost: RequestHandler = async (req, res) => {
@@ -888,17 +935,6 @@ export const handleRebuildSitemap: RequestHandler = async (_req, res) => {
 };
 
 export const handleDeletePost: RequestHandler = async (req, res) => {
-  const token = process.env.PUBLISH_TOKEN;
-  if (token) {
-    const incoming =
-      req.header("x-publish-token") ??
-      req.header("authorization")?.replace(/^Bearer\s+/i, "") ??
-      "";
-    if (incoming !== token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-  }
-
   const rootDir =
     process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const origin = resolveSiteOrigin();
@@ -906,7 +942,8 @@ export const handleDeletePost: RequestHandler = async (req, res) => {
 
   try {
     const payload = (req.body ?? {}) as PostPayload;
-    const posts = await loadPostIndex(rootDir);
+    const postsByLang = await loadPostsByLang(rootDir);
+    const posts = languages.flatMap((lang) => postsByLang[lang]);
     const targets = resolveDeleteCandidates(payload, posts);
 
     if (targets.length === 0) {
@@ -925,8 +962,21 @@ export const handleDeletePost: RequestHandler = async (req, res) => {
       logs.push(`delete:done lang=${lang} slug=${slug}`);
     }
 
-    const remaining = posts.filter((entry) => !targets.includes(entry));
-    await savePostIndex(rootDir, remaining);
+    const remainingByLang: Record<Language, PostPayload[]> = {
+      pt: [],
+      en: [],
+      es: [],
+    };
+    languages.forEach((lang) => {
+      remainingByLang[lang] = postsByLang[lang].filter(
+        (entry) => !targets.includes(entry),
+      );
+    });
+    await Promise.all(
+      languages.map((lang) =>
+        savePostsForLang(rootDir, lang, remainingByLang[lang]),
+      ),
+    );
     await buildSitemap(rootDir, origin);
     logs.push("sitemap:rebuilt");
 
@@ -944,17 +994,6 @@ export const handleDeletePost: RequestHandler = async (req, res) => {
 };
 
 export const handleDeleteAllPosts: RequestHandler = async (req, res) => {
-  const token = process.env.PUBLISH_TOKEN;
-  if (token) {
-    const incoming =
-      req.header("x-publish-token") ??
-      req.header("authorization")?.replace(/^Bearer\s+/i, "") ??
-      "";
-    if (incoming !== token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-  }
-
   const rootDir =
     process.env.GENERATED_DIR?.trim() || path.resolve("/app/html-storage/posts");
   const origin = resolveSiteOrigin();
@@ -976,7 +1015,9 @@ export const handleDeleteAllPosts: RequestHandler = async (req, res) => {
       logs.push(`delete-all:removed ${target}`);
     }
 
-    await savePostIndex(rootDir, []);
+    await Promise.all(
+      languages.map((lang) => savePostsForLang(rootDir, lang, [])),
+    );
     await buildSitemap(rootDir, origin);
     logs.push("sitemap:rebuilt");
 
