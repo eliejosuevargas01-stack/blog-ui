@@ -760,7 +760,7 @@ const resolveDeleteCandidates = (
     if (slugs.length > 0 && slugs.includes(normalizeSlug(postSlug))) {
       return true;
     }
-    return false;
+  return false;
   });
 };
 
@@ -776,6 +776,33 @@ const deletePostAssets = async (rootDir: string, entry: PostPayload) => {
   await fs.rm(postDir, { recursive: true, force: true });
   await fs.rm(mediaDir, { recursive: true, force: true });
   return [postDir, mediaDir];
+};
+
+const cleanupLegacyGenerated = async (
+  rootDir: string,
+  logs: string[],
+) => {
+  const protectedEntries = new Set([
+    "posts.json",
+    "sitemap.xml",
+    "pt",
+    "en",
+    "es",
+    "media",
+  ]);
+  try {
+    const entries = await fs.readdir(rootDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (protectedEntries.has(entry.name)) {
+        continue;
+      }
+      const fullPath = path.join(rootDir, entry.name);
+      await fs.rm(fullPath, { recursive: true, force: true });
+      logs.push(`delete-all:legacy ${fullPath}`);
+    }
+  } catch {
+    // Ignore missing root dir.
+  }
 };
 
 const resolveSlugForLang = (
@@ -1014,6 +1041,8 @@ export const handleDeleteAllPosts: RequestHandler = async (req, res) => {
       await fs.rm(target, { recursive: true, force: true });
       logs.push(`delete-all:removed ${target}`);
     }
+
+    await cleanupLegacyGenerated(rootDir, logs);
 
     await Promise.all(
       languages.map((lang) => savePostsForLang(rootDir, lang, [])),
