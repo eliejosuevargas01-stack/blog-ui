@@ -1,0 +1,127 @@
+{
+  "posts": [
+    {
+      "slug": "teste-translate-3",
+      "titulo": "Teste de tradução automática",
+      "description": "Resumo curto",
+      "content": "<p>Este é um teste para verificar tradução automática.</p>",
+      "lang": "pt",
+      "slugs": {
+        "pt": "teste-translate-3",
+        "en": "teste-de-traducao-automatica",
+        "es": "teste-de-traducao-automatica"
+      },
+      "contentHtml": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo_html": "<p>Este é um teste para verificar tradução automática.</p>\n",
+      "id": "post-pt-teste-translate-3",
+      "title": "Teste de tradução automática",
+      "excerpt": "Resumo curto",
+      "image": "",
+      "imageAlt": "Teste de tradução automática"
+    },
+    {
+      "slug": "teste-translate-2",
+      "titulo": "Teste de tradução automática",
+      "description": "Resumo curto",
+      "content": "<p>Este é um teste para verificar tradução automática.</p>",
+      "lang": "pt",
+      "slugs": {
+        "pt": "teste-translate-2",
+        "en": "teste-de-traducao-automatica",
+        "es": "teste-de-traducao-automatica"
+      },
+      "contentHtml": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo_html": "<p>Este é um teste para verificar tradução automática.</p>\n",
+      "id": "post-pt-teste-translate-2",
+      "title": "Teste de tradução automática",
+      "excerpt": "Resumo curto",
+      "image": "",
+      "imageAlt": "Teste de tradução automática"
+    },
+    {
+      "slug": "teste-de-traducao-automatica",
+      "titulo": "Teste de tradução automática",
+      "description": "Resumo curto",
+      "content": "<p>Este é um teste para verificar tradução automática.</p>",
+      "lang": "es",
+      "slugs": {
+        "pt": "teste-translate-3",
+        "en": "teste-de-traducao-automatica",
+        "es": "teste-de-traducao-automatica"
+      },
+      "meta_title": "Teste de tradução automática",
+      "metaTitle": "Teste de tradução automática",
+      "seo_title": "Teste de tradução automática",
+      "seoTitle": "Teste de tradução automática",
+      "title": "Teste de tradução automática",
+      "headline": "Teste de tradução automática",
+      "meta_description": "Resumo curto",
+      "metaDescription": "Resumo curto",
+      "resumo": "Resumo curto",
+      "excerpt": "Resumo curto",
+      "summary": "Resumo curto",
+      "contentHtml": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo_html": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo": "Este é um teste para verificar tradução automática.",
+      "body": "Este é um teste para verificar tradução automática.",
+      "texto": "Este é um teste para verificar tradução automática.",
+      "cover_image_alt": "Teste de tradução automática",
+      "imageAlt": "Teste de tradução automática",
+      "image_alt": "Teste de tradução automática",
+      "id": "post-es-teste-de-traducao-automatica",
+      "image": ""
+    },
+    {
+      "slug": "teste-de-traducao-automatica",
+      "titulo": "Teste de tradução automática",
+      "description": "Resumo curto",
+      "content": "<p>Este é um teste para verificar tradução automática.</p>",
+      "lang": "en",
+      "slugs": {
+        "pt": "teste-translate-3",
+        "en": "teste-de-traducao-automatica",
+        "es": "teste-de-traducao-automatica"
+      },
+      "meta_title": "Teste de tradução automática",
+      "metaTitle": "Teste de tradução automática",
+      "seo_title": "Teste de tradução automática",
+      "seoTitle": "Teste de tradução automática",
+      "title": "Teste de tradução automática",
+      "headline": "Teste de tradução automática",
+      "meta_description": "Resumo curto",
+      "metaDescription": "Resumo curto",
+      "resumo": "Resumo curto",
+      "excerpt": "Resumo curto",
+      "summary": "Resumo curto",
+      "contentHtml": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo_html": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo": "Este é um teste para verificar tradução automática.",
+      "body": "Este é um teste para verificar tradução automática.",
+      "texto": "Este é um teste para verificar tradução automática.",
+      "cover_image_alt": "Teste de tradução automática",
+      "imageAlt": "Teste de tradução automática",
+      "image_alt": "Teste de tradução automática",
+      "id": "post-en-teste-de-traducao-automatica",
+      "image": ""
+    },
+    {
+      "slug": "teste-translate",
+      "titulo": "Teste de tradução automática",
+      "description": "Resumo curto",
+      "content": "<p>Este é um teste para verificar tradução automática.</p>",
+      "lang": "pt",
+      "slugs": {
+        "pt": "teste-translate",
+        "en": "teste-de-traducao-automatica",
+        "es": "teste-de-traducao-automatica"
+      },
+      "contentHtml": "<p>Este é um teste para verificar tradução automática.</p>",
+      "conteudo_html": "<p>Este é um teste para verificar tradução automática.</p>\n",
+      "id": "post-pt-teste-translate",
+      "title": "Teste de tradução automática",
+      "excerpt": "Resumo curto",
+      "image": "",
+      "imageAlt": "Teste de tradução automática"
+    }
+  ]
+}
