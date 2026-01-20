@@ -8,8 +8,7 @@ type PostPayload = Record<string, unknown>;
 
 const languages = ["pt", "en", "es"] as const;
 type Language = (typeof languages)[number];
-const isLanguage = (value: string): value is Language =>
-  languages.includes(value as Language);
+const supportedLangs = new Set<Language>(languages);
 
 const pickString = (record: PostPayload, keys: string[]) => {
   for (const key of keys) {
@@ -34,7 +33,7 @@ const normalizeSlug = (value: string) =>
 const resolvePostIdentity = (payload: PostPayload) => {
   const slugRaw = pickString(payload, ["slug"]) ?? "";
   const langRaw = pickString(payload, ["lang"]) ?? "pt";
-  const lang = isLanguage(langRaw) ? langRaw : "pt";
+  const lang = supportedLangs.has(langRaw) ? langRaw : "pt";
   return { lang, slug: normalizeSlug(slugRaw) };
 };
 
@@ -318,14 +317,6 @@ const parseStructuredContent = (value: string) => {
   };
 };
 
-const renderMarkdown = (value: string) => {
-  const rendered = marked.parse(value, { async: false });
-  if (typeof rendered === "string") {
-    return rendered;
-  }
-  throw new Error("Markdown parser returned async output");
-};
-
 const resolveContentParts = (payload: PostPayload) => {
   const htmlInput =
     pickString(payload, ["contentHtml", "conteudo_html"]) ?? "";
@@ -334,7 +325,7 @@ const resolveContentParts = (payload: PostPayload) => {
     if (hasHtml) {
       return { raw: htmlInput, html: htmlInput };
     }
-    return { raw: htmlInput, html: renderMarkdown(htmlInput) };
+    return { raw: htmlInput, html: marked.parse(htmlInput) };
   }
   const contentInput =
     pickString(payload, ["conteudo", "content", "body", "texto"]) ?? "";
@@ -349,7 +340,7 @@ const resolveContentParts = (payload: PostPayload) => {
   if (hasHtml) {
     return { raw: contentInput, html: contentInput };
   }
-  return { raw: contentInput, html: renderMarkdown(contentInput) };
+  return { raw: contentInput, html: marked.parse(contentInput) };
 };
 
 const renderPostHtml = (payload: PostPayload) => {

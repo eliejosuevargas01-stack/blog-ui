@@ -37,27 +37,6 @@ const extractTitle = (html: string) => {
   return match?.[1]?.trim() ?? null;
 };
 
-const normalizeLangValue = (value: string) => value.trim().toLowerCase();
-
-const coerceLang = (value: string): Language | null => {
-  const normalized = normalizeLangValue(value);
-  if (normalized === "pt" || normalized.startsWith("pt-") || normalized.startsWith("pt_")) {
-    return "pt";
-  }
-  if (normalized === "en" || normalized.startsWith("en-") || normalized.startsWith("en_")) {
-    return "en";
-  }
-  if (normalized === "es" || normalized.startsWith("es-") || normalized.startsWith("es_")) {
-    return "es";
-  }
-  return null;
-};
-
-const extractHtmlLang = (html: string) => {
-  const match = html.match(/<html[^>]*lang=["']([^"']+)["'][^>]*>/i);
-  return match?.[1]?.trim() ?? null;
-};
-
 const readHtmlPost = async (
   filePath: string,
   lang: Language,
@@ -65,10 +44,6 @@ const readHtmlPost = async (
 ): Promise<Record<string, unknown> | null> => {
   try {
     const html = await fs.readFile(filePath, "utf-8");
-    const htmlLang = extractHtmlLang(html);
-    if (!htmlLang || coerceLang(htmlLang) !== lang) {
-      return null;
-    }
     const title = extractTitle(html);
     if (!title) {
       return null;
@@ -153,15 +128,11 @@ const filterPostsByLang = (
 ) =>
   posts.filter((post) => {
     const postLang =
-      typeof post.lang === "string"
-        ? post.lang
-        : typeof post.language === "string"
-          ? post.language
-          : typeof post.locale === "string"
-            ? post.locale
-            : "";
-    const normalized = postLang ? coerceLang(postLang) : null;
-    return normalized === lang;
+      typeof post.lang === "string" ? post.lang.trim().toLowerCase() : "";
+    if (!postLang) {
+      return true;
+    }
+    return postLang === lang;
   });
 
 const loadPostsForLang = async (
