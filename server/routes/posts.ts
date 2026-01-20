@@ -129,9 +129,6 @@ const filterPostsByLang = (
   posts.filter((post) => {
     const postLang =
       typeof post.lang === "string" ? post.lang.trim().toLowerCase() : "";
-    if (!postLang) {
-      return true;
-    }
     return postLang === lang;
   });
 
