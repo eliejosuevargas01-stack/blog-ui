@@ -791,6 +791,11 @@ export function normalizePosts(
         return null;
       }
       const record = item as Record<string, unknown>;
+      const recordLang =
+        typeof record.lang === "string" ? record.lang.trim().toLowerCase() : "";
+      if (recordLang && recordLang !== lang) {
+        return null;
+      }
       const title = pickLocalizedString(
         record,
         ["title", "titulo", "name", "headline"],
