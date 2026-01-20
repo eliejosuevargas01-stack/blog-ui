@@ -11,4 +11,5 @@ jobs:
       - name: Trigger Coolify deploy webhook
         env:
           COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: node deploy/coolify-deploy.js

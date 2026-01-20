@@ -1,7 +1,12 @@
 const webhookUrl = process.env.COOLIFY_WEBHOOK_URL;
+const apiToken = process.env.COOLIFY_API_TOKEN;
 
 if (!webhookUrl) {
   console.error("Missing COOLIFY_WEBHOOK_URL env var.");
+  process.exit(1);
+}
+if (!apiToken) {
+  console.error("Missing COOLIFY_API_TOKEN env var.");
   process.exit(1);
 }
 
@@ -19,6 +24,7 @@ const payload = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify(payload),
     });
