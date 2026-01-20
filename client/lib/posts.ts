@@ -1009,7 +1009,7 @@ export function normalizePosts(
 }
 
 export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
-  const response = await fetch(`${POSTS_API_PATH}?lang=${lang}`);
+  const response = await fetch(`${POSTS_API_PATH}/${lang}`);
   if (!response.ok) {
     throw new Error("Failed to load posts");
   }

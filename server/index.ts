@@ -4,7 +4,12 @@ import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { handleHealth } from "./routes/health";
 import { handleGeneratedStatus } from "./routes/generated-status";
-import { handleGetPosts } from "./routes/posts";
+import {
+  handleGetPosts,
+  handleGetPostsPt,
+  handleGetPostsEn,
+  handleGetPostsEs,
+} from "./routes/posts";
 import {
   handleDeletePost,
   handleDeleteAllPosts,
@@ -30,6 +35,9 @@ export function createServer() {
   app.get("/api/health", handleHealth);
   app.get("/api/demo", handleDemo);
   app.get("/api/posts", handleGetPosts);
+  app.get("/api/posts/pt", handleGetPostsPt);
+  app.get("/api/posts/en", handleGetPostsEn);
+  app.get("/api/posts/es", handleGetPostsEs);
   app.post("/api/publish-post", handlePublishPost);
   app.post("/api/rebuild-sitemap", handleRebuildSitemap);
   app.post("/api/delete-post", handleDeletePost);

@@ -184,3 +184,23 @@ export const handleGetPosts: RequestHandler = async (req, res) => {
       .json({ error: error instanceof Error ? error.message : "Unknown error" });
   }
 };
+
+const createHandleGetPostsByLang =
+  (lang: Language): RequestHandler =>
+  async (_req, res) => {
+    const rootDir =
+      process.env.GENERATED_DIR?.trim() ||
+      path.resolve("/app/html-storage/posts");
+    try {
+      const index = await loadPostsForLang(rootDir, lang);
+      res.json({ posts: index.posts });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  };
+
+export const handleGetPostsPt = createHandleGetPostsByLang("pt");
+export const handleGetPostsEn = createHandleGetPostsByLang("en");
+export const handleGetPostsEs = createHandleGetPostsByLang("es");
