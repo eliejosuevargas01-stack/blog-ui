@@ -14,6 +14,9 @@ import {
   handleDeletePost,
   handleDeleteAllPosts,
   handlePublishPost,
+  handlePublishPostPt,
+  handlePublishPostEn,
+  handlePublishPostEs,
   handleRebuildSitemap,
 } from "./routes/publish-post";
 
@@ -39,6 +42,9 @@ export function createServer() {
   app.get("/api/posts/en", handleGetPostsEn);
   app.get("/api/posts/es", handleGetPostsEs);
   app.post("/api/publish-post", handlePublishPost);
+  app.post("/api/publish-post/pt", handlePublishPostPt);
+  app.post("/api/publish-post/en", handlePublishPostEn);
+  app.post("/api/publish-post/es", handlePublishPostEs);
   app.post("/api/rebuild-sitemap", handleRebuildSitemap);
   app.post("/api/delete-post", handleDeletePost);
   app.post("/api/delete-all-posts", handleDeleteAllPosts);
