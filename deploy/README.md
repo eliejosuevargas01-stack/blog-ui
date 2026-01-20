@@ -4,7 +4,7 @@ Este README descreve o comportamento do script `deploy/coolify-deploy.js`.
 
 ## O que o script faz
 
-1) Le as variaveis `COOLIFY_WEBHOOK_URL` e `COOLIFY_API_TOKEN`.
+1) Le a variavel `COOLIFY_WEBHOOK_URL`.
 2) Se ela nao existir, exibe erro e encerra com `process.exit(1)`.
 3) Monta um payload com dados do GitHub Actions.
 4) Envia um POST para o webhook do Coolify.
@@ -14,7 +14,6 @@ Este README descreve o comportamento do script `deploy/coolify-deploy.js`.
 ## Variaveis usadas
 
 - `COOLIFY_WEBHOOK_URL`: URL do webhook do projeto no Coolify.
-- `COOLIFY_API_TOKEN`: token de API do Coolify com permissao `deploy`.
 - `GITHUB_REPOSITORY`: repo atual.
 - `GITHUB_REF`: branch/tag do commit.
 - `GITHUB_SHA`: hash do commit.
