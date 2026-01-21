@@ -1008,13 +1008,128 @@ export function normalizePosts(
     .filter(Boolean) as BlogPost[];
 }
 
-export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
-  const response = await fetch(`${POSTS_API_PATH}/${lang}`);
-  if (!response.ok) {
-    throw new Error("Failed to load posts");
+const resolveBaseUrl = () => {
+  const env = (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env;
+  const base = env?.BASE_URL ?? "/";
+  return base.endsWith("/") ? base : `${base}/`;
+};
+
+const buildStaticPostsUrl = (path: string) =>
+  `${resolveBaseUrl()}${path.replace(/^\/+/, "")}`;
+
+const fetchJson = async (url: string) => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { ok: false, payload: null };
+    }
+    const payload = (await response.json()) as unknown;
+    return { ok: true, payload };
+  } catch {
+    return { ok: false, payload: null };
   }
-  const payload = (await response.json()) as unknown;
+};
+
+const normalizePostsPayload = (payload: unknown, lang: Language) => {
+  if (!payload) {
+    return [];
+  }
+  if (!Array.isArray(payload) && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    if (record[lang]) {
+      return normalizePosts(record[lang], lang);
+    }
+  }
   return normalizePosts(payload, lang);
+};
+
+const hasPostContent = (post: BlogPost) => {
+  const html = typeof post.contentHtml === "string" ? post.contentHtml.trim() : "";
+  const content = typeof post.content === "string" ? post.content.trim() : "";
+  return Boolean(html || content);
+};
+
+const pickContentValue = (
+  primary?: string,
+  fallback?: string,
+): string | undefined => {
+  const normalizedPrimary =
+    typeof primary === "string" && primary.trim() ? primary : undefined;
+  if (normalizedPrimary) {
+    return normalizedPrimary;
+  }
+  return typeof fallback === "string" && fallback.trim() ? fallback : undefined;
+};
+
+const mergePostContent = (primary: BlogPost[], fallback: BlogPost[]) => {
+  if (primary.length === 0 || fallback.length === 0) {
+    return primary;
+  }
+  const fallbackMap = new Map<string, BlogPost>();
+  fallback.forEach((post) => {
+    const key = post.slug ?? post.id;
+    if (key) {
+      fallbackMap.set(key, post);
+    }
+  });
+  return primary.map((post) => {
+    const key = post.slug ?? post.id;
+    if (!key) {
+      return post;
+    }
+    const fallbackPost = fallbackMap.get(key);
+    if (!fallbackPost) {
+      return post;
+    }
+    if (hasPostContent(post) || !hasPostContent(fallbackPost)) {
+      return post;
+    }
+    return {
+      ...post,
+      content: pickContentValue(post.content, fallbackPost.content),
+      contentHtml: pickContentValue(post.contentHtml, fallbackPost.contentHtml),
+    };
+  });
+};
+
+export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
+  const apiResponse = await fetchJson(`${POSTS_API_PATH}/${lang}`);
+  if (apiResponse.ok) {
+    const apiPosts = normalizePostsPayload(apiResponse.payload, lang);
+    if (apiPosts.every(hasPostContent)) {
+      return apiPosts;
+    }
+    const staticLangResponse = await fetchJson(
+      buildStaticPostsUrl(`${lang}/posts.json`),
+    );
+    if (staticLangResponse.ok) {
+      const staticLangPosts = normalizePostsPayload(
+        staticLangResponse.payload,
+        lang,
+      );
+      return mergePostContent(apiPosts, staticLangPosts);
+    }
+    const staticResponse = await fetchJson(buildStaticPostsUrl("posts.json"));
+    if (staticResponse.ok) {
+      const staticPosts = normalizePostsPayload(staticResponse.payload, lang);
+      return mergePostContent(apiPosts, staticPosts);
+    }
+    return apiPosts;
+  }
+
+  const staticLangResponse = await fetchJson(
+    buildStaticPostsUrl(`${lang}/posts.json`),
+  );
+  if (staticLangResponse.ok) {
+    return normalizePostsPayload(staticLangResponse.payload, lang);
+  }
+
+  const staticResponse = await fetchJson(buildStaticPostsUrl("posts.json"));
+  if (staticResponse.ok) {
+    return normalizePostsPayload(staticResponse.payload, lang);
+  }
+
+  throw new Error("Failed to load posts");
 }
 
 export const MIN_POST_WORDS = 900;

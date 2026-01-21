@@ -32,6 +32,27 @@ const prunePostsForSsg = (postsByLang: PostsByLang): PostsByLang => {
   return pruned;
 };
 
+const writePostsJson = async (distDir: string, postsByLang: PostsByLang) => {
+  await fs.mkdir(distDir, { recursive: true });
+  await fs.writeFile(
+    path.join(distDir, "posts.json"),
+    JSON.stringify(postsByLang, null, 2),
+    "utf-8",
+  );
+
+  await Promise.all(
+    languages.map(async (lang) => {
+      const langDir = path.join(distDir, lang);
+      await fs.mkdir(langDir, { recursive: true });
+      await fs.writeFile(
+        path.join(langDir, "posts.json"),
+        JSON.stringify({ posts: postsByLang[lang] }, null, 2),
+        "utf-8",
+      );
+    }),
+  );
+};
+
 const resolveOrigin = () => {
   const env =
     process.env.SSG_ORIGIN ??
@@ -167,7 +188,9 @@ const run = async () => {
   const distDir = path.resolve(process.cwd(), "dist", "spa");
   const templatePath = path.join(distDir, "index.html");
   const template = await fs.readFile(templatePath, "utf-8");
-  const initialPosts = prunePostsForSsg(await loadPostsByLang());
+  const fullPosts = await loadPostsByLang();
+  await writePostsJson(distDir, fullPosts);
+  const initialPosts = prunePostsForSsg(fullPosts);
   const routes = buildStaticRoutes();
 
   for (const route of routes) {

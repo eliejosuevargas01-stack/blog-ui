@@ -37,6 +37,47 @@ const extractTitle = (html: string) => {
   return match?.[1]?.trim() ?? null;
 };
 
+const stripHtml = (value: string) =>
+  value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+const extractContentHtml = (html: string) => {
+  const marker = '<div class="content">';
+  const startIndex = html.indexOf(marker);
+  if (startIndex === -1) {
+    return null;
+  }
+
+  const contentStart = startIndex + marker.length;
+  const tagRegex = /<\/?div\b[^>]*>/gi;
+  tagRegex.lastIndex = contentStart;
+  let depth = 1;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(html)) !== null) {
+    const tag = match[0];
+    if (tag.startsWith("</")) {
+      depth -= 1;
+    } else {
+      depth += 1;
+    }
+
+    if (depth === 0) {
+      const content = html.slice(contentStart, match.index).trim();
+      return content || null;
+    }
+  }
+
+  return null;
+};
+
+const hasPostContent = (post: Record<string, unknown>) => {
+  const content =
+    typeof post.content === "string" ? post.content.trim() : "";
+  const contentHtml =
+    typeof post.contentHtml === "string" ? post.contentHtml.trim() : "";
+  return Boolean(content || contentHtml);
+};
+
 const readHtmlPost = async (
   filePath: string,
   lang: Language,
@@ -57,6 +98,8 @@ const readHtmlPost = async (
     const updatedAt =
       extractMetaContent(html, "property", "article:modified_time") ??
       undefined;
+    const contentHtml = extractContentHtml(html) ?? undefined;
+    const content = contentHtml ? stripHtml(contentHtml) : undefined;
 
     return {
       id: `post-${lang}-${slug}`,
@@ -66,6 +109,8 @@ const readHtmlPost = async (
       excerpt: description,
       description,
       image,
+      content,
+      contentHtml,
       publishedAt,
       updatedAt,
     };
@@ -102,21 +147,29 @@ const mergePostLists = (
   fallback: Array<Record<string, unknown>>,
 ) => {
   const slugs = new Set<string>();
+  const primaryBySlug = new Map<string, Record<string, unknown>>();
   primary.forEach((post) => {
     const slug = typeof post.slug === "string" ? post.slug : null;
     if (slug) {
       slugs.add(slug);
+      primaryBySlug.set(slug, post);
     }
   });
   const merged = [...primary];
   fallback.forEach((post) => {
     const slug = typeof post.slug === "string" ? post.slug : null;
     if (slug && slugs.has(slug)) {
+      const target = primaryBySlug.get(slug);
+      if (target && !hasPostContent(target) && hasPostContent(post)) {
+        target.content = post.content ?? target.content;
+        target.contentHtml = post.contentHtml ?? target.contentHtml;
+      }
       return;
     }
     merged.push(post);
     if (slug) {
       slugs.add(slug);
+      primaryBySlug.set(slug, post);
     }
   });
   return merged;
