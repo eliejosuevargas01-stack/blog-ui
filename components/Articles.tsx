@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -21,7 +21,7 @@ interface ArticlesProps {
 
 type PostsStatus = "loading" | "idle" | "error";
 
-export default function Articles({ lang, initialPosts: propsInitialPosts }: ArticlesProps) {
+function ArticlesContent({ lang, initialPosts: propsInitialPosts }: ArticlesProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
   const searchParams = useSearchParams();
@@ -234,5 +234,13 @@ export default function Articles({ lang, initialPosts: propsInitialPosts }: Arti
 
       <Footer lang={lang} t={t} />
     </div>
+  );
+}
+
+export default function Articles(props: ArticlesProps) {
+  return (
+    <Suspense fallback={null}>
+      <ArticlesContent {...props} />
+    </Suspense>
   );
 }

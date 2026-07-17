@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, Suspense, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Footer } from "@/components/Footer";
@@ -47,7 +47,7 @@ function extractWebhookMessage(payload: unknown): string | null {
   return null;
 }
 
-export default function Auth({ lang }: AuthProps) {
+function AuthContent({ lang }: AuthProps) {
   const t = translations[lang];
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -288,5 +288,13 @@ export default function Auth({ lang }: AuthProps) {
 
       <Footer lang={lang} t={t} />
     </div>
+  );
+}
+
+export default function Auth(props: AuthProps) {
+  return (
+    <Suspense fallback={null}>
+      <AuthContent {...props} />
+    </Suspense>
   );
 }

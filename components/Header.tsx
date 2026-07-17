@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -29,7 +30,7 @@ interface HeaderProps {
   languagePaths?: Partial<Record<Language, string>>;
 }
 
-export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
+function HeaderContent({ lang, pageKey, t, languagePaths }: HeaderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -126,6 +127,14 @@ export function Header({ lang, pageKey, t, languagePaths }: HeaderProps) {
         </nav>
       </div>
     </header>
+  );
+}
+
+export function Header(props: HeaderProps) {
+  return (
+    <Suspense fallback={<header className="sticky top-0 z-50 border-b border-border bg-background/95 h-16" />}>
+      <HeaderContent {...props} />
+    </Suspense>
   );
 }
 
