@@ -1,23 +1,39 @@
-FROM node:22-alpine AS builder
+FROM node:22-alpine AS base
 
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+# Install dependencies
+COPY package.json pnpm-lock.yaml* .npmrc* ./
 RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 RUN pnpm install --frozen-lockfile
 
-COPY . .
-RUN pnpm run build:full
-RUN pnpm prune --prod
-
-FROM node:22-alpine AS runner
-
+# Rebuild the source code only when needed
+FROM base AS builder
 WORKDIR /app
-ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+RUN pnpm run build
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Copy public files
+COPY --from=builder /app/public ./public
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
-CMD ["node", "dist/server/node-build.mjs"]
+
+CMD ["node", "server.js"]
