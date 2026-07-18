@@ -61,6 +61,7 @@ interface PostDraft {
   author: string;
   readTime: string;
   featured: boolean;
+  published: boolean;
   metaTitle: string;
   metaDescription: string;
   metaTags: string;
@@ -91,6 +92,7 @@ const buildDraft = (post: BlogPost): PostDraft => ({
   author: post.author ?? "",
   readTime: post.readTime ?? "",
   featured: post.featured ?? false,
+  published: post.published ?? false,
   metaTitle: post.metaTitle ?? "",
   metaDescription: post.metaDescription ?? "",
   metaTags: Array.isArray(post.metaTags)
@@ -365,6 +367,7 @@ export default function Admin({ lang }: AdminProps) {
       author: draft.author || sessionUser || "Admin",
       readTime: draft.readTime || "5 min",
       featured: draft.featured,
+      published: draft.published,
       metaTitle: draft.metaTitle || draft.title,
       metaDescription: draft.metaDescription || draft.excerpt,
     };
@@ -408,6 +411,27 @@ export default function Admin({ lang }: AdminProps) {
       });
     } finally {
       setPostDeletingId(null);
+    }
+  };
+
+  const handleTogglePublish = async (post: BlogPost) => {
+    const nextPublished = !post.published;
+    setPostSavingId(post.id);
+    try {
+      await editPost({ ...post, published: nextPublished }, lang);
+      const refreshed = await fetchPosts(lang, true);
+      setPosts(refreshed);
+      toast({
+        title: nextPublished ? "Artigo publicado!" : "Artigo revertido para rascunho.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPostSavingId(null);
     }
   };
 
@@ -768,6 +792,11 @@ export default function Admin({ lang }: AdminProps) {
                                         </h3>
                                         {post.featured && <Badge variant="secondary">Destaque</Badge>}
                                         {post.category && <Badge variant="outline">{post.category}</Badge>}
+                                        {post.published ? (
+                                          <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20">Publicado</Badge>
+                                        ) : (
+                                          <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20">Rascunho</Badge>
+                                        )}
                                       </div>
                                       <div className="text-xs text-foreground/60 flex items-center gap-3">
                                         <span>Por: {post.author || "Admin"}</span>
@@ -779,10 +808,71 @@ export default function Admin({ lang }: AdminProps) {
                                       {post.excerpt && (
                                         <p className="text-sm text-foreground/75 line-clamp-2">{post.excerpt}</p>
                                       )}
+
+                                      {/* n8n Automation Checklist */}
+                                      {post.lang === "pt" && (post.imageStatus || post.translationStatus) && (
+                                        <div className="mt-3 p-3 bg-muted/40 rounded-lg border border-border/60 max-w-xl text-xs space-y-2">
+                                          <div className="font-semibold text-foreground/80 flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                                            Progresso da Automação (n8n)
+                                          </div>
+                                          
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                            {/* Image checklist */}
+                                            {post.imageStatus && (() => {
+                                              const imgMap = typeof post.imageStatus === "string" ? JSON.parse(post.imageStatus) : post.imageStatus;
+                                              return (
+                                                <div className="space-y-1">
+                                                  <span className="text-[10px] text-foreground/50 uppercase tracking-wider block mb-1">Geração de Imagens</span>
+                                                  {Object.entries(imgMap).map(([key, val]) => (
+                                                    <div key={key} className="flex items-center gap-1.5">
+                                                      <span>{val ? "✅" : "⏳"}</span>
+                                                      <span className="font-mono text-[11px] capitalize text-foreground/75">
+                                                        {key.replace("imagem_", "").replace("img-", "")}
+                                                      </span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              );
+                                            })()}
+                                            
+                                            {/* Translation checklist */}
+                                            {post.translationStatus && (() => {
+                                              const transMap = typeof post.translationStatus === "string" ? JSON.parse(post.translationStatus) : post.translationStatus;
+                                              const getLabel = (status: string) => {
+                                                if (status === "completed") return "✅ Concluído";
+                                                if (status === "sent") return "📤 Traduzindo...";
+                                                return "⏳ Pendente";
+                                              };
+                                              return (
+                                                <div className="space-y-1">
+                                                  <span className="text-[10px] text-foreground/50 uppercase tracking-wider block mb-1">Traduções</span>
+                                                  <div className="flex items-center justify-between text-foreground/75">
+                                                    <span>Inglês (EN):</span>
+                                                    <span className="font-medium">{getLabel(transMap.en)}</span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between text-foreground/75">
+                                                    <span>Espanhol (ES):</span>
+                                                    <span className="font-medium">{getLabel(transMap.es)}</span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })()}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
                                   <div className="flex items-center gap-2 self-end lg:self-start">
+                                    <Button
+                                      variant={post.published ? "secondary" : "default"}
+                                      size="sm"
+                                      onClick={() => handleTogglePublish(post)}
+                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                    >
+                                      {post.published ? "Despublicar" : "Publicar"}
+                                    </Button>
                                     <Button
                                       variant={isEditing ? "ghost" : "outline"}
                                       size="sm"
@@ -889,13 +979,24 @@ export default function Admin({ lang }: AdminProps) {
                                       </Field>
                                     </div>
 
-                                    <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-lg border border-border">
-                                      <Switch
-                                        id={`featured-${post.id}`}
-                                        checked={draft.featured}
-                                        onCheckedChange={(checked) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, featured: checked } }))}
-                                      />
-                                      <Label htmlFor={`featured-${post.id}`}>Marcar como artigo em Destaque</Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-lg border border-border">
+                                        <Switch
+                                          id={`featured-${post.id}`}
+                                          checked={draft.featured}
+                                          onCheckedChange={(checked) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, featured: checked } }))}
+                                        />
+                                        <Label htmlFor={`featured-${post.id}`}>Marcar como artigo em Destaque</Label>
+                                      </div>
+
+                                      <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-lg border border-border">
+                                        <Switch
+                                          id={`published-${post.id}`}
+                                          checked={draft.published}
+                                          onCheckedChange={(checked) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, published: checked } }))}
+                                        />
+                                        <Label htmlFor={`published-${post.id}`}>Status: {draft.published ? "Publicado (Visível)" : "Rascunho (Oculto)"}</Label>
+                                      </div>
                                     </div>
 
                                     <div className="flex items-center justify-end gap-3">

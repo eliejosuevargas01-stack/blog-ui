@@ -297,7 +297,16 @@ export async function POST(req: NextRequest) {
       const publicMediaUrl = `/media/pt/${ptSlug}/${cleanFileName}`;
       console.log(`[Images Upload] Saved to disk: ${fullFilePath} -> Accessible at: ${publicMediaUrl}`);
 
-      // Find all translations associated with this post so they share the same image
+      // Parse the current image_status map from PT post
+      let imageStatus: Record<string, boolean> = {};
+      if (ptPost?.image_status) {
+        imageStatus = typeof ptPost.image_status === "string" 
+          ? JSON.parse(ptPost.image_status) 
+          : (ptPost.image_status as any);
+      }
+      imageStatus[fileName] = true;
+
+      // Find all translations associated with this post so they share the same image and status
       let postsToUpdate = [targetPost];
       if (targetPost.hn_id) {
         const translations = await prisma.post.findMany({
@@ -306,7 +315,7 @@ export async function POST(req: NextRequest) {
         postsToUpdate = translations;
       }
 
-      console.log(`[Images Upload] Updating image path for ${postsToUpdate.length} post translations`);
+      console.log(`[Images Upload] Updating image path and status for ${postsToUpdate.length} post translations`);
 
       for (const postToUpdate of postsToUpdate) {
         let updatedImg = postToUpdate.img;
@@ -338,7 +347,8 @@ export async function POST(req: NextRequest) {
           where: { slug: postToUpdate.slug },
           data: {
             img: updatedImg,
-            blocks: blocks as any
+            blocks: blocks as any,
+            image_status: imageStatus
           }
         });
       }
@@ -358,19 +368,31 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Count how many images are still Unsplash fallbacks
-          const hasUnsplashHero = freshPtPost.img?.includes("unsplash.com");
-          const hasUnsplashBlocks = freshBlocks.some(b => b.image?.includes("unsplash.com"));
+          // Check if all slots in image_status are now marked as true (ready)
+          const allImagesUploaded = Object.values(imageStatus).every(val => val === true);
 
-          // Count if translation has already been created
-          const translationCount = await prisma.post.count({
-            where: { hn_id: freshPtPost.hn_id || "", lang: { in: ["en", "es"] } }
-          });
+          // Count if translation has already been created or is in progress
+          let transStatus: Record<string, string> = { en: "not_started", es: "not_started" };
+          if (freshPtPost.translation_status) {
+            transStatus = typeof freshPtPost.translation_status === "string"
+              ? JSON.parse(freshPtPost.translation_status)
+              : (freshPtPost.translation_status as any);
+          }
 
-          if (!hasUnsplashHero && !hasUnsplashBlocks && translationCount === 0) {
-            console.log(`[Images Upload] All images generated! Triggering translations for ptSlug: ${ptSlug}`);
-            const updatedHtml = reconstructContentHtmlFromBlocks(freshBlocks, freshPtPost.title);
+          if (allImagesUploaded && transStatus.en !== "completed" && transStatus.en !== "sent") {
+            console.log(`[Images Upload] All images generated! Updating status to 'sent' and triggering translations for: ${ptSlug}`);
             
+            const updatedTranslationStatus = { en: "sent", es: "sent" };
+            
+            // Update translation_status for PT post and all other linked posts
+            await prisma.post.updateMany({
+              where: { hn_id: freshPtPost.hn_id || "" },
+              data: {
+                translation_status: updatedTranslationStatus
+              }
+            });
+
+            const updatedHtml = reconstructContentHtmlFromBlocks(freshBlocks, freshPtPost.title);
             await triggerTranslationWebhook({
               hn_id: freshPtPost.hn_id,
               conteudo_html: updatedHtml,
@@ -422,6 +444,9 @@ export async function POST(req: NextRequest) {
         slugMap.pt = ptPost.slug;
       }
 
+      // Extract hn_id from translation callback, fallback to PT post's hn_id
+      const hn_id = firstItem.hn_id || firstItem.hnId || ptPost?.hn_id || null;
+
       // 1. Parse and upsert the translations
       for (const lang of languages) {
         const langData = output[lang];
@@ -449,15 +474,14 @@ export async function POST(req: NextRequest) {
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
 
-        // Extract hn_id from translation callback, fallback to PT post's hn_id
-        const hn_id = langData.hn_id || langData.hnId || firstItem.hn_id || firstItem.hnId || ptPost?.hn_id || null;
-
-        // Propagate the real saved images from the PT version
+        // Propagate the real saved images and parameters from the PT version
         let finalMainImage = mainImage;
         let finalBlocks = blocks;
+        let imageStatus = null;
         
         if (ptPost) {
           finalMainImage = ptPost.img;
+          imageStatus = ptPost.image_status;
           let ptBlocks: any[] = [];
           if (Array.isArray(ptPost.blocks)) {
             ptBlocks = ptPost.blocks;
@@ -496,6 +520,7 @@ export async function POST(req: NextRequest) {
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
+            published: false // Translations are saved as drafts, waiting for publication
           },
           create: {
             slug: slug,
@@ -513,6 +538,10 @@ export async function POST(req: NextRequest) {
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
+            published: false,
+            image_generation_sent: true,
+            image_status: imageStatus,
+            translation_status: { en: "completed", es: "completed" }
           }
         });
 
@@ -520,6 +549,16 @@ export async function POST(req: NextRequest) {
           lang,
           slug: savedPost.slug,
           status: "saved"
+        });
+      }
+
+      // Update translation status to completed on all posts (PT and newly created translations)
+      if (hn_id) {
+        await prisma.post.updateMany({
+          where: { hn_id: hn_id },
+          data: {
+            translation_status: { en: "completed", es: "completed" }
+          }
         });
       }
 
@@ -543,15 +582,14 @@ export async function POST(req: NextRequest) {
       });
 
     } else {
-      // Normal publish payload (typically the original Portuguese post)
-      console.log("[Publish] Processing original post publication...");
+      // Normal publish payload (typically the original Portuguese post or edit from admin editor)
+      console.log("[Publish] Processing post publication/save...");
       const data = rawPayload.output ? rawPayload.output : rawPayload;
       const postsToProcess = Array.isArray(data) ? data : [data];
       const results = [];
 
       // Calculate scheduled 7:00 AM publishing date
       const publishDate = getNextPublishDate();
-      console.log("[Publish] Post publication scheduled for:", publishDate.toISOString());
 
       for (const postData of postsToProcess) {
         const {
@@ -579,54 +617,7 @@ export async function POST(req: NextRequest) {
         // Extract hn_id from the incoming post data
         const hn_id = postData.hn_id || postData.hnId || null;
 
-        // Default language is "pt"
-        const savedPost = await prisma.post.upsert({
-          where: { slug: slug },
-          update: {
-            lang: "pt",
-            date: publishDate,
-            hn_id: hn_id,
-            tag: mainTag,
-            category: categoria || "Mercado Tech",
-            title: title,
-            excerpt: excerpt || "",
-            readTime: readTime,
-            img: mainImage,
-            imgFocalPoint: "center",
-            blocks: blocks as any,
-            seoTitle: meta_title || title,
-            seoDescription: meta_description || excerpt || "",
-            seoKeywords: seoKeywords,
-            slugs: { pt: slug } // initial slug mapping
-          },
-          create: {
-            slug: slug,
-            lang: "pt",
-            date: publishDate,
-            hn_id: hn_id,
-            tag: mainTag,
-            category: categoria || "Mercado Tech",
-            title: title,
-            excerpt: excerpt || "",
-            readTime: readTime,
-            img: mainImage,
-            imgFocalPoint: "center",
-            blocks: blocks as any,
-            seoTitle: meta_title || title,
-            seoDescription: meta_description || excerpt || "",
-            seoKeywords: seoKeywords,
-            slugs: { pt: slug }
-          }
-        });
-
-        results.push({
-          id: savedPost.id,
-          slug: savedPost.slug,
-          title: savedPost.title,
-          status: "saved"
-        });
-
-        // Extract prompts from HTML alts
+        // Extract prompts from HTML alts to build image status checklist
         const imgAltPrompts: string[] = [];
         const imgMatches = conteudo_html.match(/<img[^>]+alt="([^"]+)"/g);
         if (imgMatches) {
@@ -638,20 +629,89 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const imagePrompts = {
-          imagem_hero: meta_description || excerpt || title,
-          "img-bloco-1": imgAltPrompts[0] || "",
-          "img-bloco-2": imgAltPrompts[1] || "",
-          "img-bloco-3": imgAltPrompts[2] || ""
+        const imageStatus: Record<string, boolean> = {
+          imagem_hero: false
+        };
+        if (imgAltPrompts[0]) imageStatus["img-bloco-1"] = false;
+        if (imgAltPrompts[1]) imageStatus["img-bloco-2"] = false;
+        if (imgAltPrompts[2]) imageStatus["img-bloco-3"] = false;
+
+        const translationStatus = {
+          en: "not_started",
+          es: "not_started"
         };
 
-        // Trigger ONLY the image generation webhook. Translation will be triggered after images are received!
-        triggerImageGenerationWebhook(slug, imagePrompts);
+        const scheduledDate = postData.date ? new Date(postData.date) : publishDate;
+
+        // Upsert PT post
+        const savedPost = await prisma.post.upsert({
+          where: { slug: slug },
+          update: {
+            lang: "pt",
+            date: scheduledDate,
+            hn_id: hn_id,
+            tag: mainTag,
+            category: categoria || "Mercado Tech",
+            title: title,
+            excerpt: excerpt || "",
+            readTime: readTime,
+            img: mainImage,
+            imgFocalPoint: "center",
+            blocks: blocks as any,
+            seoTitle: meta_title || title,
+            seoDescription: meta_description || excerpt || "",
+            seoKeywords: seoKeywords,
+            slugs: postData.slugs ? postData.slugs : undefined,
+            // If modified via admin panel, allow updating the published field
+            published: postData.published !== undefined ? postData.published : undefined
+          },
+          create: {
+            slug: slug,
+            lang: "pt",
+            date: scheduledDate,
+            hn_id: hn_id,
+            tag: mainTag,
+            category: categoria || "Mercado Tech",
+            title: title,
+            excerpt: excerpt || "",
+            readTime: readTime,
+            img: mainImage,
+            imgFocalPoint: "center",
+            blocks: blocks as any,
+            seoTitle: meta_title || title,
+            seoDescription: meta_description || excerpt || "",
+            seoKeywords: seoKeywords,
+            slugs: { pt: slug },
+            published: postData.published !== undefined ? postData.published : false, // Defaults to draft (false)
+            image_generation_sent: true,
+            image_status: imageStatus,
+            translation_status: translationStatus
+          }
+        });
+
+        results.push({
+          id: savedPost.id,
+          slug: savedPost.slug,
+          title: savedPost.title,
+          status: "saved"
+        });
+
+        // Trigger n8n image generation ONLY if this is a newly created post (not edited from admin)
+        const isNewPost = !postData.id;
+        if (isNewPost) {
+          const imagePrompts = {
+            imagem_hero: meta_description || excerpt || title,
+            "img-bloco-1": imgAltPrompts[0] || "",
+            "img-bloco-2": imgAltPrompts[1] || "",
+            "img-bloco-3": imgAltPrompts[2] || ""
+          };
+          triggerImageGenerationWebhook(slug, imagePrompts);
+        }
       }
 
       return NextResponse.json({
         success: true,
-        message: "Original posts saved. Image webhook triggered.",
+        message: "Post saved successfully.",
         processed: results
       });
     }

@@ -27,6 +27,11 @@ export interface BlogPost {
   metaTitle?: string;
   metaDescription?: string;
   metaTags?: Array<{ name?: string; property?: string; content: string }>;
+  hnId?: string;
+  published?: boolean;
+  imageGenerationSent?: boolean;
+  imageStatus?: any;
+  translationStatus?: any;
 }
 
 type InitialPostsPayload = Partial<Record<Language, BlogPost[]>>;

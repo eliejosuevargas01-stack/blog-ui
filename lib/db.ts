@@ -60,7 +60,12 @@ export function mapDbPostToBlogPost(post: any, dynamicSlugs?: Record<string, str
     readTime: post.readTime,
     slugs: slugs,
     contentHtml: contentHtml,
-    content: post.excerpt
+    content: post.excerpt,
+    hnId: post.hn_id,
+    published: post.published,
+    imageGenerationSent: post.image_generation_sent,
+    imageStatus: post.image_status,
+    translationStatus: post.translation_status,
   };
 }
 
@@ -69,6 +74,7 @@ export async function getDbPostsForLang(lang: string) {
     const dbPosts = await prisma.post.findMany({
       where: { 
         lang: lang,
+        published: true,
         date: { lte: new Date() }
       },
       orderBy: { date: "desc" }

@@ -17,6 +17,7 @@ export async function GET(
   try {
     const whereClause: any = { lang: lang };
     if (!includeFuture) {
+      whereClause.published = true;
       whereClause.date = { lte: new Date() };
     }
 
