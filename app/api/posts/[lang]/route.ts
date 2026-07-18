@@ -1,58 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, mapDbPostToBlogPost } from "@/lib/db";
 import { languages, type Language } from "@/lib/i18n";
-
-function reconstructContentHtml(blocksJson: any): string {
-  let blocks: any[] = [];
-  if (Array.isArray(blocksJson)) {
-    blocks = blocksJson;
-  } else if (typeof blocksJson === "string") {
-    try {
-      blocks = JSON.parse(blocksJson);
-    } catch {
-      blocks = [];
-    }
-  }
-
-  return blocks.map((block) => {
-    let segment = block.text || "";
-    if (block.image) {
-      segment += `\n<figure>\n  <img src="${block.image}" alt="Image" />\n</figure>`;
-    }
-    return segment;
-  }).join("\n");
-}
-
-function mapDbPostToBlogPost(post: any) {
-  let slugs: any = {};
-  if (post.slugs) {
-    slugs = typeof post.slugs === "string" ? JSON.parse(post.slugs) : post.slugs;
-  }
-
-  const contentHtml = reconstructContentHtml(post.blocks);
-  const tags = post.seoKeywords ? post.seoKeywords.split(',').map((t: string) => t.trim()).filter(Boolean) : [post.tag];
-
-  return {
-    id: post.id,
-    slug: post.slug,
-    lang: post.lang,
-    title: post.title,
-    excerpt: post.excerpt,
-    description: post.excerpt,
-    category: post.category,
-    image: post.img,
-    imageThumb: post.img,
-    tags: tags,
-    keywords: tags,
-    date: post.date.toISOString(),
-    publishedAt: post.createdAt.toISOString(),
-    updatedAt: post.updatedAt.toISOString(),
-    readTime: post.readTime,
-    slugs: slugs,
-    contentHtml: contentHtml,
-    content: post.excerpt
-  };
-}
 
 export async function GET(
   request: NextRequest,
@@ -72,7 +20,28 @@ export async function GET(
       orderBy: { date: "desc" }
     });
 
-    const mappedPosts = dbPosts.map(mapDbPostToBlogPost);
+    // Batch fetch translation slugs using the universal hn_id key
+    const hnIds = dbPosts.map(p => p.hn_id).filter(Boolean) as string[];
+    const allTranslations = hnIds.length > 0 ? await prisma.post.findMany({
+      where: { hn_id: { in: hnIds } },
+      select: { hn_id: true, lang: true, slug: true }
+    }) : [];
+
+    const slugsMapByHnId: Record<string, Record<string, string>> = {};
+    allTranslations.forEach(t => {
+      if (t.hn_id) {
+        if (!slugsMapByHnId[t.hn_id]) {
+          slugsMapByHnId[t.hn_id] = {};
+        }
+        slugsMapByHnId[t.hn_id][t.lang] = t.slug;
+      }
+    });
+
+    const mappedPosts = dbPosts.map(post => {
+      const dynamicSlugs = post.hn_id ? slugsMapByHnId[post.hn_id] : undefined;
+      return mapDbPostToBlogPost(post, dynamicSlugs);
+    });
+
     return NextResponse.json({ posts: mappedPosts });
   } catch (error) {
     console.error("Error fetching posts:", error);

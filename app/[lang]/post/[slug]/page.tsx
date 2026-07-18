@@ -23,7 +23,17 @@ export async function generateMetadata({
       where: { slug: decodedSlug }
     });
     if (dbPost && dbPost.lang === lang) {
-      post = mapDbPostToBlogPost(dbPost);
+      let slugs: Record<string, string> = {};
+      if (dbPost.hn_id) {
+        const translations = await prisma.post.findMany({
+          where: { hn_id: dbPost.hn_id },
+          select: { lang: true, slug: true }
+        });
+        translations.forEach(t => {
+          slugs[t.lang] = t.slug;
+        });
+      }
+      post = mapDbPostToBlogPost(dbPost, slugs);
     }
   } catch (error) {
     // Ignore error

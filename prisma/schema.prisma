@@ -12,6 +12,7 @@ model Post {
   slug           String   @unique
   lang           String   @default("pt")
   slugs          Json?    // Stores the slug mapping: { pt: "...", en: "...", es: "..." }
+  hn_id          String?  // Universal foreign key to associate different translation versions
   tag            String   // Ex: Review, Manutenção, Rotas, Equipamentos
   category       String
   title          String

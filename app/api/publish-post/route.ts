@@ -259,9 +259,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Target post not found" }, { status: 404 });
       }
 
-      // Get all linked slugs for this post's translations
+      // Get all linked slugs for this post's translations (using slugs fallback or hn_id)
       let slugsToUpdate: string[] = [targetPost.slug];
-      if (targetPost.slugs) {
+      if (targetPost.hn_id) {
+        const translations = await prisma.post.findMany({
+          where: { hn_id: targetPost.hn_id },
+          select: { slug: true }
+        });
+        translations.forEach(t => slugsToUpdate.push(t.slug));
+      } else if (targetPost.slugs) {
         const slugMap = typeof targetPost.slugs === "string" 
           ? JSON.parse(targetPost.slugs) 
           : targetPost.slugs;
@@ -313,11 +319,10 @@ export async function POST(req: NextRequest) {
       });
 
       // 2. NOW that we have the real generated images, trigger the TRANSLATE webhook!
-      // This sends the HTML *with* the real image URLs inside it, ensuring that n8n translations
-      // preserve the exact same image URLs and layout automatically!
       const updatedHtml = reconstructContentHtmlFromBlocks(updatedBlocks, updatedPtPost.title);
       
       triggerTranslationWebhook({
+        hn_id: updatedPtPost.hn_id, // Forward universal ID
         conteudo_html: updatedHtml,
         slug: updatedPtPost.slug,
         categoria: updatedPtPost.category,
@@ -388,17 +393,21 @@ export async function POST(req: NextRequest) {
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
 
+        // Extract hn_id from translation callback, fallback to PT post's hn_id
+        const hn_id = langData.hn_id || langData.hnId || firstItem.hn_id || firstItem.hnId || ptPost?.hn_id || null;
+
         const savedPost = await prisma.post.upsert({
           where: { slug: slug },
           update: {
             lang: lang,
             date: publishDate,
+            hn_id: hn_id,
             tag: mainTag,
             category: categoria || "Tech Market",
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage, // already has the correct generated image from PT HTML
+            img: mainImage,
             imgFocalPoint: "center",
             blocks: blocks as any,
             seoTitle: meta_title || title,
@@ -409,6 +418,7 @@ export async function POST(req: NextRequest) {
             slug: slug,
             lang: lang,
             date: publishDate,
+            hn_id: hn_id,
             tag: mainTag,
             category: categoria || "Tech Market",
             title: title,
@@ -483,12 +493,16 @@ export async function POST(req: NextRequest) {
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
 
+        // Extract hn_id from the incoming post data
+        const hn_id = postData.hn_id || postData.hnId || null;
+
         // Default language is "pt"
         const savedPost = await prisma.post.upsert({
           where: { slug: slug },
           update: {
             lang: "pt",
             date: publishDate,
+            hn_id: hn_id,
             tag: mainTag,
             category: categoria || "Mercado Tech",
             title: title,
@@ -506,6 +520,7 @@ export async function POST(req: NextRequest) {
             slug: slug,
             lang: "pt",
             date: publishDate,
+            hn_id: hn_id,
             tag: mainTag,
             category: categoria || "Mercado Tech",
             title: title,

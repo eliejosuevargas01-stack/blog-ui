@@ -31,9 +31,11 @@ function reconstructContentHtml(blocksJson: any): string {
   }).join("\n");
 }
 
-export function mapDbPostToBlogPost(post: any) {
+export function mapDbPostToBlogPost(post: any, dynamicSlugs?: Record<string, string>) {
   let slugs: any = {};
-  if (post.slugs) {
+  if (dynamicSlugs && Object.keys(dynamicSlugs).length > 0) {
+    slugs = dynamicSlugs;
+  } else if (post.slugs) {
     slugs = typeof post.slugs === "string" ? JSON.parse(post.slugs) : post.slugs;
   }
 
@@ -71,7 +73,28 @@ export async function getDbPostsForLang(lang: string) {
       },
       orderBy: { date: "desc" }
     });
-    return dbPosts.map(mapDbPostToBlogPost);
+
+    // Batch fetch translation slugs using the universal hn_id key
+    const hnIds = dbPosts.map(p => p.hn_id).filter(Boolean) as string[];
+    const allTranslations = hnIds.length > 0 ? await prisma.post.findMany({
+      where: { hn_id: { in: hnIds } },
+      select: { hn_id: true, lang: true, slug: true }
+    }) : [];
+
+    const slugsMapByHnId: Record<string, Record<string, string>> = {};
+    allTranslations.forEach(t => {
+      if (t.hn_id) {
+        if (!slugsMapByHnId[t.hn_id]) {
+          slugsMapByHnId[t.hn_id] = {};
+        }
+        slugsMapByHnId[t.hn_id][t.lang] = t.slug;
+      }
+    });
+
+    return dbPosts.map(post => {
+      const dynamicSlugs = post.hn_id ? slugsMapByHnId[post.hn_id] : undefined;
+      return mapDbPostToBlogPost(post, dynamicSlugs);
+    });
   } catch (error) {
     console.error(`[DB] Error loading posts for language ${lang}:`, error);
     return [];
