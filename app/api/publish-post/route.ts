@@ -42,11 +42,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = await req.json();
-    const posts = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.posts)
-        ? payload.posts
-        : [payload];
+    let posts: PostPayload[] = [];
+    if (payload && typeof payload === "object") {
+      if (Array.isArray(payload)) {
+        posts = payload;
+      } else if ("output" in payload) {
+        posts = Array.isArray(payload.output) ? payload.output : [payload.output];
+      } else if (Array.isArray(payload.posts)) {
+        posts = payload.posts;
+      } else {
+        posts = [payload];
+      }
+    }
 
     const published = [];
     const logs: string[] = [];

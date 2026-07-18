@@ -343,10 +343,21 @@ const resolveContentParts = (payload: PostPayload) => {
   return { raw: contentInput, html: marked.parse(contentInput) as string };
 };
 
+const extractTitleFromHtml = (html: string): string | null => {
+  const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (match && match[1]) {
+    return match[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  }
+  return null;
+};
+
 const renderPostHtml = (payload: PostPayload) => {
+  const htmlInput = pickString(payload, ["contentHtml", "conteudo_html"]) ?? "";
+  const h1Title = htmlInput ? extractTitleFromHtml(htmlInput) : null;
   const title =
-    pickString(payload, ["meta_title", "metaTitle", "seo_title", "seoTitle"]) ??
+    h1Title ??
     pickString(payload, ["titulo", "title", "headline"]) ??
+    pickString(payload, ["meta_title", "metaTitle", "seo_title", "seoTitle"]) ??
     "Post";
   const description =
     pickString(payload, ["meta_description", "metaDescription"]) ??
@@ -633,6 +644,9 @@ const buildIndexEntry = (
   const images =
     normalizeArray(payload.images ?? payload.imagens) ??
     normalizeArray(payload.galeria);
+  const category = pickString(payload, ["category", "categoria"]) ?? "";
+  const metaTitle = pickString(payload, ["meta_title", "metaTitle"]) ?? meta.title;
+  const metaDescription = pickString(payload, ["meta_description", "metaDescription"]) ?? meta.description;
 
   return {
     ...payload,
@@ -648,6 +662,9 @@ const buildIndexEntry = (
     imageAlt: meta.imageAlt,
     images: images ?? undefined,
     tags: tags ?? undefined,
+    category: category || undefined,
+    metaTitle: metaTitle || undefined,
+    metaDescription: metaDescription || undefined,
     keywords: meta.keywords
       ? meta.keywords
           .split(/[,;]+/g)
