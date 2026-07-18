@@ -153,6 +153,31 @@ async function triggerTranslationWebhook(postData: any) {
   }
 }
 
+async function triggerImageGenerationWebhook(slug: string, prompts: any) {
+  try {
+    console.log("[Images] Triggering n8n image generation webhook for slug:", slug);
+    const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "generate_img",
+        slug: slug,
+        prompts: prompts
+      })
+    });
+
+    if (!response.ok) {
+      console.error("[Images] Failed to trigger webhook. Status:", response.status);
+    } else {
+      console.log("[Images] Webhook triggered successfully!");
+    }
+  } catch (error) {
+    console.error("[Images] Error triggering webhook:", error);
+  }
+}
+
 export async function POST(req: NextRequest) {
   let isAuthenticated = false;
 
@@ -191,8 +216,95 @@ export async function POST(req: NextRequest) {
   try {
     const rawPayload = await req.json();
     
+    // Check if it's the image generation callback
+    const isImageCallback = rawPayload.action === "update_imgs" || (rawPayload.slug && rawPayload.images && !rawPayload.output);
+
+    if (isImageCallback) {
+      const { slug, images } = rawPayload;
+      console.log(`[Images Callback] Received images for slug: ${slug}`, images);
+
+      if (!slug || !images) {
+        return NextResponse.json({ error: "Missing slug or images in callback" }, { status: 400 });
+      }
+
+      // Find the target post in the database (typically the PT post)
+      const targetPost = await prisma.post.findUnique({
+        where: { slug: slug }
+      });
+
+      if (!targetPost) {
+        return NextResponse.json({ error: "Target post not found" }, { status: 404 });
+      }
+
+      // Get all linked slugs for this post's translations
+      let slugsToUpdate: string[] = [targetPost.slug];
+      if (targetPost.slugs) {
+        const slugMap = typeof targetPost.slugs === "string" 
+          ? JSON.parse(targetPost.slugs) 
+          : targetPost.slugs;
+        if (slugMap && typeof slugMap === "object") {
+          Object.values(slugMap).forEach((val) => {
+            if (typeof val === "string" && val.trim()) {
+              slugsToUpdate.push(val.trim());
+            }
+          });
+        }
+      }
+      slugsToUpdate = Array.from(new Set(slugsToUpdate));
+
+      console.log(`[Images Callback] Updating images across translation slugs:`, slugsToUpdate);
+
+      for (const currentSlug of slugsToUpdate) {
+        const post = await prisma.post.findUnique({
+          where: { slug: currentSlug }
+        });
+
+        if (!post) continue;
+
+        // Update hero image
+        let updatedImg = post.img;
+        if (images.imagem_hero) {
+          updatedImg = images.imagem_hero;
+        }
+
+        // Update block images
+        let blocks: any[] = [];
+        if (Array.isArray(post.blocks)) {
+          blocks = post.blocks;
+        } else if (typeof post.blocks === "string") {
+          try {
+            blocks = JSON.parse(post.blocks);
+          } catch {
+            blocks = [];
+          }
+        }
+
+        const updatedBlocks = blocks.map((block, index) => {
+          const key = `img-bloco-${index + 1}`;
+          const newImg = images[key];
+          return {
+            ...block,
+            image: newImg || block.image
+          };
+        });
+
+        // Save back to DB
+        await prisma.post.update({
+          where: { slug: currentSlug },
+          data: {
+            img: updatedImg,
+            blocks: updatedBlocks as any
+          }
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Images updated across all translations successfully"
+      });
+    }
+
     // Check if the payload is the translation callback from n8n
-    // Format: Array with item having { output: { en: { ... }, es: { ... } } }
     const firstItem = Array.isArray(rawPayload) ? rawPayload[0] : rawPayload;
     const isTranslationCallback = firstItem && firstItem.output && (firstItem.output.en || firstItem.output.es);
 
@@ -202,7 +314,6 @@ export async function POST(req: NextRequest) {
       const languages = ["en", "es"] as const;
       
       // Find the corresponding Portuguese post to link translations
-      // We can search for the most recent "pt" post in the database
       const ptPost = await prisma.post.findFirst({
         where: { lang: "pt" },
         orderBy: { createdAt: "desc" }
@@ -377,13 +488,35 @@ export async function POST(req: NextRequest) {
           status: "saved"
         });
 
+        // Extract prompts from HTML alts
+        const imgAltPrompts: string[] = [];
+        const imgMatches = conteudo_html.match(/<img[^>]+alt="([^"]+)"/g);
+        if (imgMatches) {
+          imgMatches.forEach((m: string) => {
+            const altMatch = m.match(/alt="([^"]+)"/);
+            if (altMatch && altMatch[1]) {
+              imgAltPrompts.push(altMatch[1]);
+            }
+          });
+        }
+
+        const imagePrompts = {
+          imagem_hero: meta_description || excerpt || title,
+          "img-bloco-1": imgAltPrompts[0] || "",
+          "img-bloco-2": imgAltPrompts[1] || "",
+          "img-bloco-3": imgAltPrompts[2] || ""
+        };
+
         // Fire and forget translation webhook trigger
         triggerTranslationWebhook(postData);
+
+        // Fire and forget image generation webhook trigger
+        triggerImageGenerationWebhook(slug, imagePrompts);
       }
 
       return NextResponse.json({
         success: true,
-        message: "Original posts saved. Translation webhooks triggered.",
+        message: "Original posts saved. Translation & Image webhooks triggered.",
         processed: results
       });
     }
