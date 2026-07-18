@@ -7,14 +7,16 @@
  */
 
 export async function register() {
-  // Only run on the Node.js runtime (not edge), and only in production-like envs
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  // Delay to ensure DB connection is ready
   await new Promise((r) => setTimeout(r, 2000));
 
   try {
-    const { runMigrationIfNeeded } = await import("./lib/startup-migration");
+    // webpackIgnore prevents webpack from tracing this module at build time.
+    // It is loaded at runtime only by Node.js — fs/path/crypto are available there.
+    const { runMigrationIfNeeded } = await import(
+      /* webpackIgnore: true */ "./lib/startup-migration"
+    );
     await runMigrationIfNeeded();
   } catch (err) {
     console.error("[Startup] Migration failed:", err);
