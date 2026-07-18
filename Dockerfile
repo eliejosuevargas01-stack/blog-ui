@@ -16,6 +16,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+# Generate Prisma client before building (required so .prisma/client/ exists at runtime)
+RUN pnpm exec prisma generate
 RUN pnpm run build
 
 # Production image, copy all the files and run next
