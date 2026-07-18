@@ -6,17 +6,14 @@
  * image across all language versions of the same post.
  */
 
+import { runMigrationIfNeeded } from "./lib/startup-migration";
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   await new Promise((r) => setTimeout(r, 2000));
 
   try {
-    // webpackIgnore prevents webpack from tracing this module at build time.
-    // It is loaded at runtime only by Node.js — fs/path/crypto are available there.
-    const { runMigrationIfNeeded } = await import(
-      /* webpackIgnore: true */ "./lib/startup-migration"
-    );
     await runMigrationIfNeeded();
   } catch (err) {
     console.error("[Startup] Migration failed:", err);

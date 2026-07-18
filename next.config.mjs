@@ -5,8 +5,8 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
+  webpack: (config, { isServer, nextRuntime }) => {
+    if (!isServer || nextRuntime === "edge") {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
