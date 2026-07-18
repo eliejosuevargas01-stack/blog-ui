@@ -11,12 +11,17 @@ export async function GET(
     return NextResponse.json({ error: "Invalid language" }, { status: 400 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const includeFuture = searchParams.get("all") === "true";
+
   try {
+    const whereClause: any = { lang: lang };
+    if (!includeFuture) {
+      whereClause.date = { lte: new Date() };
+    }
+
     const dbPosts = await prisma.post.findMany({
-      where: { 
-        lang: lang,
-        date: { lte: new Date() }
-      },
+      where: whereClause,
       orderBy: { date: "desc" }
     });
 

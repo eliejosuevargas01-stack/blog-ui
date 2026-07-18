@@ -197,7 +197,7 @@ export default function Admin({ lang }: AdminProps) {
       const loadPosts = async () => {
         setPostsStatus("loading");
         try {
-          const data = await fetchPosts(lang);
+          const data = await fetchPosts(lang, true);
           setPosts(data);
           setPostsStatus("idle");
         } catch {
@@ -374,7 +374,7 @@ export default function Admin({ lang }: AdminProps) {
       await editPost(payloadPost, lang);
       
       // Reload posts to get final IDs and order from disk
-      const refreshed = await fetchPosts(lang);
+      const refreshed = await fetchPosts(lang, true);
       setPosts(refreshed);
 
       toast({ title: t.admin.toast.saveSuccess });

@@ -204,6 +204,10 @@ async function triggerImageGenerationWebhook(slug: string, prompts: any) {
 }
 
 export async function POST(req: NextRequest) {
+  const incomingContentType = req.headers.get("content-type") || "";
+  const queryParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+  console.log(`[Publish API] Received POST request. Content-Type: "${incomingContentType}", Query Params:`, queryParams);
+
   let isAuthenticated = false;
 
   // 1. Check x-publish-token / auth header

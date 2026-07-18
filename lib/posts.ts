@@ -1093,8 +1093,9 @@ const mergePostContent = (primary: BlogPost[], fallback: BlogPost[]) => {
   });
 };
 
-export async function fetchPosts(lang: Language): Promise<BlogPost[]> {
-  const apiResponse = await fetchJson(`${POSTS_API_PATH}/${lang}`);
+export async function fetchPosts(lang: Language, all = false): Promise<BlogPost[]> {
+  const url = all ? `${POSTS_API_PATH}/${lang}?all=true` : `${POSTS_API_PATH}/${lang}`;
+  const apiResponse = await fetchJson(url);
   if (apiResponse.ok) {
     const apiPosts = normalizePostsPayload(apiResponse.payload, lang);
     if (apiPosts.every(hasPostContent)) {
