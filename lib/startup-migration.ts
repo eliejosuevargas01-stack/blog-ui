@@ -15,8 +15,11 @@
  * 6. Upsert all posts into Postgres with the shared hn_id and image.
  */
 
+// Ensures webpack never includes this file in client/edge bundles
+import "server-only";
+
 import { prisma } from "./db";
-import { randomUUID } from "crypto";
+import { createHash } from "crypto";
 import fs from "fs";
 import path from "path";
 
@@ -168,8 +171,7 @@ async function loadAllPosts(rootDir: string): Promise<Record<string, PostPayload
 // ─── Deterministic hn_id ──────────────────────────────────────────────────────
 
 function makeHnId(ptSlug: string): string {
-  // Build a deterministic UUID-shaped ID from the PT slug
-  const { createHash } = require("crypto");
+  // Build a deterministic UUID-shaped ID from the PT slug (createHash imported at top)
   const hash = createHash("md5").update(`migration:${ptSlug}`).digest("hex");
   return `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`;
 }
