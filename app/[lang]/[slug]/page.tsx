@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { languages, pageSlugs, translations, type Language, type PageKey } from "@/lib/i18n";
 import { normalizeTopicKey } from "@/lib/topics";
-import { loadPostsForLang } from "@/lib/posts-server";
+import { getDbPostsForLang } from "@/lib/db";
 import { loadPagesForLang } from "@/lib/pages-db";
 
 // Import migrated components
@@ -105,8 +105,7 @@ export default async function CatchAllPage({
   
   let initialPosts = [];
   try {
-    const data = await loadPostsForLang(rootDir, lang as Language);
-    initialPosts = data.posts;
+    initialPosts = await getDbPostsForLang(lang);
   } catch (error) {
     // Fail silently, components have loading/error fallbacks
   }

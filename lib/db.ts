@@ -1,6 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { languages, type Language } from "@/lib/i18n";
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: ['query'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 function reconstructContentHtml(blocksJson: any): string {
   let blocks: any[] = [];
@@ -23,7 +31,7 @@ function reconstructContentHtml(blocksJson: any): string {
   }).join("\n");
 }
 
-function mapDbPostToBlogPost(post: any) {
+export function mapDbPostToBlogPost(post: any) {
   let slugs: any = {};
   if (post.slugs) {
     slugs = typeof post.slugs === "string" ? JSON.parse(post.slugs) : post.slugs;
@@ -54,30 +62,15 @@ function mapDbPostToBlogPost(post: any) {
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { lang: string } },
-) {
-  const { lang } = params;
-  if (!languages.includes(lang as Language)) {
-    return NextResponse.json({ error: "Invalid language" }, { status: 400 });
-  }
-
+export async function getDbPostsForLang(lang: string) {
   try {
     const dbPosts = await prisma.post.findMany({
       where: { lang: lang },
       orderBy: { date: "desc" }
     });
-
-    const mappedPosts = dbPosts.map(mapDbPostToBlogPost);
-    return NextResponse.json({ posts: mappedPosts });
+    return dbPosts.map(mapDbPostToBlogPost);
   } catch (error) {
-    console.error("Error fetching posts:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
-    );
+    console.error(`[DB] Error loading posts for language ${lang}:`, error);
+    return [];
   }
 }
-
-export const dynamic = 'force-dynamic';

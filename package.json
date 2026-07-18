@@ -10,12 +10,14 @@
     "lighthouse": "next build && (next start & (sleep 5 && pnpm dlx lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --chrome-flags=\"--headless\" && kill $!))"
   },
   "dependencies": {
+    "@prisma/client": "6.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.539.0",
     "marked": "^17.0.1",
     "next": "^14.2.3",
     "next-themes": "^0.4.6",
+    "pg": "^8.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sharp": "^0.35.3",
@@ -25,6 +27,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "prisma": "6.2.1",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",

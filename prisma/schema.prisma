@@ -1,0 +1,73 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Post {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  lang           String   @default("pt")
+  slugs          Json?    // Stores the slug mapping: { pt: "...", en: "...", es: "..." }
+  tag            String   // Ex: Review, Manutenção, Rotas, Equipamentos
+  category       String
+  title          String
+  excerpt        String   @db.Text
+  date           DateTime @default(now())
+  readTime       String   // Ex: "8 min"
+  img            String   // Imagem destacada (URL ou caminho do upload local)
+  imgFocalPoint  String   @default("center") // Ponto focal CSS da imagem (ex: "center", "top", "50% 50%")
+
+  // Blocos dinâmicos de Texto/Imagem: [{ text: string, image: string, focalPoint: string }]
+  blocks         Json     
+
+  // Campos de SEO customizados
+  seoTitle       String?
+  seoDescription String?
+  seoKeywords    String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  comments       Comment[]
+}
+
+model Page {
+  id             String   @id @default(uuid())
+  slug           String   @unique // Ex: "home", "sobre", "contato"
+  title          String
+  isStatic       Boolean  @default(false) // Define se é uma página estática estruturada (Home, Sobre) ou customizada
+
+  // Conteúdo estruturado da página (JSON)
+  content        Json     
+
+  // Campos de SEO customizados
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  comments     Comment[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
