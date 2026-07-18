@@ -313,7 +313,7 @@ export async function POST(req: NextRequest) {
       const output = firstItem.output;
       const languages = ["en", "es"] as const;
       
-      // Find the corresponding Portuguese post to link translations
+      // Find the corresponding Portuguese post to copy its images and link translations
       const ptPost = await prisma.post.findFirst({
         where: { lang: "pt" },
         orderBy: { createdAt: "desc" }
@@ -321,6 +321,17 @@ export async function POST(req: NextRequest) {
 
       if (!ptPost) {
         console.warn("[Publish] Could not find any recent 'pt' post to link translations to.");
+      }
+
+      let ptBlocks: any[] = [];
+      if (ptPost) {
+        if (Array.isArray(ptPost.blocks)) {
+          ptBlocks = ptPost.blocks;
+        } else if (typeof ptPost.blocks === "string") {
+          try {
+            ptBlocks = JSON.parse(ptPost.blocks);
+          } catch {}
+        }
       }
 
       const results = [];
@@ -356,6 +367,16 @@ export async function POST(req: NextRequest) {
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
 
+        // Reuse images from the Portuguese version to avoid recreating images & wasting tokens
+        const finalHeroImage = ptPost ? ptPost.img : mainImage;
+        const finalBlocks = blocks.map((block, idx) => {
+          const ptBlock = ptBlocks[idx];
+          return {
+            ...block,
+            image: ptBlock ? ptBlock.image : block.image
+          };
+        });
+
         const savedPost = await prisma.post.upsert({
           where: { slug: slug },
           update: {
@@ -365,9 +386,9 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
+            img: finalHeroImage,
             imgFocalPoint: "center",
-            blocks: blocks as any,
+            blocks: finalBlocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
@@ -380,9 +401,9 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
+            img: finalHeroImage,
             imgFocalPoint: "center",
-            blocks: blocks as any,
+            blocks: finalBlocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
