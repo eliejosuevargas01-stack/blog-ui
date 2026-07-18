@@ -65,7 +65,10 @@ export function mapDbPostToBlogPost(post: any) {
 export async function getDbPostsForLang(lang: string) {
   try {
     const dbPosts = await prisma.post.findMany({
-      where: { lang: lang },
+      where: { 
+        lang: lang,
+        date: { lte: new Date() }
+      },
       orderBy: { date: "desc" }
     });
     return dbPosts.map(mapDbPostToBlogPost);

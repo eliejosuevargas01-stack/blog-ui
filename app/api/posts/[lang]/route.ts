@@ -65,7 +65,10 @@ export async function GET(
 
   try {
     const dbPosts = await prisma.post.findMany({
-      where: { lang: lang },
+      where: { 
+        lang: lang,
+        date: { lte: new Date() }
+      },
       orderBy: { date: "desc" }
     });
 

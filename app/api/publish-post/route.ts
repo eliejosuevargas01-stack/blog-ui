@@ -18,6 +18,29 @@ function getNextTechImage(index: number): string {
   return TECH_IMAGES[index % TECH_IMAGES.length];
 }
 
+function getNextPublishDate(): Date {
+  const now = new Date();
+  const pubDate = new Date(now);
+  pubDate.setHours(7, 0, 0, 0);
+  
+  // If we are already past 7:00 AM today, schedule for tomorrow at 7:00 AM
+  if (now >= pubDate) {
+    pubDate.setDate(pubDate.getDate() + 1);
+  }
+  return pubDate;
+}
+
+function reconstructContentHtmlFromBlocks(blocks: any[], title: string): string {
+  let html = `<h1>${title}</h1>\n\n`;
+  blocks.forEach((block) => {
+    html += block.text || "";
+    if (block.image) {
+      html += `\n<figure>\n  <img src="${block.image}" alt="Image" />\n</figure>\n`;
+    }
+  });
+  return html;
+}
+
 function parsePostHtml(html: string) {
   let title = "";
   // 1. Extract h1 title
@@ -131,7 +154,7 @@ function parsePostHtml(html: string) {
 
 async function triggerTranslationWebhook(postData: any) {
   try {
-    console.log("[Translation] Triggering n8n translation webhook...");
+    console.log("[Translation] Triggering n8n translation webhook for slug:", postData.slug);
     const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
       method: "POST",
       headers: {
@@ -252,55 +275,62 @@ export async function POST(req: NextRequest) {
       }
       slugsToUpdate = Array.from(new Set(slugsToUpdate));
 
-      console.log(`[Images Callback] Updating images across translation slugs:`, slugsToUpdate);
+      console.log(`[Images Callback] Updating images for PT version: ${slug}`);
 
-      for (const currentSlug of slugsToUpdate) {
-        const post = await prisma.post.findUnique({
-          where: { slug: currentSlug }
-        });
-
-        if (!post) continue;
-
-        // Update hero image
-        let updatedImg = post.img;
-        if (images.imagem_hero) {
-          updatedImg = images.imagem_hero;
-        }
-
-        // Update block images
-        let blocks: any[] = [];
-        if (Array.isArray(post.blocks)) {
-          blocks = post.blocks;
-        } else if (typeof post.blocks === "string") {
-          try {
-            blocks = JSON.parse(post.blocks);
-          } catch {
-            blocks = [];
-          }
-        }
-
-        const updatedBlocks = blocks.map((block, index) => {
-          const key = `img-bloco-${index + 1}`;
-          const newImg = images[key];
-          return {
-            ...block,
-            image: newImg || block.image
-          };
-        });
-
-        // Save back to DB
-        await prisma.post.update({
-          where: { slug: currentSlug },
-          data: {
-            img: updatedImg,
-            blocks: updatedBlocks as any
-          }
-        });
+      // 1. Update hero image and blocks for PT post
+      let updatedImg = targetPost.img;
+      if (images.imagem_hero) {
+        updatedImg = images.imagem_hero;
       }
+
+      let blocks: any[] = [];
+      if (Array.isArray(targetPost.blocks)) {
+        blocks = targetPost.blocks;
+      } else if (typeof targetPost.blocks === "string") {
+        try {
+          blocks = JSON.parse(targetPost.blocks);
+        } catch {
+          blocks = [];
+        }
+      }
+
+      const updatedBlocks = blocks.map((block, index) => {
+        const key = `img-bloco-${index + 1}`;
+        const newImg = images[key];
+        return {
+          ...block,
+          image: newImg || block.image
+        };
+      });
+
+      // Save updated PT version to DB
+      const updatedPtPost = await prisma.post.update({
+        where: { slug: slug },
+        data: {
+          img: updatedImg,
+          blocks: updatedBlocks as any
+        }
+      });
+
+      // 2. NOW that we have the real generated images, trigger the TRANSLATE webhook!
+      // This sends the HTML *with* the real image URLs inside it, ensuring that n8n translations
+      // preserve the exact same image URLs and layout automatically!
+      const updatedHtml = reconstructContentHtmlFromBlocks(updatedBlocks, updatedPtPost.title);
+      
+      triggerTranslationWebhook({
+        conteudo_html: updatedHtml,
+        slug: updatedPtPost.slug,
+        categoria: updatedPtPost.category,
+        excerpt: updatedPtPost.excerpt,
+        meta_title: updatedPtPost.seoTitle,
+        meta_description: updatedPtPost.seoDescription,
+        tags: updatedPtPost.seoKeywords ? updatedPtPost.seoKeywords.split(",").map((t: string) => t.trim()) : [],
+        palavra_chave_principal: updatedPtPost.tag
+      });
 
       return NextResponse.json({
         success: true,
-        message: "Images updated across all translations successfully"
+        message: "PT Post images updated. Translation webhook triggered."
       });
     }
 
@@ -313,7 +343,7 @@ export async function POST(req: NextRequest) {
       const output = firstItem.output;
       const languages = ["en", "es"] as const;
       
-      // Find the corresponding Portuguese post to copy its images and link translations
+      // Find the corresponding Portuguese post to copy publication date and link translations
       const ptPost = await prisma.post.findFirst({
         where: { lang: "pt" },
         orderBy: { createdAt: "desc" }
@@ -323,16 +353,7 @@ export async function POST(req: NextRequest) {
         console.warn("[Publish] Could not find any recent 'pt' post to link translations to.");
       }
 
-      let ptBlocks: any[] = [];
-      if (ptPost) {
-        if (Array.isArray(ptPost.blocks)) {
-          ptBlocks = ptPost.blocks;
-        } else if (typeof ptPost.blocks === "string") {
-          try {
-            ptBlocks = JSON.parse(ptPost.blocks);
-          } catch {}
-        }
-      }
+      const publishDate = ptPost ? ptPost.date : getNextPublishDate();
 
       const results = [];
       const slugMap: Record<string, string> = {};
@@ -367,28 +388,19 @@ export async function POST(req: NextRequest) {
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
 
-        // Reuse images from the Portuguese version to avoid recreating images & wasting tokens
-        const finalHeroImage = ptPost ? ptPost.img : mainImage;
-        const finalBlocks = blocks.map((block, idx) => {
-          const ptBlock = ptBlocks[idx];
-          return {
-            ...block,
-            image: ptBlock ? ptBlock.image : block.image
-          };
-        });
-
         const savedPost = await prisma.post.upsert({
           where: { slug: slug },
           update: {
             lang: lang,
+            date: publishDate,
             tag: mainTag,
             category: categoria || "Tech Market",
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: finalHeroImage,
+            img: mainImage, // already has the correct generated image from PT HTML
             imgFocalPoint: "center",
-            blocks: finalBlocks as any,
+            blocks: blocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
@@ -396,14 +408,15 @@ export async function POST(req: NextRequest) {
           create: {
             slug: slug,
             lang: lang,
+            date: publishDate,
             tag: mainTag,
             category: categoria || "Tech Market",
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: finalHeroImage,
+            img: mainImage,
             imgFocalPoint: "center",
-            blocks: finalBlocks as any,
+            blocks: blocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
@@ -443,6 +456,10 @@ export async function POST(req: NextRequest) {
       const postsToProcess = Array.isArray(data) ? data : [data];
       const results = [];
 
+      // Calculate scheduled 7:00 AM publishing date
+      const publishDate = getNextPublishDate();
+      console.log("[Publish] Post publication scheduled for:", publishDate.toISOString());
+
       for (const postData of postsToProcess) {
         const {
           conteudo_html,
@@ -471,6 +488,7 @@ export async function POST(req: NextRequest) {
           where: { slug: slug },
           update: {
             lang: "pt",
+            date: publishDate,
             tag: mainTag,
             category: categoria || "Mercado Tech",
             title: title,
@@ -487,6 +505,7 @@ export async function POST(req: NextRequest) {
           create: {
             slug: slug,
             lang: "pt",
+            date: publishDate,
             tag: mainTag,
             category: categoria || "Mercado Tech",
             title: title,
@@ -528,16 +547,13 @@ export async function POST(req: NextRequest) {
           "img-bloco-3": imgAltPrompts[2] || ""
         };
 
-        // Fire and forget translation webhook trigger
-        triggerTranslationWebhook(postData);
-
-        // Fire and forget image generation webhook trigger
+        // Trigger ONLY the image generation webhook. Translation will be triggered after images are received!
         triggerImageGenerationWebhook(slug, imagePrompts);
       }
 
       return NextResponse.json({
         success: true,
-        message: "Original posts saved. Translation & Image webhooks triggered.",
+        message: "Original posts saved. Image webhook triggered.",
         processed: results
       });
     }
