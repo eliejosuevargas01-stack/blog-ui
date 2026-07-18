@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { languages, pageSlugs, translations, type Language, type PageKey } from "@/lib/i18n";
 import { normalizeTopicKey } from "@/lib/topics";
 import { loadPostsForLang } from "@/lib/posts-server";
+import { loadPagesForLang } from "@/lib/pages-db";
 
 // Import migrated components
 import About from "@/components/About";
@@ -14,6 +15,7 @@ import Tools from "@/components/Tools";
 import Auth from "@/components/Auth";
 import Admin from "@/components/Admin";
 import Topic from "@/components/Topic";
+import DynamicPage from "@/components/DynamicPage";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,21 @@ export async function generateMetadata({
         description: metaDescription,
       };
     }
+  }
+
+  // 3. Check if it's a dynamic custom page
+  try {
+    const rootDir = process.env.GENERATED_DIR?.trim() || "/app/html-storage/posts";
+    const pages = await loadPagesForLang(rootDir, lang as Language);
+    const matched = pages.find((p) => p.slug === slug);
+    if (matched) {
+      return {
+        title: matched.seoTitle || matched.title,
+        description: matched.seoDescription || "",
+      };
+    }
+  } catch (e) {
+    // Ignore error
   }
 
   return {};
@@ -131,6 +148,17 @@ export default async function CatchAllPage({
     }
   }
 
-  // 3. Fallback: Page not found
+  // 3. Check if slug matches a custom dynamic page from the JSON files
+  try {
+    const pages = await loadPagesForLang(rootDir, lang as Language);
+    const matchedPage = pages.find((p) => p.slug === slug);
+    if (matchedPage) {
+      return <DynamicPage page={matchedPage} lang={lang as Language} />;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+
+  // 4. Fallback: Page not found
   notFound();
 }

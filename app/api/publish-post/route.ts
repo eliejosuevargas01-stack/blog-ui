@@ -1,19 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { publishPost, buildSlugMap, resolvePostIdentity, resolveSiteOrigin, buildSitemap } from "@/lib/posts-db";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
+import { publishPost, buildSlugMap, resolvePostIdentity, resolveSiteOrigin } from "@/lib/posts-db";
 import { languages, type Language } from "@/lib/i18n";
 
 type PostPayload = Record<string, unknown>;
 
 export async function POST(req: NextRequest) {
-  const token = process.env.PUBLISH_TOKEN;
-  if (token) {
+  let isAuthenticated = false;
+
+  // 1. Check x-publish-token / auth header
+  const apiToken = process.env.PUBLISH_TOKEN;
+  if (apiToken) {
     const incoming =
       req.headers.get("x-publish-token") ??
       req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
       "";
-    if (incoming !== token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (incoming === apiToken) {
+      isAuthenticated = true;
     }
+  }
+
+  // 2. Check admin_token cookie
+  if (!isAuthenticated) {
+    const cookieToken = cookies().get("admin_token")?.value;
+    if (cookieToken) {
+      const payload = await verifyToken(cookieToken);
+      if (payload) {
+        isAuthenticated = true;
+      }
+    }
+  }
+
+  if (!isAuthenticated) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rootDir =
@@ -72,8 +92,6 @@ export async function POST(req: NextRequest) {
         `publish:links pt=${slugMap.pt ?? ""} en=${slugMap.en ?? ""} es=${slugMap.es ?? ""}`,
       );
     }
-    await buildSitemap(rootDir, origin);
-    logs.push("sitemap:rebuilt");
 
     return NextResponse.json({ ok: true, count: posts.length, posts: published, logs });
   } catch (error) {

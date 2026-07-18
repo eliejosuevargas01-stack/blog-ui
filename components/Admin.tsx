@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
-import { ArrowLeft, Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
-
+import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { NewsletterSection } from "@/components/NewsletterSection";
 import { Seo } from "@/components/Seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,60 +25,33 @@ import { useToast } from "@/hooks/use-toast";
 import {
   allowedCategories,
   buildPath,
-  buildPostPath,
-  languageLabels,
   languages,
   translations,
   type Language,
 } from "@/lib/i18n";
 import {
   deletePost,
-  deleteAllPosts,
   editPost,
   fetchPosts,
-  filterValidPosts,
-  getContentType,
   type BlogPost,
-  type ContentType,
 } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
-import { sendWebhook } from "@/lib/webhook";
+import { type CustomPage } from "@/lib/pages-db";
 
 const ADMIN_SESSION_KEY = "seommerce.admin.session";
-const SESSION_TTL = 1000 * 60 * 60 * 12;
 
-type MetaTag = NonNullable<BlogPost["metaTags"]>[number];
+interface AdminProps {
+  lang: Language;
+}
 
-type AuthStatus = "checking" | "authenticated" | "unauthenticated";
-type PostsStatus = "loading" | "idle" | "error";
-
-type AdminSession = {
-  email: string;
-  token?: string;
-  loggedAt: number;
-};
-
-type GeneratedEntry = {
-  path: string;
-  url: string;
-  updatedAt: string;
-};
-
-type GeneratedStatus = {
-  generatedPages: GeneratedEntry[];
-  sitemapEntries: string[];
-  missingInSitemap: string[];
-  missingInGenerated: string[];
-};
-
-type PostDraft = {
+interface PostDraft {
   title: string;
   slug: string;
+  category: string;
   excerpt: string;
   description: string;
   content: string;
   contentHtml: string;
-  category: string;
   image: string;
   imageAlt: string;
   imageThumb: string;
@@ -93,555 +64,205 @@ type PostDraft = {
   metaTitle: string;
   metaDescription: string;
   metaTags: string;
-};
+}
 
-const normalizeOptional = (value: string) => {
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-};
-
-const normalizeCategory = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-const normalizeList = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const items = trimmed
-    .split(/[,;\n]+/g)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return items.length > 0 ? Array.from(new Set(items)) : undefined;
-};
-
-const stringifyList = (value?: string[]) => (value?.length ? value.join(", ") : "");
-
-const stringifyMetaTags = (value?: BlogPost["metaTags"]) => {
-  if (!value || value.length === 0) {
-    return "";
-  }
-  return JSON.stringify(value, null, 2);
-};
-
-const parseMetaTagsInput = (value: string): MetaTag[] | undefined | null => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    return null;
-  }
-  if (Array.isArray(parsed)) {
-    const tags = parsed
-      .map((item) => {
-        if (!item || typeof item !== "object") {
-          return null;
-        }
-        const record = item as Record<string, unknown>;
-        const content =
-          typeof record.content === "string" ? record.content.trim() : "";
-        const name =
-          typeof record.name === "string" ? record.name.trim() : undefined;
-        const property =
-          typeof record.property === "string"
-            ? record.property.trim()
-            : undefined;
-        if (!content || (!name && !property)) {
-          return null;
-        }
-        return { name: name || undefined, property: property || undefined, content };
-      })
-      .filter(Boolean) as MetaTag[];
-    return tags.length > 0 ? tags : undefined;
-  }
-  if (parsed && typeof parsed === "object") {
-    const tags = Object.entries(parsed as Record<string, unknown>)
-      .map(([key, contentValue]) => {
-        const name = key.trim();
-        const content =
-          typeof contentValue === "string" ? contentValue.trim() : "";
-        if (!name || !content) {
-          return null;
-        }
-        return { name, content };
-      })
-      .filter(Boolean) as MetaTag[];
-    return tags.length > 0 ? tags : undefined;
-  }
-  return null;
-};
-
-const extractWebhookMessage = (payload: unknown): string | null => {
-  if (typeof payload === "string") {
-    return payload;
-  }
-  if (Array.isArray(payload) && payload.length > 0) {
-    const first = payload[0];
-    if (typeof first === "string") {
-      return first;
-    }
-    if (first && typeof first === "object" && "message" in first) {
-      return String((first as { message: unknown }).message);
-    }
-  }
-  if (payload && typeof payload === "object" && "message" in payload) {
-    return String((payload as { message: unknown }).message);
-  }
-  return null;
-};
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-
-const extractAdminFlag = (payload: unknown): boolean | null => {
-  const root = asRecord(payload);
-  if (!root) {
-    return null;
-  }
-  const candidates = [
-    root,
-    asRecord(root.data),
-    asRecord(root.user),
-    asRecord(root.data && asRecord(root.data)?.user),
-  ].filter(Boolean) as Record<string, unknown>[];
-
-  for (const record of candidates) {
-    const direct =
-      typeof record.isAdmin === "boolean"
-        ? record.isAdmin
-        : typeof record.admin === "boolean"
-          ? record.admin
-          : typeof record.is_admin === "boolean"
-            ? record.is_admin
-            : null;
-    if (direct !== null) {
-      return direct;
-    }
-    const role =
-      typeof record.role === "string"
-        ? record.role
-        : typeof record.type === "string"
-          ? record.type
-          : null;
-    if (role) {
-      return role.toLowerCase() === "admin";
-    }
-    const roles = Array.isArray(record.roles)
-      ? record.roles.filter((item) => typeof item === "string")
-      : null;
-    if (roles && roles.length > 0) {
-      return roles.some((value) => value.toLowerCase() === "admin");
-    }
-  }
-  return null;
-};
-
-const extractToken = (payload: unknown): string | null => {
-  const root = asRecord(payload);
-  if (!root) {
-    return null;
-  }
-  const candidates = [
-    root,
-    asRecord(root.data),
-    asRecord(root.user),
-    asRecord(root.data && asRecord(root.data)?.user),
-  ].filter(Boolean) as Record<string, unknown>[];
-  const keys = ["token", "accessToken", "access_token", "jwt"];
-
-  for (const record of candidates) {
-    for (const key of keys) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim()) {
-        return value.trim();
-      }
-    }
-  }
-  return null;
-};
+interface PageDraft {
+  slug: string;
+  title: string;
+  bodyHtml: string;
+  seoTitle: string;
+  seoDescription: string;
+}
 
 const buildDraft = (post: BlogPost): PostDraft => ({
   title: post.title ?? "",
   slug: post.slug ?? "",
+  category: post.category ?? "",
   excerpt: post.excerpt ?? "",
   description: post.description ?? "",
   content: post.content ?? "",
   contentHtml: post.contentHtml ?? "",
-  category: post.category ?? "",
   image: post.image ?? "",
   imageAlt: post.imageAlt ?? "",
   imageThumb: post.imageThumb ?? "",
-  images: stringifyList(post.images),
-  tags: stringifyList(post.tags),
+  images: Array.isArray(post.images) ? post.images.join(", ") : "",
+  tags: Array.isArray(post.tags) ? post.tags.join(", ") : "",
   date: post.date ?? "",
   author: post.author ?? "",
   readTime: post.readTime ?? "",
   featured: post.featured ?? false,
   metaTitle: post.metaTitle ?? "",
   metaDescription: post.metaDescription ?? "",
-  metaTags: stringifyMetaTags(post.metaTags),
+  metaTags: Array.isArray(post.metaTags)
+    ? post.metaTags
+        .map((tag) => {
+          const keys = Object.keys(tag) as Array<keyof typeof tag>;
+          const pairs = keys.map((key) => `${key}=${tag[key]}`);
+          return pairs.join("; ");
+        })
+        .join("\n")
+    : "",
 });
 
-interface AdminProps {
-  lang: Language;
-}
+const buildPageDraft = (page: CustomPage): PageDraft => ({
+  slug: page.slug ?? "",
+  title: page.title ?? "",
+  bodyHtml: page.content?.bodyHtml ?? "",
+  seoTitle: page.seoTitle ?? "",
+  seoDescription: page.seoDescription ?? "",
+});
 
-const Field = ({
+function Field({
   label,
-  hint,
   children,
+  hint,
+  error,
 }: {
   label: string;
+  children: React.ReactNode;
   hint?: string;
-  children: ReactNode;
-}) => (
-  <div className="space-y-2">
-    <div className="text-sm font-medium text-foreground">{label}</div>
-    {children}
-    {hint ? <p className="text-xs text-foreground/80">{hint}</p> : null}
-  </div>
-);
+  error?: string;
+}) {
+  return (
+    <div className="space-y-1.5 w-full">
+      <Label className="text-xs uppercase tracking-wider text-foreground/80">{label}</Label>
+      {children}
+      {hint && <p className="text-xs text-foreground/60">{hint}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 export default function Admin({ lang }: AdminProps) {
   const t = translations[lang];
   const homePath = buildPath(lang, "home");
   const { toast } = useToast();
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
-  const [session, setSession] = useState<AdminSession | null>(null);
+
+  const [authStatus, setAuthStatus] = useState<"checking" | "authenticated" | "unauthenticated">("checking");
+  const [sessionUser, setSessionUser] = useState<string | null>(null);
+  
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [loginLoading, setLoginLoading] = useState(false);
+
+  // Tabs state
+  const [activeTab, setActiveTab] = useState<"posts" | "pages">("posts");
+
+  // Posts states
   const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [status, setStatus] = useState<PostsStatus>("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, PostDraft>>({});
-  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
-  const [query, setQuery] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [generatedStatus, setGeneratedStatus] = useState<GeneratedStatus | null>(
-    null,
-  );
-  const [generatedLoading, setGeneratedLoading] = useState(false);
-  const [generatedError, setGeneratedError] = useState<string | null>(null);
-  const [generatedUpdatedAt, setGeneratedUpdatedAt] = useState<string | null>(
-    null,
-  );
-  const [tasksLoading, setTasksLoading] = useState(false);
-  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
+  const [postsStatus, setPostsStatus] = useState<"idle" | "loading" | "error">("loading");
+  const [postsQuery, setPostsQuery] = useState("");
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [postDrafts, setPostDrafts] = useState<Record<string, PostDraft>>({});
+  const [postSavingId, setPostSavingId] = useState<string | null>(null);
+  const [postDeletingId, setPostDeletingId] = useState<string | null>(null);
+  const [postDraftErrors, setPostDraftErrors] = useState<Record<string, string>>({});
+
+  // Pages states
+  const [pages, setPages] = useState<CustomPage[]>([]);
+  const [pagesStatus, setPagesStatus] = useState<"idle" | "loading" | "error">("loading");
+  const [pagesQuery, setPagesQuery] = useState("");
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [pageDrafts, setPageDrafts] = useState<Record<string, PageDraft>>({});
+  const [pageSavingId, setPageSavingId] = useState<string | null>(null);
+  const [pageDeletingId, setPageDeletingId] = useState<string | null>(null);
+  const [pageDraftErrors, setPageDraftErrors] = useState<Record<string, string>>({});
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
-  const allowedCategorySet = useMemo(
-    () => new Set(allowedCategories.map((category) => normalizeCategory(category))),
-    [],
-  );
-  const categoryOptions = useMemo(() => {
-    return [...allowedCategories];
-  }, []);
 
+  // Check auth state on mount
   useEffect(() => {
-    const stored = localStorage.getItem(ADMIN_SESSION_KEY);
-    if (!stored) {
-      setAuthStatus("unauthenticated");
-      return;
-    }
-    try {
-      const parsed = JSON.parse(stored) as AdminSession;
-      if (
-        !parsed ||
-        typeof parsed !== "object" ||
-        typeof parsed.email !== "string" ||
-        typeof parsed.loggedAt !== "number"
-      ) {
-        throw new Error("invalid session");
+    const checkSession = async () => {
+      try {
+        const response = await fetch("/api/admin/me");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated) {
+            setSessionUser(data.user);
+            setAuthStatus("authenticated");
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Auth check failed:", e);
       }
-      if (Date.now() - parsed.loggedAt > SESSION_TTL) {
-        localStorage.removeItem(ADMIN_SESSION_KEY);
-        setAuthStatus("unauthenticated");
-        return;
-      }
-      setSession(parsed);
-      setLoginData({ email: parsed.email, password: "" });
-      setAuthStatus("authenticated");
-    } catch {
-      localStorage.removeItem(ADMIN_SESSION_KEY);
       setAuthStatus("unauthenticated");
-    }
+    };
+    checkSession();
   }, []);
 
-  const formatGeneratedTimestamp = (value: string | null) => {
-    if (!value) {
-      return null;
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return null;
-    }
-    return date.toLocaleString();
-  };
-
-  const loadGeneratedStatus = async () => {
-    setGeneratedLoading(true);
-    setGeneratedError(null);
-    try {
-      const response = await fetch("/api/generated-status");
-      if (!response.ok) {
-        throw new Error("Request failed");
-      }
-      const data = (await response.json()) as GeneratedStatus;
-      setGeneratedStatus(data);
-      setGeneratedUpdatedAt(new Date().toISOString());
-    } catch (error) {
-      setGeneratedError(error instanceof Error ? error.message : "Request failed");
-      setGeneratedStatus(null);
-    } finally {
-      setGeneratedLoading(false);
-    }
-  };
-
-  const handleRebuildSitemap = async () => {
-    setTasksLoading(true);
-    try {
-      const response = await fetch("/api/rebuild-sitemap", { method: "POST" });
-      if (!response.ok) {
-        throw new Error("Request failed");
-      }
-      await loadGeneratedStatus();
-      toast({
-        title: t.admin.backend.rebuildSuccessTitle,
-        description: t.admin.backend.rebuildSuccessDescription,
-      });
-    } catch (error) {
-      toast({
-        title: t.admin.backend.rebuildErrorTitle,
-        description: error instanceof Error ? error.message : "Request failed",
-        variant: "destructive",
-      });
-    } finally {
-      setTasksLoading(false);
-    }
-  };
-
-  const handleDeleteAllPosts = async () => {
-    if (!window.confirm(t.admin.backend.deleteAllConfirm)) {
-      return;
-    }
-    setDeleteAllLoading(true);
-    try {
-      await deleteAllPosts(session?.token);
-      resetPostsState();
-      await loadGeneratedStatus();
-      toast({
-        title: t.admin.backend.deleteAllSuccessTitle,
-        description: t.admin.backend.deleteAllSuccessDescription,
-      });
-    } catch (error) {
-      toast({
-        title: t.admin.backend.deleteAllErrorTitle,
-        description: error instanceof Error ? error.message : "Request failed",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteAllLoading(false);
-    }
-  };
-
+  // Fetch posts when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      loadGeneratedStatus();
-    }
-  }, [isAuthenticated]);
-
-  const resetPostsState = () => {
-    setPosts([]);
-    setStatus("idle");
-    setErrorMessage(null);
-    setEditingId(null);
-    setDrafts({});
-    setDraftErrors({});
-    setSavingId(null);
-    setDeletingId(null);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    setSession(null);
-    setAuthStatus("unauthenticated");
-    setLoginData((prev) => ({ ...prev, password: "" }));
-    resetPostsState();
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (!isAuthenticated) {
-      resetPostsState();
-      return () => {
-        isMounted = false;
+      const loadPosts = async () => {
+        setPostsStatus("loading");
+        try {
+          const data = await fetchPosts(lang);
+          setPosts(data);
+          setPostsStatus("idle");
+        } catch {
+          setPostsStatus("error");
+        }
       };
+      loadPosts();
     }
-
-    const loadPosts = async () => {
-      setStatus("loading");
-      setErrorMessage(null);
-      setEditingId(null);
-      setDrafts({});
-      setDraftErrors({});
-      try {
-        const response = await fetchPosts(lang);
-        if (!isMounted) {
-          return;
-        }
-        setPosts(response);
-        setStatus("idle");
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-        setPosts([]);
-        setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : null);
-      }
-    };
-
-    loadPosts();
-
-    return () => {
-      isMounted = false;
-    };
   }, [isAuthenticated, lang]);
 
-  const filteredPosts = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return posts;
-    }
-    return posts.filter((post) => {
-      const values = [
-        post.title,
-        post.category,
-        post.author,
-        post.slug,
-        post.id,
-      ];
-      return values.some(
-        (value) => value && value.toLowerCase().includes(normalized),
-      );
-    });
-  }, [posts, query]);
-
-  const validPosts = useMemo(() => filterValidPosts(posts), [posts]);
-  const contentTypeCounts = useMemo(() => {
-    const counts: Record<ContentType, number> = {
-      search: 0,
-      editorial: 0,
-      evergreen: 0,
-    };
-    validPosts.forEach((post) => {
-      counts[getContentType(post)] += 1;
-    });
-    return counts;
-  }, [validPosts]);
-
-  const contentStrategyCards = [
-    {
-      key: "search",
-      title: t.admin.contentStrategy.types.search.title,
-      description: t.admin.contentStrategy.types.search.description,
-    },
-    {
-      key: "editorial",
-      title: t.admin.contentStrategy.types.editorial.title,
-      description: t.admin.contentStrategy.types.editorial.description,
-    },
-    {
-      key: "evergreen",
-      title: t.admin.contentStrategy.types.evergreen.title,
-      description: t.admin.contentStrategy.types.evergreen.description,
-    },
-  ] as const;
-
-  const showLoading = isAuthenticated && status === "loading";
-  const showError = isAuthenticated && status === "error";
-  const showEmpty =
-    isAuthenticated && status === "idle" && filteredPosts.length === 0;
-
-  const htmlLinks = useMemo(() => {
-    return posts
-      .map((post) => {
-        const links: Partial<Record<Language, string>> = {};
-        languages.forEach((code) => {
-          const slug = post.slugs?.[code] ?? post.slug ?? post.id;
-          if (slug) {
-            links[code] = buildPostPath(code, slug);
+  // Fetch pages when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const loadPages = async () => {
+        setPagesStatus("loading");
+        try {
+          const response = await fetch(`/api/pages/${lang}`);
+          if (response.ok) {
+            const data = await response.json();
+            setPages(data);
+            setPagesStatus("idle");
+          } else {
+            setPagesStatus("error");
           }
-        });
-        return {
-          id: post.id,
-          title: post.title,
-          links,
-        };
-      })
-      .filter((entry) => Object.keys(entry.links).length > 0);
-  }, [posts]);
+        } catch {
+          setPagesStatus("error");
+        }
+      };
+      loadPages();
+    }
+  }, [isAuthenticated, lang]);
 
+  // Login handler
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginLoading(true);
     try {
-      const response = await sendWebhook({
-        action: "login",
-        email: loginData.email,
-        password: loginData.password,
-        lang,
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: loginData.email,
+          password: loginData.password,
+        }),
       });
-      const responseMessage = extractWebhookMessage(response);
-      const isError = responseMessage
-        ? responseMessage.toLowerCase().includes("incorrect")
-        : false;
-      if (isError) {
+      const data = await response.json();
+      if (!response.ok) {
         toast({
           title: t.auth.errorTitle,
-          description: responseMessage ?? t.auth.errorDescription,
+          description: data.error ?? t.auth.errorDescription,
           variant: "destructive",
         });
         return;
       }
-      const adminFlag = extractAdminFlag(response);
-      if (adminFlag === false) {
-        toast({
-          title: t.auth.errorTitle,
-          description: t.admin.errors.notAuthorized,
-          variant: "destructive",
-        });
-        return;
-      }
-      const token = extractToken(response) ?? undefined;
-      const nextSession: AdminSession = {
-        email: loginData.email,
-        token,
-        loggedAt: Date.now(),
-      };
-      setSession(nextSession);
-      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(nextSession));
+      
+      setSessionUser(loginData.email);
       setAuthStatus("authenticated");
       toast({
         title: t.auth.loginSuccessTitle,
-        description: responseMessage ?? t.auth.loginSuccessDescription,
+        description: t.auth.loginSuccessDescription,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: t.auth.errorTitle,
-        description:
-          error instanceof Error ? error.message : t.auth.errorDescription,
+        description: t.auth.errorDescription,
         variant: "destructive",
       });
     } finally {
@@ -649,169 +270,296 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
-  const handleStartEdit = (post: BlogPost) => {
-    setEditingId((current) => (current === post.id ? null : post.id));
-    setDrafts((prev) =>
-      prev[post.id]
-        ? prev
-        : {
-            ...prev,
-            [post.id]: buildDraft(post),
-          },
-    );
-  };
-
-  const handleCancel = (postId: string) => {
-    setEditingId((current) => (current === postId ? null : current));
-    setDrafts((prev) => {
-      const next = { ...prev };
-      delete next[postId];
-      return next;
-    });
-    setDraftErrors((prev) => {
-      const next = { ...prev };
-      delete next[postId];
-      return next;
-    });
-  };
-
-  const handleDelete = async (postId: string) => {
-    if (!window.confirm(t.admin.confirmDelete)) {
-      return;
-    }
-    const target = posts.find((post) => post.id === postId);
-    if (!target) {
-      return;
-    }
-    setDeletingId(postId);
+  // Logout handler
+  const handleLogout = async () => {
     try {
-      await deletePost(target, lang, session?.token);
-      setPosts((prev) => prev.filter((post) => post.id !== postId));
-      if (editingId === postId) {
-        setEditingId(null);
-      }
-      setDrafts((prev) => {
-        const next = { ...prev };
-        delete next[postId];
-        return next;
-      });
-      setDraftErrors((prev) => {
-        const next = { ...prev };
-        delete next[postId];
-        return next;
-      });
-      toast({ title: t.admin.toast.deleteSuccess });
-      await loadGeneratedStatus();
-    } catch (error) {
-      toast({
-        title: t.admin.toast.deleteError,
-        description: error instanceof Error ? error.message : undefined,
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {}
+    setSessionUser(null);
+    setAuthStatus("unauthenticated");
   };
 
-  const updateDraft = (
-    post: BlogPost,
-    key: keyof PostDraft,
-    value: PostDraft[keyof PostDraft],
-  ) => {
-    setDrafts((prev) => {
-      const current = prev[post.id] ?? buildDraft(post);
-      return {
-        ...prev,
-        [post.id]: {
-          ...current,
-          [key]: value,
-        },
-      };
-    });
+  // POSTS CRUD HANDLERS
+  const handleStartEditPost = (post: BlogPost) => {
+    setEditingPostId(post.id);
+    setPostDrafts((prev) => ({
+      ...prev,
+      [post.id]: buildDraft(post),
+    }));
   };
 
-  const handleSave = async (postId: string) => {
-    const draft = drafts[postId];
-    const target = posts.find((post) => post.id === postId);
-    if (!draft || !target) {
-      return;
-    }
-    const metaTags = parseMetaTagsInput(draft.metaTags);
-    if (metaTags === null) {
-      setDraftErrors((prev) => ({
-        ...prev,
-        [postId]: t.admin.errors.metaTags,
-      }));
-      return;
-    }
-    setDraftErrors((prev) => {
+  const handleCancelEditPost = (postId: string) => {
+    setEditingPostId(null);
+    setPostDraftErrors((prev) => {
       const next = { ...prev };
       delete next[postId];
       return next;
     });
-    const categoryValue = normalizeOptional(draft.category);
-    if (!categoryValue) {
-      setDraftErrors((prev) => ({
-        ...prev,
-        [postId]: t.admin.errors.categoryRequired,
-      }));
-      return;
+    if (postId.startsWith("temp-")) {
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
     }
-    if (!allowedCategorySet.has(normalizeCategory(categoryValue))) {
-      setDraftErrors((prev) => ({
-        ...prev,
-        [postId]: t.admin.errors.categoryInvalid,
-      }));
-      return;
-    }
-    const canonicalCategory =
-      allowedCategories.find(
-        (category) => normalizeCategory(category) === normalizeCategory(categoryValue),
-      ) ?? categoryValue;
+  };
 
-    const updatedPost: BlogPost = {
+  const handleCreatePost = () => {
+    const tempId = `temp-${Date.now()}`;
+    const blankPost: BlogPost = {
+      id: tempId,
+      title: "Novo Artigo",
+      slug: "",
+      excerpt: "",
+      description: "",
+      content: "",
+      contentHtml: "",
+      category: allowedCategories[0] || "",
+      image: "",
+      imageAlt: "",
+      imageThumb: "",
+      images: [],
+      tags: [],
+      date: new Date().toISOString().split("T")[0],
+      author: sessionUser || "Admin",
+      readTime: "5 min",
+      featured: false,
+      metaTitle: "",
+      metaDescription: "",
+      metaTags: [],
+    };
+    
+    setPosts((prev) => [blankPost, ...prev]);
+    setPostDrafts((prev) => ({
+      ...prev,
+      [tempId]: buildDraft(blankPost),
+    }));
+    setEditingPostId(tempId);
+  };
+
+  const handleSavePost = async (postId: string) => {
+    const draft = postDrafts[postId];
+    const target = posts.find((p) => p.id === postId);
+    if (!draft || !target) return;
+
+    if (!draft.title.trim()) {
+      setPostDraftErrors((prev) => ({ ...prev, [postId]: "O título é obrigatório" }));
+      return;
+    }
+    if (!draft.slug.trim()) {
+      setPostDraftErrors((prev) => ({ ...prev, [postId]: "O slug é obrigatório" }));
+      return;
+    }
+
+    const payloadPost: BlogPost = {
       ...target,
-      title: draft.title.trim() || target.title,
-      slug: normalizeOptional(draft.slug),
-      excerpt: normalizeOptional(draft.excerpt),
-      description: normalizeOptional(draft.description),
-      content: normalizeOptional(draft.content),
-      contentHtml: normalizeOptional(draft.contentHtml),
-      category: canonicalCategory,
-      image: normalizeOptional(draft.image),
-      imageAlt: normalizeOptional(draft.imageAlt),
-      imageThumb: normalizeOptional(draft.imageThumb),
-      images: normalizeList(draft.images),
-      tags: normalizeList(draft.tags),
-      date: normalizeOptional(draft.date),
-      author: normalizeOptional(draft.author),
-      readTime: normalizeOptional(draft.readTime),
+      id: postId.startsWith("temp-") ? undefined : postId,
+      title: draft.title.trim(),
+      slug: draft.slug.trim(),
+      category: draft.category || allowedCategories[0],
+      excerpt: draft.excerpt,
+      description: draft.description || draft.excerpt,
+      content: draft.content,
+      image: draft.image,
+      imageAlt: draft.imageAlt,
+      imageThumb: draft.imageThumb || draft.image,
+      images: draft.images ? draft.images.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      tags: draft.tags ? draft.tags.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      date: draft.date || new Date().toISOString(),
+      author: draft.author || sessionUser || "Admin",
+      readTime: draft.readTime || "5 min",
       featured: draft.featured,
-      metaTitle: normalizeOptional(draft.metaTitle),
-      metaDescription: normalizeOptional(draft.metaDescription),
-      metaTags,
+      metaTitle: draft.metaTitle || draft.title,
+      metaDescription: draft.metaDescription || draft.excerpt,
     };
 
-    setSavingId(postId);
+    setPostSavingId(postId);
     try {
-      await editPost(updatedPost, lang, session?.token);
-      setPosts((prev) =>
-        prev.map((post) => (post.id === postId ? updatedPost : post)),
-      );
+      await editPost(payloadPost, lang);
+      
+      // Reload posts to get final IDs and order from disk
+      const refreshed = await fetchPosts(lang);
+      setPosts(refreshed);
+
       toast({ title: t.admin.toast.saveSuccess });
-      handleCancel(postId);
+      setEditingPostId(null);
     } catch (error) {
       toast({
         title: t.admin.toast.saveError,
-        description: error instanceof Error ? error.message : undefined,
+        description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
     } finally {
-      setSavingId(null);
+      setPostSavingId(null);
     }
   };
 
-  const formatDate = (value?: string) => formatPostDate(value, lang);
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm(t.admin.confirmDelete)) return;
+    const target = posts.find((p) => p.id === postId);
+    if (!target) return;
+
+    setPostDeletingId(postId);
+    try {
+      await deletePost(target, lang);
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      toast({ title: "Artigo excluído com sucesso." });
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir artigo",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPostDeletingId(null);
+    }
+  };
+
+  // PAGES CRUD HANDLERS
+  const handleStartEditPage = (page: CustomPage) => {
+    setEditingPageId(page.id);
+    setPageDrafts((prev) => ({
+      ...prev,
+      [page.id]: buildPageDraft(page),
+    }));
+  };
+
+  const handleCancelEditPage = (pageId: string) => {
+    setEditingPageId(null);
+    setPageDraftErrors((prev) => {
+      const next = { ...prev };
+      delete next[pageId];
+      return next;
+    });
+    if (pageId.startsWith("temp-")) {
+      setPages((prev) => prev.filter((p) => p.id !== pageId));
+    }
+  };
+
+  const handleCreatePage = () => {
+    const tempId = `temp-${Date.now()}`;
+    const blankPage: CustomPage = {
+      id: tempId,
+      slug: "",
+      lang,
+      title: "Nova Página",
+      content: { bodyHtml: "" },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setPages((prev) => [blankPage, ...prev]);
+    setPageDrafts((prev) => ({
+      ...prev,
+      [tempId]: buildPageDraft(blankPage),
+    }));
+    setEditingPageId(tempId);
+  };
+
+  const handleSavePage = async (pageId: string) => {
+    const draft = pageDrafts[pageId];
+    const target = pages.find((p) => p.id === pageId);
+    if (!draft || !target) return;
+
+    if (!draft.title.trim()) {
+      setPageDraftErrors((prev) => ({ ...prev, [pageId]: "O título é obrigatório" }));
+      return;
+    }
+    if (!draft.slug.trim()) {
+      setPageDraftErrors((prev) => ({ ...prev, [pageId]: "O slug é obrigatório" }));
+      return;
+    }
+
+    const payload = {
+      id: pageId.startsWith("temp-") ? undefined : pageId,
+      slug: draft.slug.trim(),
+      lang,
+      title: draft.title.trim(),
+      content: {
+        bodyHtml: draft.bodyHtml,
+      },
+      seoTitle: draft.seoTitle || undefined,
+      seoDescription: draft.seoDescription || undefined,
+    };
+
+    setPageSavingId(pageId);
+    try {
+      const response = await fetch("/api/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro ao salvar página");
+      }
+
+      // Reload pages
+      const resList = await fetch(`/api/pages/${lang}`);
+      if (resList.ok) {
+        const listData = await resList.json();
+        setPages(listData);
+      }
+
+      toast({ title: "Página salva com sucesso." });
+      setEditingPageId(null);
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar página",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPageSavingId(null);
+    }
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta página?")) return;
+
+    setPageDeletingId(pageId);
+    try {
+      const response = await fetch(`/api/pages/${lang}?id=${pageId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro ao deletar página");
+      }
+
+      setPages((prev) => prev.filter((p) => p.id !== pageId));
+      toast({ title: "Página excluída com sucesso." });
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir página",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPageDeletingId(null);
+    }
+  };
+
+  // Filter computations
+  const filteredPosts = useMemo(() => {
+    const normalizedQuery = postsQuery.trim().toLowerCase();
+    if (!normalizedQuery) return posts;
+    return posts.filter((post) => {
+      const matchTitle = post.title?.toLowerCase().includes(normalizedQuery);
+      const matchAuthor = post.author?.toLowerCase().includes(normalizedQuery);
+      const matchCategory = post.category?.toLowerCase().includes(normalizedQuery);
+      const matchSlug = post.slug?.toLowerCase().includes(normalizedQuery);
+      return matchTitle || matchAuthor || matchCategory || matchSlug;
+    });
+  }, [posts, postsQuery]);
+
+  const filteredPages = useMemo(() => {
+    const normalizedQuery = pagesQuery.trim().toLowerCase();
+    if (!normalizedQuery) return pages;
+    return pages.filter((page) => {
+      const matchTitle = page.title?.toLowerCase().includes(normalizedQuery);
+      const matchSlug = page.slug?.toLowerCase().includes(normalizedQuery);
+      return matchTitle || matchSlug;
+    });
+  }, [pages, pagesQuery]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -824,36 +572,35 @@ export default function Admin({ lang }: AdminProps) {
       <Header lang={lang} pageKey="admin" t={t} />
 
       <main className="flex-1">
-        <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background py-16 sm:py-24">
-          <div className="absolute inset-0">
-            <div className="absolute -top-32 -right-32 w-72 h-72 bg-secondary/10 rounded-full blur-3xl" />
-            <div className="absolute -bottom-32 -left-32 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-          </div>
-
-          <div className="container mx-auto px-4 relative z-10">
-            <Link
-              href={homePath}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-secondary/80 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t.post.backToHome}
-            </Link>
-
-            <div className="mt-10 max-w-4xl">
-              <h1 className="text-4xl sm:text-6xl font-bold text-foreground">
-                {t.admin.title}
-              </h1>
-              <p className="mt-3 text-lg sm:text-xl text-foreground/80">
-                {t.admin.subtitle}
-              </p>
-              <div className="mt-6 rounded-lg border border-secondary/20 bg-secondary/5 px-4 py-3 text-sm text-secondary">
-                {t.admin.notice}
+        {/* Banner Section */}
+        <section className="border-b border-border bg-card/40 py-12">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 text-sm text-foreground/60 mb-2">
+                  <Link href={homePath} className="inline-flex items-center gap-1 hover:text-foreground">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>{t.nav.home}</span>
+                  </Link>
+                  <span>/</span>
+                  <span className="text-foreground">Admin</span>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                  {t.admin.title}
+                </h1>
+                <p className="mt-2 text-foreground/80">
+                  {t.admin.subtitle}
+                </p>
               </div>
+
               {isAuthenticated && (
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-foreground/80">
-                  {session?.email ? <span>{session.email}</span> : null}
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    {t.admin.logout}
+                <div className="flex items-center gap-4 bg-background border border-border rounded-xl px-4 py-2.5 shadow-sm">
+                  <div className="text-right">
+                    <p className="text-xs text-foreground/60">Logado como</p>
+                    <p className="text-sm font-semibold text-foreground">{sessionUser}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+                    <LogOut className="w-4 h-4" />
                   </Button>
                 </div>
               )}
@@ -861,72 +608,49 @@ export default function Admin({ lang }: AdminProps) {
           </div>
         </section>
 
-        <section className="py-12 sm:py-16">
-          <div className="container mx-auto px-4">
+        {/* Workspace Section */}
+        <section className="py-12">
+          <div className="container mx-auto px-4 max-w-7xl">
             {!isAuthenticated ? (
-              <div className="max-w-xl mx-auto">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.admin.loginTitle}</CardTitle>
+              // Login Panel
+              <div className="max-w-md mx-auto">
+                <Card className="border border-border/80 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-secondary" />
+                  <CardHeader className="text-center pt-8">
+                    <CardTitle className="text-2xl font-bold">{t.admin.loginTitle}</CardTitle>
                     <CardDescription>{t.admin.loginSubtitle}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-8">
                     {isCheckingAuth ? (
-                      <p className="text-sm text-foreground/80">
-                        {t.posts.loading}
-                      </p>
+                      <div className="flex justify-center py-8">
+                        <div className="w-6 h-6 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
+                      </div>
                     ) : (
-                      <form
-                        className="space-y-4"
-                        onSubmit={handleLoginSubmit}
-                      >
+                      <form onSubmit={handleLoginSubmit} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="admin-email">
-                            {t.auth.emailLabel}
-                          </Label>
+                          <Label htmlFor="admin-email">{t.auth.emailLabel}</Label>
                           <Input
                             id="admin-email"
-                            type="email"
-                            autoComplete="email"
+                            type="text"
+                            placeholder="Email ou usuário"
                             value={loginData.email}
-                            onChange={(event) =>
-                              setLoginData((prev) => ({
-                                ...prev,
-                                email: event.target.value,
-                              }))
-                            }
+                            onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
                             required
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="admin-password">
-                            {t.auth.passwordLabel}
-                          </Label>
+                          <Label htmlFor="admin-password">{t.auth.passwordLabel}</Label>
                           <Input
                             id="admin-password"
                             type="password"
-                            autoComplete="current-password"
+                            placeholder="Sua senha secreta"
                             value={loginData.password}
-                            onChange={(event) =>
-                              setLoginData((prev) => ({
-                                ...prev,
-                                password: event.target.value,
-                              }))
-                            }
+                            onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
                             required
                           />
                         </div>
-                        <p className="text-sm text-foreground/80">
-                          {t.auth.loginHint}
-                        </p>
-                        <Button
-                          type="submit"
-                          className="w-full"
-                          disabled={loginLoading}
-                        >
-                          {loginLoading
-                            ? `${t.auth.loginButton}...`
-                            : t.auth.loginButton}
+                        <Button type="submit" className="w-full mt-4" disabled={loginLoading}>
+                          {loginLoading ? "Verificando..." : t.auth.loginButton}
                         </Button>
                       </form>
                     )}
@@ -934,769 +658,421 @@ export default function Admin({ lang }: AdminProps) {
                 </Card>
               </div>
             ) : (
-              <>
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-foreground">
-                      {t.admin.listTitle}
-                    </h2>
-                    <p className="text-sm text-foreground/80">
-                      {t.admin.listSubtitle}
-                    </p>
-                  </div>
-                  <div className="w-full lg:w-80">
-                    <Input
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder={t.admin.searchPlaceholder}
-                    />
-                  </div>
-                </div>
-                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {t.admin.contentStrategy.title}
-                      </h3>
-                      <p className="text-sm text-foreground/80">
-                        {t.admin.contentStrategy.subtitle}
-                      </p>
-                    </div>
-                    <div className="text-xs text-foreground/80">
-                      {validPosts.length} {t.admin.contentStrategy.countLabel}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {contentStrategyCards.map((card) => {
-                      const count = contentTypeCounts[card.key];
-                      const isMissing = count === 0;
-                      return (
-                        <Card
-                          key={card.key}
-                          className={isMissing ? "border-destructive/40" : undefined}
-                        >
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-base">
-                              <span>{card.title}</span>
-                              <Badge
-                                variant={isMissing ? "destructive" : "secondary"}
-                              >
-                                {count}
-                              </Badge>
-                            </CardTitle>
-                            <CardDescription>{card.description}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-xs text-foreground/80">
-                              {count} {t.admin.contentStrategy.countLabel}
-                            </p>
-                            {isMissing && (
-                              <p className="text-xs text-destructive mt-2">
-                                {t.admin.contentStrategy.missing}
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {t.admin.generated.title}
-                      </h3>
-                      <p className="text-sm text-foreground/80">
-                        {t.admin.generated.subtitle}
-                      </p>
-                      {generatedUpdatedAt && (
-                        <p className="text-xs text-foreground/80 mt-2">
-                          {t.admin.generated.updatedLabel}{" "}
-                          {formatGeneratedTimestamp(generatedUpdatedAt)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={loadGeneratedStatus}
-                      disabled={generatedLoading}
+              // Authenticated Dashboard
+              <div className="space-y-8">
+                {/* Tabs switcher */}
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="flex items-center gap-2 bg-muted/65 p-1 rounded-lg border border-border">
+                    <button
+                      onClick={() => setActiveTab("posts")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                        activeTab === "posts"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
                     >
-                      {generatedLoading
-                        ? `${t.admin.generated.refresh}...`
-                        : t.admin.generated.refresh}
+                      <Globe className="w-4 h-4" />
+                      Artigos ({posts.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("pages")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                        activeTab === "pages"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Páginas ({pages.length})
+                    </button>
+                  </div>
+
+                  {activeTab === "posts" ? (
+                    <Button onClick={handleCreatePost} className="gap-2">
+                      <Plus className="w-4 h-4" /> Novo Artigo
                     </Button>
-                  </div>
-
-                  {generatedLoading && (
-                    <p className="text-sm text-foreground/80">
-                      {t.posts.loading}
-                    </p>
-                  )}
-
-                  {generatedError && (
-                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                      {generatedError}
-                    </div>
-                  )}
-
-                  {!generatedLoading && !generatedError && generatedStatus && (
-                    <>
-                      <div className="grid gap-6 lg:grid-cols-2">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-base">
-                              <span>{t.admin.generated.generatedLabel}</span>
-                              <Badge variant="secondary">
-                                {generatedStatus.generatedPages.length}
-                              </Badge>
-                            </CardTitle>
-                            <CardDescription>
-                              {t.admin.generated.generatedSubtitle}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            {generatedStatus.generatedPages.length === 0 ? (
-                              <p className="text-xs text-foreground/80">
-                                {t.admin.generated.emptyGenerated}
-                              </p>
-                            ) : (
-                              <div className="max-h-72 overflow-auto text-xs text-foreground/80 space-y-2">
-                                {generatedStatus.generatedPages.map((page) => (
-                                  <a
-                                    key={page.url}
-                                    href={page.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block hover:text-primary"
-                                  >
-                                    {page.path}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-base">
-                              <span>{t.admin.generated.sitemapLabel}</span>
-                              <Badge variant="secondary">
-                                {generatedStatus.sitemapEntries.length}
-                              </Badge>
-                            </CardTitle>
-                            <CardDescription>
-                              {t.admin.generated.sitemapSubtitle}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            {generatedStatus.sitemapEntries.length === 0 ? (
-                              <p className="text-xs text-foreground/80">
-                                {t.admin.generated.emptySitemap}
-                              </p>
-                            ) : (
-                              <div className="max-h-72 overflow-auto text-xs text-foreground/80 space-y-2">
-                                {generatedStatus.sitemapEntries.map((url) => (
-                                  <a
-                                    key={url}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block hover:text-primary"
-                                  >
-                                    {url}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {(generatedStatus.missingInSitemap.length > 0 ||
-                        generatedStatus.missingInGenerated.length > 0) && (
-                        <div className="mt-6 grid gap-4 md:grid-cols-2">
-                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-                            <p className="text-xs font-semibold text-destructive mb-2">
-                              {t.admin.generated.missingInSitemapLabel} (
-                              {generatedStatus.missingInSitemap.length})
-                            </p>
-                            {generatedStatus.missingInSitemap.length === 0 ? (
-                              <p className="text-xs text-foreground/80">
-                                {t.admin.generated.noneMissing}
-                              </p>
-                            ) : (
-                              <div className="max-h-40 overflow-auto text-xs text-foreground/80 space-y-1">
-                                {generatedStatus.missingInSitemap.map((path) => (
-                                  <span key={path} className="block">
-                                    {path}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-                            <p className="text-xs font-semibold text-destructive mb-2">
-                              {t.admin.generated.missingInGeneratedLabel} (
-                              {generatedStatus.missingInGenerated.length})
-                            </p>
-                            {generatedStatus.missingInGenerated.length === 0 ? (
-                              <p className="text-xs text-foreground/80">
-                                {t.admin.generated.noneMissing}
-                              </p>
-                            ) : (
-                              <div className="max-h-40 overflow-auto text-xs text-foreground/80 space-y-1">
-                                {generatedStatus.missingInGenerated.map(
-                                  (path) => (
-                                    <span key={path} className="block">
-                                      {path}
-                                    </span>
-                                  ),
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                  ) : (
+                    <Button onClick={handleCreatePage} className="gap-2">
+                      <Plus className="w-4 h-4" /> Nova Página
+                    </Button>
                   )}
                 </div>
-                <div className="mb-10 rounded-2xl border border-border bg-card/70 p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {t.admin.backend.title}
-                      </h3>
-                      <p className="text-sm text-foreground/80">
-                        {t.admin.backend.subtitle}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={loadGeneratedStatus}
-                        disabled={generatedLoading || tasksLoading}
-                      >
-                        {generatedLoading
-                          ? `${t.admin.generated.refresh}...`
-                          : t.admin.generated.refresh}
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleRebuildSitemap}
-                        disabled={tasksLoading}
-                      >
-                        {tasksLoading
-                          ? `${t.admin.backend.rebuildLabel}...`
-                          : t.admin.backend.rebuildLabel}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleDeleteAllPosts}
-                        disabled={deleteAllLoading}
-                      >
-                        {deleteAllLoading
-                          ? `${t.admin.backend.deleteAllLabel}...`
-                          : t.admin.backend.deleteAllLabel}
-                      </Button>
-                    </div>
-                  </div>
 
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">
-                          {t.admin.backend.htmlTitle}
-                        </CardTitle>
-                        <CardDescription>
-                          {t.admin.backend.htmlSubtitle}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {htmlLinks.length === 0 ? (
-                          <p className="text-xs text-foreground/80">
-                            {t.admin.backend.htmlEmpty}
-                          </p>
-                        ) : (
-                          <div className="max-h-80 space-y-3 overflow-auto text-xs text-foreground/80">
-                            {htmlLinks.map((entry) => (
-                              <div
-                                key={entry.id}
-                                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/60 p-3"
-                              >
-                                <div className="text-sm font-semibold text-foreground">
-                                  {entry.title}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {languages.map((code) => {
-                                    const href = entry.links[code];
-                                    if (!href) {
-                                      return null;
-                                    }
-                                    return (
-                                      <a
-                                        key={`${entry.id}-${code}`}
-                                        href={href}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground hover:text-primary"
-                                      >
-                                        {languageLabels[code]}
-                                      </a>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">
-                          {t.admin.backend.tipsTitle}
-                        </CardTitle>
-                        <CardDescription>
-                          {t.admin.backend.tipsSubtitle}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-xs text-foreground/80">
-                          <p>{t.admin.backend.tipRebuild}</p>
-                          <p>{t.admin.backend.tipLinks}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-                {showLoading && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-foreground/80">
-                      {t.posts.loading}
-                    </p>
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className="h-28 rounded-lg border border-border bg-card/50 animate-pulse"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {showError && (
-                  <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-6 py-6 text-destructive">
-                    <p className="text-base font-semibold">
-                      {t.posts.errorTitle}
-                    </p>
-                    <p className="text-sm opacity-80">
-                      {errorMessage ?? t.posts.errorDescription}
-                    </p>
-                  </div>
-                )}
-
-                {showEmpty && (
-                  <div className="rounded-xl border border-border bg-card px-6 py-8 text-center">
-                    <p className="text-lg font-semibold text-foreground mb-2">
-                      {t.admin.emptyTitle}
-                    </p>
-                    <p className="text-sm text-foreground/80">
-                      {t.admin.emptyDescription}
-                    </p>
-                  </div>
-                )}
-
-                {!showLoading && !showError && !showEmpty && (
+                {/* POSTS WORKSPACE */}
+                {activeTab === "posts" && (
                   <div className="space-y-6">
-                    {filteredPosts.map((post) => {
-                      const isEditing = editingId === post.id;
-                      const draft = drafts[post.id] ?? buildDraft(post);
-                      const postDate = formatDate(post.date);
-                      const isSaving = savingId === post.id;
-                      const isDeleting = deletingId === post.id;
-                      const isBusy = isSaving || isDeleting;
-                      const previewSrc =
-                        post.imageThumb ?? post.image ?? post.images?.[0] ?? "";
-                      const contentType = getContentType(post);
-                      const contentTypeLabel =
-                        t.admin.contentStrategy.types[contentType].title;
-                      return (
-                        <article
-                          key={post.id}
-                          className="rounded-xl border border-border bg-card p-6 shadow-sm"
-                        >
-                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                            <div className="flex flex-col sm:flex-row gap-4">
-                              <div className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 flex items-center justify-center">
-                                {previewSrc ? (
-                                  <NextImage
-                                    src={previewSrc}
-                                    alt={post.title}
-                                    width={280}
-                                    height={200}
-                                    className="h-full w-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                  />
-                                ) : (
-                                  <ImageIcon className="h-6 w-6 text-foreground/40" />
-                                )}
-                              </div>
-                              <div className="space-y-3">
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <h3 className="text-xl font-semibold text-foreground">
-                                    {post.title}
-                                  </h3>
-                                  {post.featured && (
-                                    <Badge variant="secondary">
-                                      {t.admin.fields.featured}
-                                    </Badge>
-                                  )}
-                                  {contentTypeLabel && (
-                                    <Badge variant="outline">
-                                      {contentTypeLabel}
-                                    </Badge>
-                                  )}
-                                  {post.category && (
-                                    <Badge variant="outline">{post.category}</Badge>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap gap-3 text-xs text-foreground/80">
-                                  {post.author && <span>{post.author}</span>}
-                                  {postDate && <span>{postDate}</span>}
-                                  {post.readTime && <span>{post.readTime}</span>}
-                                </div>
-                                {(post.excerpt || post.description) && (
-                                  <p className="text-sm text-foreground/80 max-w-3xl line-clamp-2">
-                                    {post.excerpt ?? post.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="outline"
-                                onClick={() => handleStartEdit(post)}
-                                disabled={isBusy}
-                              >
-                                <Pencil className="w-4 h-4" />
-                                {isEditing
-                                  ? t.admin.actions.close
-                                  : t.admin.actions.edit}
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                onClick={() => handleDelete(post.id)}
-                                disabled={isBusy}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                {isDeleting
-                                  ? `${t.admin.actions.delete}...`
-                                  : t.admin.actions.delete}
-                              </Button>
-                            </div>
-                          </div>
+                    <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 max-w-md shadow-sm">
+                      <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder={t.admin.searchPlaceholder}
+                        value={postsQuery}
+                        onChange={(e) => setPostsQuery(e.target.value)}
+                        className="bg-transparent border-none outline-none text-sm w-full text-foreground"
+                      />
+                    </div>
 
-                          {isEditing && (
-                        <div className="mt-6 border-t border-border pt-6 space-y-6">
-                          <div className="grid grid-cols-1 gap-6">
-                            <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
-                                {t.admin.sectionBasics}
-                              </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Field label={t.admin.fields.id}>
-                                  <Input value={post.id} readOnly />
-                                </Field>
-                                <Field label={t.admin.fields.title}>
-                                  <Input
-                                    value={draft.title}
-                                    onChange={(event) =>
-                                      updateDraft(post, "title", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.slug}>
-                                  <Input
-                                    value={draft.slug}
-                                    onChange={(event) =>
-                                      updateDraft(post, "slug", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field
-                                  label={t.admin.fields.category}
-                                  hint={t.admin.hints.category}
-                                >
-                                  <Input
-                                    list={`category-options-${post.id}`}
-                                    value={draft.category}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "category",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                  <datalist id={`category-options-${post.id}`}>
-                                    {categoryOptions.map((option) => (
-                                      <option key={option} value={option} />
-                                    ))}
-                                  </datalist>
-                                </Field>
-                                <Field label={t.admin.fields.author}>
-                                  <Input
-                                    value={draft.author}
-                                    onChange={(event) =>
-                                      updateDraft(post, "author", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.date}>
-                                  <Input
-                                    value={draft.date}
-                                    onChange={(event) =>
-                                      updateDraft(post, "date", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.readTime}>
-                                  <Input
-                                    value={draft.readTime}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "readTime",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <div className="flex items-center justify-between rounded-md border border-input px-3 py-2">
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground">
-                                      {t.admin.fields.featured}
-                                    </p>
+                    {postsStatus === "loading" && (
+                      <div className="flex justify-center py-12">
+                        <div className="w-8 h-8 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    {postsStatus === "error" && (
+                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-lg flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 shrink-0" />
+                        <span>Ocorreu um erro ao carregar os artigos.</span>
+                      </div>
+                    )}
+
+                    {postsStatus === "idle" && filteredPosts.length === 0 && (
+                      <div className="border border-border border-dashed bg-card/40 rounded-xl p-12 text-center">
+                        <Globe className="w-8 h-8 text-foreground/30 mx-auto mb-3" />
+                        <h3 className="text-lg font-semibold">{t.admin.emptyTitle}</h3>
+                        <p className="text-sm text-foreground/60 mt-1">{t.admin.emptyDescription}</p>
+                      </div>
+                    )}
+
+                    {postsStatus === "idle" && filteredPosts.length > 0 && (
+                      <div className="space-y-4">
+                        {filteredPosts.map((post) => {
+                          const isEditing = editingPostId === post.id;
+                          const draft = postDrafts[post.id] ?? buildDraft(post);
+                          const isSaving = postSavingId === post.id;
+                          const isDeleting = postDeletingId === post.id;
+                          const isBusy = isSaving || isDeleting;
+                          const previewSrc = post.imageThumb || post.image || (post.images && post.images[0]) || "";
+
+                          return (
+                            <Card key={post.id} className="border border-border/80 bg-card overflow-hidden">
+                              <CardContent className="p-6">
+                                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                                  <div className="flex flex-col sm:flex-row gap-4">
+                                    <div className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 overflow-hidden rounded-lg border border-border bg-muted flex items-center justify-center relative">
+                                      {previewSrc ? (
+                                        <NextImage
+                                          src={previewSrc}
+                                          alt={post.title || ""}
+                                          width={144}
+                                          height={96}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <ImageIcon className="h-6 w-6 text-foreground/30" />
+                                      )}
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="text-lg font-bold text-foreground leading-tight">
+                                          {post.title}
+                                        </h3>
+                                        {post.featured && <Badge variant="secondary">Destaque</Badge>}
+                                        {post.category && <Badge variant="outline">{post.category}</Badge>}
+                                      </div>
+                                      <div className="text-xs text-foreground/60 flex items-center gap-3">
+                                        <span>Por: {post.author || "Admin"}</span>
+                                        <span>•</span>
+                                        <span>{formatPostDate(post.date, lang)}</span>
+                                        <span>•</span>
+                                        <span>{post.readTime}</span>
+                                      </div>
+                                      {post.excerpt && (
+                                        <p className="text-sm text-foreground/75 line-clamp-2">{post.excerpt}</p>
+                                      )}
+                                    </div>
                                   </div>
-                                  <Switch
-                                    checked={draft.featured}
-                                    onCheckedChange={(checked) =>
-                                      updateDraft(post, "featured", checked)
-                                    }
-                                  />
+
+                                  <div className="flex items-center gap-2 self-end lg:self-start">
+                                    <Button
+                                      variant={isEditing ? "ghost" : "outline"}
+                                      size="sm"
+                                      onClick={() => (isEditing ? handleCancelEditPost(post.id) : handleStartEditPost(post))}
+                                      disabled={isBusy}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                      {isEditing ? "Fechar" : "Editar"}
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeletePost(post.id)}
+                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                      {isDeleting ? "Excluindo..." : "Excluir"}
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
 
-                            <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
-                                {t.admin.sectionContent}
-                              </h4>
-                              <div className="grid grid-cols-1 gap-4">
-                                <Field label={t.admin.fields.excerpt}>
-                                  <Textarea
-                                    value={draft.excerpt}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "excerpt",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.description}>
-                                  <Textarea
-                                    value={draft.description}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "description",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.content}>
-                                  <Textarea
-                                    value={draft.content}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "content",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.contentHtml}>
-                                  <Textarea
-                                    value={draft.contentHtml}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "contentHtml",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                              </div>
-                            </div>
+                                {isEditing && (
+                                  <div className="mt-8 pt-6 border-t border-border space-y-6">
+                                    {postDraftErrors[post.id] && (
+                                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-md flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        <span>{postDraftErrors[post.id]}</span>
+                                      </div>
+                                    )}
 
-                            <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
-                                {t.admin.sectionMedia}
-                              </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Field label={t.admin.fields.image}>
-                                  <Input
-                                    value={draft.image}
-                                    onChange={(event) =>
-                                      updateDraft(post, "image", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.imageAlt}>
-                                  <Input
-                                    value={draft.imageAlt}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "imageAlt",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.imageThumb}>
-                                  <Input
-                                    value={draft.imageThumb}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "imageThumb",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field
-                                  label={t.admin.fields.images}
-                                  hint={t.admin.hints.images}
-                                >
-                                  <Textarea
-                                    value={draft.images}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "images",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field
-                                  label={t.admin.fields.tags}
-                                  hint={t.admin.hints.tags}
-                                >
-                                  <Input
-                                    value={draft.tags}
-                                    onChange={(event) =>
-                                      updateDraft(post, "tags", event.target.value)
-                                    }
-                                  />
-                                </Field>
-                              </div>
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <Field label="ID do Artigo">
+                                        <Input value={post.id.startsWith("temp-") ? "(Gerado ao salvar)" : post.id} readOnly className="bg-muted text-foreground/60" />
+                                      </Field>
+                                      <Field label="Título">
+                                        <Input
+                                          value={draft.title}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, title: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Slug (URL)">
+                                        <Input
+                                          value={draft.slug}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, slug: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Categoria">
+                                        <Input
+                                          value={draft.category}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, category: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Autor">
+                                        <Input
+                                          value={draft.author}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, author: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Tempo de Leitura">
+                                        <Input
+                                          value={draft.readTime}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, readTime: e.target.value } }))}
+                                        />
+                                      </Field>
+                                    </div>
 
-                            <div>
-                              <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/80 mb-4">
-                                {t.admin.sectionSeo}
-                              </h4>
-                              <div className="grid grid-cols-1 gap-4">
-                                <Field label={t.admin.fields.metaTitle}>
-                                  <Input
-                                    value={draft.metaTitle}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "metaTitle",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field label={t.admin.fields.metaDescription}>
-                                  <Textarea
-                                    value={draft.metaDescription}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "metaDescription",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                                <Field
-                                  label={t.admin.fields.metaTags}
-                                  hint={t.admin.hints.metaTags}
-                                >
-                                  <Textarea
-                                    value={draft.metaTags}
-                                    onChange={(event) =>
-                                      updateDraft(
-                                        post,
-                                        "metaTags",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </Field>
-                              </div>
-                            </div>
-                          </div>
+                                    <div className="space-y-4">
+                                      <Field label="Resumo (Excerpt)">
+                                        <Textarea
+                                          rows={2}
+                                          value={draft.excerpt}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, excerpt: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Descrição SEO">
+                                        <Textarea
+                                          rows={2}
+                                          value={draft.description}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, description: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Conteúdo (Markdown)">
+                                        <Textarea
+                                          rows={12}
+                                          className="font-mono text-sm leading-relaxed"
+                                          value={draft.content}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, content: e.target.value } }))}
+                                        />
+                                      </Field>
+                                    </div>
 
-                          {draftErrors[post.id] && (
-                            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                              {draftErrors[post.id]}
-                            </div>
-                          )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <Field label="Imagem Destacada (URL)">
+                                        <Input
+                                          value={draft.image}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, image: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Texto Alternativo da Imagem">
+                                        <Input
+                                          value={draft.imageAlt}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, imageAlt: e.target.value } }))}
+                                        />
+                                      </Field>
+                                    </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              onClick={() => handleSave(post.id)}
-                              disabled={isSaving || !draft.title.trim()}
-                            >
-                              {isSaving
-                                ? `${t.admin.actions.save}...`
-                                : t.admin.actions.save}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => handleCancel(post.id)}
-                              disabled={isSaving}
-                            >
-                              {t.admin.actions.cancel}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                      );
-                    })}
+                                    <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-lg border border-border">
+                                      <Switch
+                                        id={`featured-${post.id}`}
+                                        checked={draft.featured}
+                                        onCheckedChange={(checked) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, featured: checked } }))}
+                                      />
+                                      <Label htmlFor={`featured-${post.id}`}>Marcar como artigo em Destaque</Label>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-3">
+                                      <Button variant="ghost" onClick={() => handleCancelEditPost(post.id)}>
+                                        Cancelar
+                                      </Button>
+                                      <Button onClick={() => handleSavePost(post.id)} disabled={isSaving}>
+                                        {isSaving ? "Salvando..." : "Salvar Artigo"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
-              </>
+
+                {/* PAGES WORKSPACE */}
+                {activeTab === "pages" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 max-w-md shadow-sm">
+                      <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Buscar páginas por título ou slug..."
+                        value={pagesQuery}
+                        onChange={(e) => setPagesQuery(e.target.value)}
+                        className="bg-transparent border-none outline-none text-sm w-full text-foreground"
+                      />
+                    </div>
+
+                    {pagesStatus === "loading" && (
+                      <div className="flex justify-center py-12">
+                        <div className="w-8 h-8 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    {pagesStatus === "error" && (
+                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-lg flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 shrink-0" />
+                        <span>Ocorreu um erro ao carregar as páginas.</span>
+                      </div>
+                    )}
+
+                    {pagesStatus === "idle" && filteredPages.length === 0 && (
+                      <div className="border border-border border-dashed bg-card/40 rounded-xl p-12 text-center">
+                        <FileText className="w-8 h-8 text-foreground/30 mx-auto mb-3" />
+                        <h3 className="text-lg font-semibold">Nenhuma página encontrada</h3>
+                        <p className="text-sm text-foreground/60 mt-1">Crie páginas customizadas para este idioma.</p>
+                      </div>
+                    )}
+
+                    {pagesStatus === "idle" && filteredPages.length > 0 && (
+                      <div className="space-y-4">
+                        {filteredPages.map((page) => {
+                          const isEditing = editingPageId === page.id;
+                          const draft = pageDrafts[page.id] ?? buildPageDraft(page);
+                          const isSaving = pageSavingId === page.id;
+                          const isDeleting = pageDeletingId === page.id;
+                          const isBusy = isSaving || isDeleting;
+
+                          return (
+                            <Card key={page.id} className="border border-border/80 bg-card overflow-hidden">
+                              <CardContent className="p-6">
+                                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                                  <div className="space-y-1">
+                                    <h3 className="text-lg font-bold text-foreground leading-tight">
+                                      {page.title}
+                                    </h3>
+                                    <div className="text-xs text-foreground/60 flex items-center gap-3">
+                                      <span>Rota: <code className="bg-muted px-1 py-0.5 rounded text-foreground/90 font-mono">/{lang}/{page.slug || "(vazio)"}</code></span>
+                                      <span>•</span>
+                                      <span>Atualizado em: {new Date(page.updatedAt).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 self-end lg:self-start">
+                                    <Button
+                                      variant={isEditing ? "ghost" : "outline"}
+                                      size="sm"
+                                      onClick={() => (isEditing ? handleCancelEditPage(page.id) : handleStartEditPage(page))}
+                                      disabled={isBusy}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                      {isEditing ? "Fechar" : "Editar"}
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeletePage(page.id)}
+                                      disabled={isBusy || page.id.startsWith("temp-")}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                      {isDeleting ? "Excluindo..." : "Excluir"}
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {isEditing && (
+                                  <div className="mt-8 pt-6 border-t border-border space-y-6">
+                                    {pageDraftErrors[page.id] && (
+                                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-md flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        <span>{pageDraftErrors[page.id]}</span>
+                                      </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <Field label="ID da Página">
+                                        <Input value={page.id.startsWith("temp-") ? "(Gerado ao salvar)" : page.id} readOnly className="bg-muted text-foreground/60" />
+                                      </Field>
+                                      <Field label="Título">
+                                        <Input
+                                          value={draft.title}
+                                          onChange={(e) => setPageDrafts((prev) => ({ ...prev, [page.id]: { ...draft, title: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Slug (Caminho da URL)">
+                                        <Input
+                                          value={draft.slug}
+                                          onChange={(e) => setPageDrafts((prev) => ({ ...prev, [page.id]: { ...draft, slug: e.target.value } }))}
+                                          placeholder="ex: termos-de-uso"
+                                        />
+                                      </Field>
+                                      <Field label="Título SEO (Opcional)">
+                                        <Input
+                                          value={draft.seoTitle}
+                                          onChange={(e) => setPageDrafts((prev) => ({ ...prev, [page.id]: { ...draft, seoTitle: e.target.value } }))}
+                                        />
+                                      </Field>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                      <Field label="Descrição SEO (Opcional)">
+                                        <Textarea
+                                          rows={2}
+                                          value={draft.seoDescription}
+                                          onChange={(e) => setPageDrafts((prev) => ({ ...prev, [page.id]: { ...draft, seoDescription: e.target.value } }))}
+                                        />
+                                      </Field>
+                                      <Field label="Conteúdo do Corpo (HTML da Página)">
+                                        <Textarea
+                                          rows={12}
+                                          className="font-mono text-sm leading-relaxed"
+                                          value={draft.bodyHtml}
+                                          onChange={(e) => setPageDrafts((prev) => ({ ...prev, [page.id]: { ...draft, bodyHtml: e.target.value } }))}
+                                          placeholder="<p>Escreva o código HTML da página aqui...</p>"
+                                        />
+                                      </Field>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-3">
+                                      <Button variant="ghost" onClick={() => handleCancelEditPage(page.id)}>
+                                        Cancelar
+                                      </Button>
+                                      <Button onClick={() => handleSavePage(page.id)} disabled={isSaving}>
+                                        {isSaving ? "Salvando..." : "Salvar Página"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </section>
-        <NewsletterSection t={t} />
       </main>
 
       <Footer lang={lang} t={t} />

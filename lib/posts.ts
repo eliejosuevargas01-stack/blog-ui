@@ -1425,11 +1425,22 @@ export async function fetchLivePosts(lang: Language): Promise<BlogPost[]> {
 }
 
 export async function editPost(
-  _post: BlogPost,
-  _lang: Language,
-  _token?: string,
+  post: BlogPost,
+  lang: Language,
+  token?: string,
 ) {
-  throw new Error("Post editing is disabled without n8n integration.");
+  const response = await fetch(`/api/publish-post?lang=${lang}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(post),
+  });
+  if (!response.ok) {
+    const payload = (await response.json()) as { error?: string } | null;
+    throw new Error(payload?.error ?? "Failed to save post");
+  }
 }
 
 export async function deletePost(

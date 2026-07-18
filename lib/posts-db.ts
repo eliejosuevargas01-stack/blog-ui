@@ -659,59 +659,7 @@ const buildIndexEntry = (
   };
 };
 
-const collectHtmlFiles = async (rootDir: string) => {
-  const entries: string[] = [];
-  const walk = async (dir: string) => {
-    const items = await fs.readdir(dir, { withFileTypes: true });
-    await Promise.all(
-      items.map(async (item) => {
-        const fullPath = path.join(dir, item.name);
-        if (item.isDirectory()) {
-          await walk(fullPath);
-          return;
-        }
-        if (item.isFile() && item.name.endsWith(".html")) {
-          entries.push(fullPath);
-        }
-      }),
-    );
-  };
-  await walk(rootDir);
-  return entries;
-};
 
-const formatSitemapDate = (value: Date) =>
-  value.toISOString().split("T")[0];
-
-const buildSitemap = async (rootDir: string, origin: string) => {
-  const files = await collectHtmlFiles(rootDir);
-  const urls = await Promise.all(
-    files.map(async (filePath) => {
-      const stat = await fs.stat(filePath);
-      const relative = path
-        .relative(rootDir, filePath)
-        .split(path.sep)
-        .join("/");
-      const routePath = `/${relative}`
-        .replace(/index\.html$/i, "")
-        .replace(/\.html$/i, "");
-      return {
-        loc: `${origin}${routePath}`,
-        lastmod: formatSitemapDate(stat.mtime),
-      };
-    }),
-  );
-  const xml = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...urls.map(
-      (url) =>
-        `<url><loc>${escapeHtml(url.loc)}</loc><lastmod>${url.lastmod}</lastmod></url>`,
-    ),
-    "</urlset>",
-  ].join("");
-  await fs.writeFile(path.join(rootDir, "sitemap.xml"), xml, "utf-8");
-};
 
 const resolveDeleteCandidates = (
   payload: PostPayload,
@@ -771,39 +719,36 @@ const deletePostAssets = async (rootDir: string, entry: PostPayload) => {
   if (!slug) {
     return [];
   }
-  const postDir = path.join(rootDir, lang, "post", slug);
   const mediaDir = path.join(rootDir, "media", lang, slug);
-  await fs.rm(postDir, { recursive: true, force: true });
   await fs.rm(mediaDir, { recursive: true, force: true });
-  return [postDir, mediaDir];
+  return [mediaDir];
 };
 
-const cleanupLegacyGenerated = async (
-  rootDir: string,
-  logs: string[],
-) => {
-  const protectedEntries = new Set([
-    "posts.json",
-    "sitemap.xml",
-    "pt",
-    "en",
-    "es",
-    "media",
-  ]);
-  try {
-    const entries = await fs.readdir(rootDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (protectedEntries.has(entry.name)) {
-        continue;
-      }
-      const fullPath = path.join(rootDir, entry.name);
-      await fs.rm(fullPath, { recursive: true, force: true });
-      logs.push(`delete-all:legacy ${fullPath}`);
-    }
-  } catch {
-    // Ignore missing root dir.
+export const publishPost = async (payload: PostPayload, rootDir: string) => {
+  const normalizedPayload = await localizePostAssets(payload, rootDir);
+  const { lang: langRaw, slug, html, meta } = renderPostHtml(normalizedPayload);
+  const lang = langRaw as Language;
+  if (!slug) {
+    throw new Error("Missing slug");
   }
+
+  const postsByLang = await loadPostsByLang(rootDir);
+  const posts = postsByLang[lang];
+  const entry = buildIndexEntry(normalizedPayload, lang, slug, meta);
+  const id = entry.id;
+  const existingIndex = posts.findIndex(
+    (item) => (item.id === id || item.slug === slug) && item.lang === lang,
+  );
+  if (existingIndex >= 0) {
+    posts[existingIndex] = { ...posts[existingIndex], ...entry };
+  } else {
+    posts.unshift(entry);
+  }
+  postsByLang[lang] = posts;
+  await savePostsForLang(rootDir, lang, posts);
 };
+
+
 
 const resolveSlugForLang = (
   payload: PostPayload,
@@ -850,42 +795,13 @@ const buildSlugMap = (
   return map;
 };
 
-export const publishPost = async (payload: PostPayload, rootDir: string) => {
-  const normalizedPayload = await localizePostAssets(payload, rootDir);
-  const { lang: langRaw, slug, html, meta } = renderPostHtml(normalizedPayload);
-  const lang = langRaw as Language;
-  if (!slug) {
-    throw new Error("Missing slug");
-  }
-  const postDir = path.join(rootDir, lang, "post", slug);
-  await fs.mkdir(postDir, { recursive: true });
-  await fs.writeFile(path.join(postDir, "index.html"), html, "utf-8");
-
-  const postsByLang = await loadPostsByLang(rootDir);
-  const posts = postsByLang[lang];
-  const entry = buildIndexEntry(normalizedPayload, lang, slug, meta);
-  const existingIndex = posts.findIndex(
-    (item) => item.slug === slug && item.lang === lang,
-  );
-  if (existingIndex >= 0) {
-    posts[existingIndex] = { ...posts[existingIndex], ...entry };
-  } else {
-    posts.unshift(entry);
-  }
-  postsByLang[lang] = posts;
-  await savePostsForLang(rootDir, lang, posts);
-};
-
 export {
   loadPostsByLang,
   savePostsForLang,
-  buildSitemap,
   deletePostAssets,
-  cleanupLegacyGenerated,
   resolveDeleteCandidates,
   resolvePostIdentity,
   buildSlugMap,
   resolveSiteOrigin,
   pickString,
 };
-
