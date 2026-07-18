@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import fs from "fs/promises";
+import path from "path";
 
 // list of high-quality technology/development stock images to use as fallbacks for placeholders
 const TECH_IMAGES = [
@@ -227,7 +229,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // If no PUBLISH_TOKEN is set in the environment, bypass auth check for webhook ease
   if (!apiToken) {
     isAuthenticated = true;
   }
@@ -237,108 +238,159 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const rawPayload = await req.json();
+    const contentType = req.headers.get("content-type") || "";
     
-    // Check if it's the image generation callback
-    const isImageCallback = rawPayload.action === "update_imgs" || (rawPayload.slug && rawPayload.images && !rawPayload.output);
+    // Check if the input is a binary image file upload (multipart/form-data)
+    if (contentType.includes("multipart/form-data")) {
+      console.log("[Images Upload] Received multipart form upload");
+      const formData = await req.formData();
+      
+      const fileData = formData.get("data");
+      const slug = (formData.get("slug") as string) || req.nextUrl.searchParams.get("slug") || "";
+      const hnId = (formData.get("hn_id") as string) || (formData.get("hnId") as string) || req.nextUrl.searchParams.get("hn_id") || req.nextUrl.searchParams.get("hnId") || "";
+      const fileName = (formData.get("fileName") as string) || (formData.get("filename") as string) || req.nextUrl.searchParams.get("fileName") || req.nextUrl.searchParams.get("filename") || "";
+      const fileExtension = (formData.get("fileExtension") as string) || req.nextUrl.searchParams.get("fileExtension") || "png";
 
-    if (isImageCallback) {
-      const { slug, images } = rawPayload;
-      console.log(`[Images Callback] Received images for slug: ${slug}`, images);
-
-      if (!slug || !images) {
-        return NextResponse.json({ error: "Missing slug or images in callback" }, { status: 400 });
+      if (!fileData || typeof fileData === "string") {
+        return NextResponse.json({ error: "Missing binary data file in multipart request" }, { status: 400 });
+      }
+      if (!slug && !hnId) {
+        return NextResponse.json({ error: "Missing slug or hn_id to identify post" }, { status: 400 });
+      }
+      if (!fileName) {
+        return NextResponse.json({ error: "Missing fileName (e.g. imagem_hero) to identify target slot" }, { status: 400 });
       }
 
-      // Find the target post in the database (typically the PT post)
-      const targetPost = await prisma.post.findUnique({
-        where: { slug: slug }
-      });
+      // Find the post
+      const targetPost = slug 
+        ? await prisma.post.findUnique({ where: { slug } })
+        : await prisma.post.findFirst({ where: { hn_id: hnId, lang: "pt" } });
 
       if (!targetPost) {
-        return NextResponse.json({ error: "Target post not found" }, { status: 404 });
+        return NextResponse.json({ error: `Post not found for slug: ${slug} or hn_id: ${hnId}` }, { status: 404 });
       }
 
-      // Get all linked slugs for this post's translations (using slugs fallback or hn_id)
-      let slugsToUpdate: string[] = [targetPost.slug];
+      // Always organize and store images in the media directory of the Portuguese version
+      const ptPost = targetPost.lang === "pt" 
+        ? targetPost 
+        : await prisma.post.findFirst({ where: { hn_id: targetPost.hn_id || "", lang: "pt" } });
+      const ptSlug = ptPost?.slug || targetPost.slug;
+
+      const fileObj = fileData as File;
+      const arrayBuffer = await fileObj.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Save to static media storage
+      const rootDir = process.env.GENERATED_DIR?.trim() || "/app/html-storage/posts";
+      const mediaDestDir = path.join(rootDir, "media", "pt", ptSlug);
+      await fs.mkdir(mediaDestDir, { recursive: true });
+
+      const finalExt = fileExtension.replace(/^\./, "");
+      const cleanFileName = `${fileName}.${finalExt}`;
+      const fullFilePath = path.join(mediaDestDir, cleanFileName);
+      await fs.writeFile(fullFilePath, buffer);
+
+      const publicMediaUrl = `/media/pt/${ptSlug}/${cleanFileName}`;
+      console.log(`[Images Upload] Saved to disk: ${fullFilePath} -> Accessible at: ${publicMediaUrl}`);
+
+      // Find all translations associated with this post so they share the same image
+      let postsToUpdate = [targetPost];
       if (targetPost.hn_id) {
         const translations = await prisma.post.findMany({
-          where: { hn_id: targetPost.hn_id },
-          select: { slug: true }
+          where: { hn_id: targetPost.hn_id }
         });
-        translations.forEach(t => slugsToUpdate.push(t.slug));
-      } else if (targetPost.slugs) {
-        const slugMap = typeof targetPost.slugs === "string" 
-          ? JSON.parse(targetPost.slugs) 
-          : targetPost.slugs;
-        if (slugMap && typeof slugMap === "object") {
-          Object.values(slugMap).forEach((val) => {
-            if (typeof val === "string" && val.trim()) {
-              slugsToUpdate.push(val.trim());
+        postsToUpdate = translations;
+      }
+
+      console.log(`[Images Upload] Updating image path for ${postsToUpdate.length} post translations`);
+
+      for (const postToUpdate of postsToUpdate) {
+        let updatedImg = postToUpdate.img;
+        let blocks: any[] = [];
+
+        if (Array.isArray(postToUpdate.blocks)) {
+          blocks = postToUpdate.blocks;
+        } else if (typeof postToUpdate.blocks === "string") {
+          try {
+            blocks = JSON.parse(postToUpdate.blocks);
+          } catch {
+            blocks = [];
+          }
+        }
+
+        if (fileName === "imagem_hero") {
+          updatedImg = publicMediaUrl;
+        } else if (fileName.startsWith("img-bloco-")) {
+          const index = parseInt(fileName.replace("img-bloco-", ""), 10) - 1;
+          if (index >= 0 && index < blocks.length) {
+            blocks[index] = {
+              ...blocks[index],
+              image: publicMediaUrl
+            };
+          }
+        }
+
+        await prisma.post.update({
+          where: { slug: postToUpdate.slug },
+          data: {
+            img: updatedImg,
+            blocks: blocks as any
+          }
+        });
+      }
+
+      // Check if this was the last image needed for the PT version, if so trigger translation!
+      if (ptPost) {
+        const freshPtPost = await prisma.post.findUnique({ where: { slug: ptSlug } });
+        if (freshPtPost) {
+          let freshBlocks: any[] = [];
+          if (Array.isArray(freshPtPost.blocks)) {
+            freshBlocks = freshPtPost.blocks;
+          } else if (typeof freshPtPost.blocks === "string") {
+            try {
+              freshBlocks = JSON.parse(freshPtPost.blocks);
+            } catch {
+              freshBlocks = [];
             }
+          }
+
+          // Count how many images are still Unsplash fallbacks
+          const hasUnsplashHero = freshPtPost.img?.includes("unsplash.com");
+          const hasUnsplashBlocks = freshBlocks.some(b => b.image?.includes("unsplash.com"));
+
+          // Count if translation has already been created
+          const translationCount = await prisma.post.count({
+            where: { hn_id: freshPtPost.hn_id || "", lang: { in: ["en", "es"] } }
           });
+
+          if (!hasUnsplashHero && !hasUnsplashBlocks && translationCount === 0) {
+            console.log(`[Images Upload] All images generated! Triggering translations for ptSlug: ${ptSlug}`);
+            const updatedHtml = reconstructContentHtmlFromBlocks(freshBlocks, freshPtPost.title);
+            
+            await triggerTranslationWebhook({
+              hn_id: freshPtPost.hn_id,
+              conteudo_html: updatedHtml,
+              slug: freshPtPost.slug,
+              categoria: freshPtPost.category,
+              excerpt: freshPtPost.excerpt,
+              meta_title: freshPtPost.seoTitle,
+              meta_description: freshPtPost.seoDescription,
+              tags: freshPtPost.seoKeywords ? freshPtPost.seoKeywords.split(",").map((t: string) => t.trim()) : [],
+              palavra_chave_principal: freshPtPost.tag
+            });
+          }
         }
       }
-      slugsToUpdate = Array.from(new Set(slugsToUpdate));
-
-      console.log(`[Images Callback] Updating images for PT version: ${slug}`);
-
-      // 1. Update hero image and blocks for PT post
-      let updatedImg = targetPost.img;
-      if (images.imagem_hero) {
-        updatedImg = images.imagem_hero;
-      }
-
-      let blocks: any[] = [];
-      if (Array.isArray(targetPost.blocks)) {
-        blocks = targetPost.blocks;
-      } else if (typeof targetPost.blocks === "string") {
-        try {
-          blocks = JSON.parse(targetPost.blocks);
-        } catch {
-          blocks = [];
-        }
-      }
-
-      const updatedBlocks = blocks.map((block, index) => {
-        const key = `img-bloco-${index + 1}`;
-        const newImg = images[key];
-        return {
-          ...block,
-          image: newImg || block.image
-        };
-      });
-
-      // Save updated PT version to DB
-      const updatedPtPost = await prisma.post.update({
-        where: { slug: slug },
-        data: {
-          img: updatedImg,
-          blocks: updatedBlocks as any
-        }
-      });
-
-      // 2. NOW that we have the real generated images, trigger the TRANSLATE webhook!
-      const updatedHtml = reconstructContentHtmlFromBlocks(updatedBlocks, updatedPtPost.title);
-      
-      triggerTranslationWebhook({
-        hn_id: updatedPtPost.hn_id, // Forward universal ID
-        conteudo_html: updatedHtml,
-        slug: updatedPtPost.slug,
-        categoria: updatedPtPost.category,
-        excerpt: updatedPtPost.excerpt,
-        meta_title: updatedPtPost.seoTitle,
-        meta_description: updatedPtPost.seoDescription,
-        tags: updatedPtPost.seoKeywords ? updatedPtPost.seoKeywords.split(",").map((t: string) => t.trim()) : [],
-        palavra_chave_principal: updatedPtPost.tag
-      });
 
       return NextResponse.json({
         success: true,
-        message: "PT Post images updated. Translation webhook triggered."
+        message: `Image ${cleanFileName} saved and linked successfully.`,
+        url: publicMediaUrl
       });
     }
 
+    const rawPayload = await req.json();
+    
     // Check if the payload is the translation callback from n8n
     const firstItem = Array.isArray(rawPayload) ? rawPayload[0] : rawPayload;
     const isTranslationCallback = firstItem && firstItem.output && (firstItem.output.en || firstItem.output.es);
@@ -348,7 +400,7 @@ export async function POST(req: NextRequest) {
       const output = firstItem.output;
       const languages = ["en", "es"] as const;
       
-      // Find the corresponding Portuguese post to copy publication date and link translations
+      // Find the corresponding Portuguese post to copy publication date, images, and link translations
       const ptPost = await prisma.post.findFirst({
         where: { lang: "pt" },
         orderBy: { createdAt: "desc" }
@@ -396,6 +448,33 @@ export async function POST(req: NextRequest) {
         // Extract hn_id from translation callback, fallback to PT post's hn_id
         const hn_id = langData.hn_id || langData.hnId || firstItem.hn_id || firstItem.hnId || ptPost?.hn_id || null;
 
+        // Propagate the real saved images from the PT version
+        let finalMainImage = mainImage;
+        let finalBlocks = blocks;
+        
+        if (ptPost) {
+          finalMainImage = ptPost.img;
+          let ptBlocks: any[] = [];
+          if (Array.isArray(ptPost.blocks)) {
+            ptBlocks = ptPost.blocks;
+          } else if (typeof ptPost.blocks === "string") {
+            try {
+              ptBlocks = JSON.parse(ptPost.blocks);
+            } catch {
+              ptBlocks = [];
+            }
+          }
+          finalBlocks = blocks.map((block, idx) => {
+            if (ptBlocks[idx] && ptBlocks[idx].image) {
+              return {
+                ...block,
+                image: ptBlocks[idx].image
+              };
+            }
+            return block;
+          });
+        }
+
         const savedPost = await prisma.post.upsert({
           where: { slug: slug },
           update: {
@@ -407,9 +486,9 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
+            img: finalMainImage,
             imgFocalPoint: "center",
-            blocks: blocks as any,
+            blocks: finalBlocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
@@ -424,9 +503,9 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
+            img: finalMainImage,
             imgFocalPoint: "center",
-            blocks: blocks as any,
+            blocks: finalBlocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
