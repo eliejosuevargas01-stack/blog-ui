@@ -42,9 +42,6 @@ interface PostProps {
 
 type PostStatus = "loading" | "idle" | "error";
 
-const normalizeHeadingHtml = (value: string) =>
-  value.replace(/<\/?h1\b/gi, (match) => match.replace(/h1/i, "h2"));
-
 const resolvePostSlug = (
   post: BlogPost | null,
   lang: Language,
@@ -193,14 +190,14 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
       if (post?.content && !post.contentHtml && !hasInlineHtml) {
         try {
           const html = marked.parse(post.content, { async: false });
-          setClientParsedContent(normalizeHeadingHtml(html as string));
+          setClientParsedContent(html as string);
         } catch {
           // ignore
         }
       } else if (post?.contentHtml && !contentHtmlHasTags) {
         try {
           const html = marked.parse(post.contentHtml, { async: false });
-          setClientParsedContent(normalizeHeadingHtml(html as string));
+          setClientParsedContent(html as string);
         } catch {
           // ignore
         }
@@ -303,7 +300,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
       return null;
     }
     if (contentHtmlHasTags) {
-      return normalizeHeadingHtml(post.contentHtml);
+      return post.contentHtml;
     }
     return clientParsedContent;
   }, [post?.contentHtml, contentHtmlHasTags, clientParsedContent]);
@@ -557,7 +554,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                       <div
                         className={contentClassName}
                         dangerouslySetInnerHTML={{
-                          __html: normalizeHeadingHtml(post.content),
+                          __html: post.content,
                         }}
                       />
                     ) : post.content ? (

@@ -4,6 +4,7 @@ import { languages, pageSlugs, translations, type Language, type PageKey } from 
 import { normalizeTopicKey } from "@/lib/topics";
 import { getDbPostsForLang } from "@/lib/db";
 import { loadPagesForLang } from "@/lib/pages-db";
+import { redirect } from "next/navigation";
 
 // Import migrated components
 import About from "@/components/About";
@@ -129,7 +130,7 @@ export default async function CatchAllPage({
       case "auth":
         return <Auth lang={lang as Language} />;
       case "admin":
-        return <Admin lang={lang as Language} />;
+        redirect("/admin");
       default:
         notFound();
     }

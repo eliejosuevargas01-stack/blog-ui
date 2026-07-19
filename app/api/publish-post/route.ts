@@ -453,6 +453,8 @@ export async function POST(req: NextRequest) {
         if (!langData) continue;
 
         const {
+          titulo,
+          title: incomingTitle,
           conteudo_html,
           slug,
           categoria,
@@ -593,6 +595,8 @@ export async function POST(req: NextRequest) {
 
       for (const postData of postsToProcess) {
         const {
+          titulo,
+          title: incomingTitle,
           conteudo_html,
           slug,
           categoria,
@@ -600,19 +604,35 @@ export async function POST(req: NextRequest) {
           meta_title,
           meta_description,
           tags,
-          palavra_chave_principal
+          palavra_chave_principal,
+          imagem_destaque,
+          hero_image,
+          hero_focal_point
         } = postData;
 
         if (!slug || !conteudo_html) {
           return NextResponse.json({ error: "Missing slug or conteudo_html" }, { status: 400 });
         }
 
-        const { title, mainImage, blocks } = parsePostHtml(conteudo_html);
+        const parsed = parsePostHtml(conteudo_html);
+        const title =
+          (typeof titulo === "string" && titulo.trim()) ||
+          (typeof incomingTitle === "string" && incomingTitle.trim()) ||
+          parsed.title;
+        const { mainImage, blocks } = parsed;
         const wordCount = conteudo_html.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;
 
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
         const seoKeywords = tags ? tags.join(", ") : "";
+        const heroImage = typeof imagem_destaque === "string" && imagem_destaque.trim()
+          ? imagem_destaque.trim()
+          : typeof hero_image === "string" && hero_image.trim()
+            ? hero_image.trim()
+            : mainImage;
+        const heroFocalPoint = typeof hero_focal_point === "string" && hero_focal_point.trim()
+          ? hero_focal_point.trim()
+          : "center";
 
         // Extract hn_id from the incoming post data
         const hn_id = postData.hn_id || postData.hnId || null;
@@ -655,8 +675,8 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
-            imgFocalPoint: "center",
+            img: heroImage,
+            imgFocalPoint: heroFocalPoint,
             blocks: blocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
@@ -675,8 +695,8 @@ export async function POST(req: NextRequest) {
             title: title,
             excerpt: excerpt || "",
             readTime: readTime,
-            img: mainImage,
-            imgFocalPoint: "center",
+            img: heroImage,
+            imgFocalPoint: heroFocalPoint,
             blocks: blocks as any,
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",

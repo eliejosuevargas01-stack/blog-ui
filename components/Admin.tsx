@@ -44,16 +44,20 @@ interface AdminProps {
   lang: Language;
 }
 
+interface PostBlockDraft {
+  contentHtml: string;
+  image: string;
+  focalPoint: string;
+}
+
 interface PostDraft {
   title: string;
   slug: string;
   category: string;
   excerpt: string;
   description: string;
-  content: string;
-  contentHtml: string;
+  blocks: PostBlockDraft[];
   image: string;
-  imageAlt: string;
   imageThumb: string;
   images: string;
   tags: string;
@@ -66,6 +70,104 @@ interface PostDraft {
   metaDescription: string;
   metaTags: string;
 }
+
+const DEFAULT_BLOCK_COUNT = 3;
+
+const createEmptyBlock = (): PostBlockDraft => ({
+  contentHtml: "",
+  image: "",
+  focalPoint: "center",
+});
+
+const ensureBlockCount = (
+  blocks: PostBlockDraft[],
+  minimum = DEFAULT_BLOCK_COUNT,
+) => {
+  const next = [...blocks];
+  while (next.length < minimum) {
+    next.push(createEmptyBlock());
+  }
+  return next;
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const extractBlockImage = (html: string) => {
+  const figureMatch = html.match(
+    /<figure[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["'][^>]*>[\s\S]*?<\/figure>/i,
+  );
+  if (figureMatch?.[1]) {
+    return figureMatch[1];
+  }
+  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+  return imgMatch?.[1] ?? "";
+};
+
+const splitContentIntoBlocks = (
+  contentHtml: string | null | undefined,
+): PostBlockDraft[] => {
+  const html = (contentHtml ?? "").trim();
+  if (!html) {
+    return ensureBlockCount([]);
+  }
+
+  const blocks: PostBlockDraft[] = [];
+  const figureRegex = /<figure\b[\s\S]*?<\/figure>/gi;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = figureRegex.exec(html)) !== null) {
+    const before = html.slice(lastIndex, match.index).trim();
+    blocks.push({
+      contentHtml: before,
+      image: extractBlockImage(match[0]),
+      focalPoint: "center",
+    });
+    lastIndex = match.index + match[0].length;
+  }
+
+  const remaining = html.slice(lastIndex).trim();
+  if (remaining || blocks.length === 0) {
+    blocks.push({
+      contentHtml: remaining || html,
+      image: "",
+      focalPoint: "center",
+    });
+  }
+
+  return ensureBlockCount(
+    blocks.map((block) => ({
+      contentHtml: block.contentHtml.trim(),
+      image: block.image.trim(),
+      focalPoint: block.focalPoint || "center",
+    })),
+  );
+};
+
+const buildContentHtmlFromBlocks = (
+  title: string,
+  blocks: PostBlockDraft[],
+) => {
+  const body = blocks
+    .map((block) => {
+      const content = block.contentHtml.trim();
+      const image = block.image.trim();
+      const imageHtml = image
+        ? `\n<figure>\n  <img src="${image}" alt="${escapeHtml(title)}" />\n</figure>`
+        : "";
+      return `${content}${imageHtml}`.trim();
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  return body.trim();
+};
 
 interface PageDraft {
   slug: string;
@@ -81,10 +183,8 @@ const buildDraft = (post: BlogPost): PostDraft => ({
   category: post.category ?? "",
   excerpt: post.excerpt ?? "",
   description: post.description ?? "",
-  content: post.content ?? "",
-  contentHtml: post.contentHtml ?? "",
+  blocks: splitContentIntoBlocks(post.contentHtml ?? post.content ?? ""),
   image: post.image ?? "",
-  imageAlt: post.imageAlt ?? "",
   imageThumb: post.imageThumb ?? "",
   images: Array.isArray(post.images) ? post.images.join(", ") : "",
   tags: Array.isArray(post.tags) ? post.tags.join(", ") : "",
@@ -147,7 +247,7 @@ export default function Admin({ lang }: AdminProps) {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<"posts" | "pages">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "pages" | "settings">("posts");
 
   // Posts states
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -310,11 +410,8 @@ export default function Admin({ lang }: AdminProps) {
       slug: "",
       excerpt: "",
       description: "",
-      content: "",
-      contentHtml: "",
       category: allowedCategories[0] || "",
       image: "",
-      imageAlt: "",
       imageThumb: "",
       images: [],
       tags: [],
@@ -335,6 +432,107 @@ export default function Admin({ lang }: AdminProps) {
     setEditingPostId(tempId);
   };
 
+  const getCurrentPostDraft = (postId: string) => {
+    const existing = postDrafts[postId];
+    if (existing) {
+      return existing;
+    }
+    const target = posts.find((post) => post.id === postId);
+    return target ? buildDraft(target) : null;
+  };
+
+  const buildPublishPayload = (post: BlogPost, draft: PostDraft, overrides: Record<string, unknown> = {}) => {
+    const keywords = draft.tags
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const primaryKeyword = draft.category || keywords[0] || post.category || "Geral";
+    const contentHtml = buildContentHtmlFromBlocks(draft.title.trim(), draft.blocks);
+
+    return {
+      output: {
+        titulo: draft.title.trim(),
+        title: draft.title.trim(),
+        conteudo_html: contentHtml,
+        slug: draft.slug.trim(),
+        categoria: draft.category || post.category || "Mercado Tech",
+        url_categoria: `/${lang}/${draft.category ? draft.category.toLowerCase().replace(/\s+/g, "-") : "posts"}`,
+        excerpt: draft.excerpt,
+        meta_title: draft.metaTitle || draft.title,
+        meta_description: draft.metaDescription || draft.excerpt,
+        tags: keywords,
+        palavra_chave_principal: primaryKeyword,
+        imagem_destaque: draft.image || post.image || "",
+        hero_image: draft.image || post.image || "",
+        hero_focal_point: "center",
+        hn_id: post.hnId || undefined,
+        date: draft.date || post.date || new Date().toISOString(),
+        id: post.id.startsWith("temp-") ? undefined : post.id,
+        published: draft.published,
+        ...overrides,
+      },
+    };
+  };
+
+  const handlePostBlockChange = (
+    postId: string,
+    index: number,
+    field: keyof PostBlockDraft,
+    value: string,
+  ) => {
+    setPostDrafts((prev) => {
+      const draft = prev[postId];
+      if (!draft) {
+        return prev;
+      }
+      const blocks = [...draft.blocks];
+      blocks[index] = {
+        ...blocks[index],
+        [field]: value,
+      };
+      return {
+        ...prev,
+        [postId]: {
+          ...draft,
+          blocks,
+        },
+      };
+    });
+  };
+
+  const handleAddPostBlock = (postId: string) => {
+    setPostDrafts((prev) => {
+      const draft = prev[postId];
+      if (!draft) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [postId]: {
+          ...draft,
+          blocks: [...draft.blocks, createEmptyBlock()],
+        },
+      };
+    });
+  };
+
+  const handleRemovePostBlock = (postId: string, index: number) => {
+    setPostDrafts((prev) => {
+      const draft = prev[postId];
+      if (!draft || draft.blocks.length <= DEFAULT_BLOCK_COUNT) {
+        return prev;
+      }
+      const blocks = draft.blocks.filter((_, currentIndex) => currentIndex !== index);
+      return {
+        ...prev,
+        [postId]: {
+          ...draft,
+          blocks: ensureBlockCount(blocks),
+        },
+      };
+    });
+  };
+
   const handleSavePost = async (postId: string) => {
     const draft = postDrafts[postId];
     const target = posts.find((p) => p.id === postId);
@@ -349,32 +547,9 @@ export default function Admin({ lang }: AdminProps) {
       return;
     }
 
-    const payloadPost: BlogPost = {
-      ...target,
-      id: postId.startsWith("temp-") ? undefined : postId,
-      title: draft.title.trim(),
-      slug: draft.slug.trim(),
-      category: draft.category || allowedCategories[0],
-      excerpt: draft.excerpt,
-      description: draft.description || draft.excerpt,
-      content: draft.content,
-      image: draft.image,
-      imageAlt: draft.imageAlt,
-      imageThumb: draft.imageThumb || draft.image,
-      images: draft.images ? draft.images.split(",").map((s) => s.trim()).filter(Boolean) : [],
-      tags: draft.tags ? draft.tags.split(",").map((s) => s.trim()).filter(Boolean) : [],
-      date: draft.date || new Date().toISOString(),
-      author: draft.author || sessionUser || "Admin",
-      readTime: draft.readTime || "5 min",
-      featured: draft.featured,
-      published: draft.published,
-      metaTitle: draft.metaTitle || draft.title,
-      metaDescription: draft.metaDescription || draft.excerpt,
-    };
-
     setPostSavingId(postId);
     try {
-      await editPost(payloadPost, lang);
+      await editPost(buildPublishPayload(target, draft) as any, lang);
       
       // Reload posts to get final IDs and order from disk
       const refreshed = await fetchPosts(lang, true);
@@ -416,9 +591,10 @@ export default function Admin({ lang }: AdminProps) {
 
   const handleTogglePublish = async (post: BlogPost) => {
     const nextPublished = !post.published;
+    const draft = getCurrentPostDraft(post.id) ?? buildDraft(post);
     setPostSavingId(post.id);
     try {
-      await editPost({ ...post, published: nextPublished }, lang);
+      await editPost(buildPublishPayload(post, { ...draft, published: nextPublished }) as any, lang);
       const refreshed = await fetchPosts(lang, true);
       setPosts(refreshed);
       toast({
@@ -607,13 +783,13 @@ export default function Admin({ lang }: AdminProps) {
                     <span>{t.nav.home}</span>
                   </Link>
                   <span>/</span>
-                  <span className="text-foreground">Admin</span>
+                  <span className="text-foreground">Palien CMS</span>
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                  {t.admin.title}
+                  Palien <span className="text-secondary">CMS</span>
                 </h1>
                 <p className="mt-2 text-foreground/80">
-                  {t.admin.subtitle}
+                  Gerencie posts, páginas e funções do blog.
                 </p>
               </div>
 
@@ -696,7 +872,7 @@ export default function Admin({ lang }: AdminProps) {
                       }`}
                     >
                       <Globe className="w-4 h-4" />
-                      Artigos ({posts.length})
+                      Gerar Posts
                     </button>
                     <button
                       onClick={() => setActiveTab("pages")}
@@ -707,7 +883,18 @@ export default function Admin({ lang }: AdminProps) {
                       }`}
                     >
                       <FileText className="w-4 h-4" />
-                      Páginas ({pages.length})
+                      Editar Páginas
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("settings")}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                        activeTab === "settings"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Funções
                     </button>
                   </div>
 
@@ -715,10 +902,14 @@ export default function Admin({ lang }: AdminProps) {
                     <Button onClick={handleCreatePost} className="gap-2">
                       <Plus className="w-4 h-4" /> Novo Artigo
                     </Button>
-                  ) : (
+                  ) : activeTab === "pages" ? (
                     <Button onClick={handleCreatePage} className="gap-2">
                       <Plus className="w-4 h-4" /> Nova Página
                     </Button>
+                  ) : (
+                    <div className="text-xs uppercase tracking-wider text-foreground/50">
+                      Área reservada
+                    </div>
                   )}
                 </div>
 
@@ -919,7 +1110,7 @@ export default function Admin({ lang }: AdminProps) {
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, slug: e.target.value } }))}
                                         />
                                       </Field>
-                                      <Field label="Categoria">
+                                      <Field label="Tag Principal">
                                         <Input
                                           value={draft.category}
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, category: e.target.value } }))}
@@ -940,41 +1131,126 @@ export default function Admin({ lang }: AdminProps) {
                                     </div>
 
                                     <div className="space-y-4">
-                                      <Field label="Resumo (Excerpt)">
+                                      <Field label="Resumo / Excerpt">
                                         <Textarea
                                           rows={2}
                                           value={draft.excerpt}
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, excerpt: e.target.value } }))}
                                         />
                                       </Field>
-                                      <Field label="Descrição SEO">
+                                      <Field label="Meta Description Customizado">
                                         <Textarea
                                           rows={2}
                                           value={draft.description}
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, description: e.target.value } }))}
                                         />
                                       </Field>
-                                      <Field label="Conteúdo (Markdown)">
-                                        <Textarea
-                                          rows={12}
-                                          className="font-mono text-sm leading-relaxed"
-                                          value={draft.content}
-                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, content: e.target.value } }))}
-                                        />
+                                      <Field
+                                        label="Blocos de Conteúdo"
+                                        hint={`3 blocos padrão. Você pode adicionar mais e remover os extras.`}
+                                      >
+                                        <div className="space-y-4">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <p className="text-xs text-foreground/60">
+                                              O conteúdo de cada bloco aceita HTML bruto, como no payload de publicação.
+                                            </p>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className="gap-2"
+                                              onClick={() => handleAddPostBlock(post.id)}
+                                            >
+                                              <Plus className="w-3.5 h-3.5" />
+                                              Adicionar Bloco
+                                            </Button>
+                                          </div>
+
+                                          <div className="space-y-4">
+                                            {draft.blocks.map((block, blockIndex) => {
+                                              const canRemove = draft.blocks.length > DEFAULT_BLOCK_COUNT;
+                                              return (
+                                                <div key={`${post.id}-block-${blockIndex}`} className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-4">
+                                                  <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                                    <div>
+                                                      <p className="text-sm font-semibold text-foreground">Bloco {blockIndex + 1}</p>
+                                                      <p className="text-xs text-foreground/50">Conteúdo HTML + imagem opcional</p>
+                                                    </div>
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="text-foreground/60 hover:text-destructive"
+                                                      onClick={() => handleRemovePostBlock(post.id, blockIndex)}
+                                                      disabled={!canRemove}
+                                                      title={canRemove ? "Remover bloco" : "Mínimo de 3 blocos"}
+                                                    >
+                                                      <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                  </div>
+
+                                                  <div className="space-y-3">
+                                                    <Field label={`Conteúdo do Bloco ${blockIndex + 1} (HTML)`}>
+                                                      <Textarea
+                                                        rows={10}
+                                                        className="font-mono text-sm leading-relaxed"
+                                                        value={block.contentHtml}
+                                                        onChange={(e) =>
+                                                          handlePostBlockChange(
+                                                            post.id,
+                                                            blockIndex,
+                                                            "contentHtml",
+                                                            e.target.value,
+                                                          )
+                                                        }
+                                                        placeholder="<h2>Subtítulo</h2><p>Texto do bloco...</p>"
+                                                      />
+                                                    </Field>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4">
+                                                      <Field label={`Imagem do Bloco ${blockIndex + 1} (Opcional)`}>
+                                                        <Input
+                                                          value={block.image}
+                                                          onChange={(e) =>
+                                                            handlePostBlockChange(
+                                                              post.id,
+                                                              blockIndex,
+                                                              "image",
+                                                              e.target.value,
+                                                            )
+                                                          }
+                                                          placeholder="https://..."
+                                                        />
+                                                      </Field>
+                                                      <Field label="Ponto focal">
+                                                        <Input
+                                                          value={block.focalPoint}
+                                                          onChange={(e) =>
+                                                            handlePostBlockChange(
+                                                              post.id,
+                                                              blockIndex,
+                                                              "focalPoint",
+                                                              e.target.value,
+                                                            )
+                                                          }
+                                                          placeholder="center"
+                                                        />
+                                                      </Field>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
                                       </Field>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <Field label="Imagem Destacada (URL)">
+                                      <Field label="Imagem de Destaque / Hero">
                                         <Input
                                           value={draft.image}
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, image: e.target.value } }))}
-                                        />
-                                      </Field>
-                                      <Field label="Texto Alternativo da Imagem">
-                                        <Input
-                                          value={draft.imageAlt}
-                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, imageAlt: e.target.value } }))}
                                         />
                                       </Field>
                                     </div>
@@ -1168,6 +1444,27 @@ export default function Admin({ lang }: AdminProps) {
                         })}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {activeTab === "settings" && (
+                  <div className="space-y-6">
+                    <div className="border-b border-border pb-3">
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções</h2>
+                      <p className="mt-1 text-sm text-foreground/70">
+                        Área reservada para automações, integrações e recursos futuros.
+                      </p>
+                    </div>
+
+                    <Card className="border border-border/80 bg-card">
+                      <CardContent className="p-6 space-y-3">
+                        <h3 className="text-lg font-semibold text-foreground">Recursos opcionais</h3>
+                        <p className="text-sm text-foreground/70 max-w-2xl">
+                          Por enquanto essa área só exibe a estrutura do CMS. Depois podemos encaixar
+                          webhooks, automações e outras funções sem mexer no editor de posts.
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
               </div>

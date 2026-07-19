@@ -141,6 +141,9 @@ export const pageSlugs = {
 export type PageKey = keyof typeof pageSlugs;
 
 export function buildPath(lang: Language, page: PageKey): string {
+  if (page === "admin") {
+    return "/admin";
+  }
   const slug = pageSlugs[page][lang];
   if (!slug) {
     return `/${lang}`;
