@@ -469,8 +469,20 @@ export async function POST(req: NextRequest) {
 
         slugMap[lang] = slug;
 
-        const { title, mainImage, blocks } = parsePostHtml(conteudo_html);
-        const wordCount = conteudo_html.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+        let rawHtml = "";
+        if (typeof conteudo_html === "object" && conteudo_html !== null) {
+          const keys = Object.keys(conteudo_html).sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+            const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+            return numA - numB;
+          });
+          rawHtml = keys.map((k) => (conteudo_html as Record<string, string>)[k] || "").join("\n\n");
+        } else if (typeof conteudo_html === "string") {
+          rawHtml = conteudo_html;
+        }
+
+        const { title, mainImage, blocks } = parsePostHtml(rawHtml);
+        const wordCount = rawHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;
 
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
@@ -614,13 +626,25 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Missing slug or conteudo_html" }, { status: 400 });
         }
 
-        const parsed = parsePostHtml(conteudo_html);
+        let rawHtml = "";
+        if (typeof conteudo_html === "object" && conteudo_html !== null) {
+          const keys = Object.keys(conteudo_html).sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+            const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+            return numA - numB;
+          });
+          rawHtml = keys.map((k) => (conteudo_html as Record<string, string>)[k] || "").join("\n\n");
+        } else if (typeof conteudo_html === "string") {
+          rawHtml = conteudo_html;
+        }
+
+        const parsed = parsePostHtml(rawHtml);
         const title =
           (typeof titulo === "string" && titulo.trim()) ||
           (typeof incomingTitle === "string" && incomingTitle.trim()) ||
           parsed.title;
         const { mainImage, blocks } = parsed;
-        const wordCount = conteudo_html.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+        const wordCount = rawHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;
 
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
@@ -639,7 +663,7 @@ export async function POST(req: NextRequest) {
 
         // Extract prompts from HTML alts to build image status checklist
         const imgAltPrompts: string[] = [];
-        const imgMatches = conteudo_html.match(/<img[^>]+alt="([^"]+)"/g);
+        const imgMatches = rawHtml.match(/<img[^>]+alt="([^"]+)"/g);
         if (imgMatches) {
           imgMatches.forEach((m: string) => {
             const altMatch = m.match(/alt="([^"]+)"/);
