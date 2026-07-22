@@ -329,6 +329,8 @@ function FocalPointPicker({
   focalPoint,
   onChangeFocalPoint,
 }: FocalPointPickerProps) {
+  const [imgErrorCount, setImgErrorCount] = useState(0);
+
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
@@ -336,9 +338,14 @@ function FocalPointPicker({
     onChangeFocalPoint(`${x}% ${y}%`);
   };
 
-  const match = focalPoint.match(/(\d+)%\s+(\d+)%/);
+  const match = focalPoint ? focalPoint.match(/(\d+)%\s+(\d+)%/) : null;
   const posX = match ? `${match[1]}%` : "50%";
   const posY = match ? `${match[2]}%` : "50%";
+
+  let displaySrc = imageSrc;
+  if (imgErrorCount === 1 && imageSrc.startsWith("/uploads/")) {
+    displaySrc = `https://curiosotech.online${imageSrc}`;
+  }
 
   return (
     <div className="space-y-2">
@@ -353,15 +360,16 @@ function FocalPointPicker({
         </button>
       </div>
 
-      {imageSrc ? (
+      {imageSrc && imgErrorCount < 2 ? (
         <div
           className="relative aspect-video w-full cursor-crosshair overflow-hidden rounded-lg border border-border bg-muted/40"
           onClick={handleImageClick}
           title="Clique na imagem para definir o Ponto Focal"
         >
           <img
-            src={imageSrc}
+            src={displaySrc}
             alt="Preview"
+            onError={() => setImgErrorCount((prev) => prev + 1)}
             className="h-full w-full object-cover"
             style={{ objectPosition: focalPoint || "center" }}
           />
@@ -375,7 +383,7 @@ function FocalPointPicker({
         </div>
       ) : (
         <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-foreground/50">
-          Sem imagem para preview
+          {imageSrc ? "Erro ao carregar miniatura" : "Sem imagem para preview"}
         </div>
       )}
     </div>
