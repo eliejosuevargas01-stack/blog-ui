@@ -414,6 +414,9 @@ export default function Admin({ lang }: AdminProps) {
   const [postDeletingId, setPostDeletingId] = useState<string | null>(null);
   const [postDraftErrors, setPostDraftErrors] = useState<Record<string, string>>({});
 
+  // Content language management
+  const [selectedLang, setSelectedLang] = useState<Language>(lang);
+
   // Pages states
   const [pages, setPages] = useState<CustomPage[]>([]);
   const [pagesStatus, setPagesStatus] = useState<"idle" | "loading" | "error">("loading");
@@ -453,7 +456,7 @@ export default function Admin({ lang }: AdminProps) {
           }
         }
       } catch (e) {
-        console.error("Auth check failed:", e);
+        // Ignored
       }
       setAuthStatus("unauthenticated");
     };
@@ -466,7 +469,7 @@ export default function Admin({ lang }: AdminProps) {
       const loadPosts = async () => {
         setPostsStatus("loading");
         try {
-          const data = await fetchPosts(lang, true);
+          const data = await fetchPosts(selectedLang, true);
           setPosts(data);
           setPostsStatus("idle");
         } catch {
@@ -475,7 +478,7 @@ export default function Admin({ lang }: AdminProps) {
       };
       loadPosts();
     }
-  }, [isAuthenticated, lang]);
+  }, [isAuthenticated, selectedLang]);
 
   // Fetch pages when authenticated
   useEffect(() => {
@@ -483,7 +486,7 @@ export default function Admin({ lang }: AdminProps) {
       const loadPages = async () => {
         setPagesStatus("loading");
         try {
-          const response = await fetch(`/api/pages/${lang}`);
+          const response = await fetch(`/api/pages/${selectedLang}`);
           if (response.ok) {
             const data = await response.json();
             setPages(data);
@@ -497,7 +500,7 @@ export default function Admin({ lang }: AdminProps) {
       };
       loadPages();
     }
-  }, [isAuthenticated, lang]);
+  }, [isAuthenticated, selectedLang]);
 
   // Fetch settings when authenticated
   useEffect(() => {
@@ -733,10 +736,10 @@ export default function Admin({ lang }: AdminProps) {
 
     setPostSavingId(postId);
     try {
-      await editPost(buildPublishPayload(target, draft) as any, lang);
+      await editPost(buildPublishPayload(target, draft) as any, selectedLang);
       
       // Reload posts to get final IDs and order from disk
-      const refreshed = await fetchPosts(lang, true);
+      const refreshed = await fetchPosts(selectedLang, true);
       setPosts(refreshed);
 
       toast({ title: t.admin.toast.saveSuccess });
@@ -885,7 +888,7 @@ export default function Admin({ lang }: AdminProps) {
 
     setPostDeletingId(postId);
     try {
-      await deletePost(target, lang);
+      await deletePost(target, selectedLang);
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       toast({ title: "Artigo excluído com sucesso." });
     } catch (error) {
@@ -920,11 +923,11 @@ export default function Admin({ lang }: AdminProps) {
     try {
       const payload = buildPublishPayload(post, { ...draft, published: nextPublished });
       console.log("[Admin] Sending edit/publish payload to API:", payload);
-      const res = await editPost(payload as any, lang);
+      const res = await editPost(payload as any, selectedLang);
       console.log("[Admin] editPost API response:", res);
       
       console.log("[Admin] Fetching refreshed post list...");
-      const refreshed = await fetchPosts(lang, true);
+      const refreshed = await fetchPosts(selectedLang, true);
       console.log("[Admin] Refreshed posts received. Count:", refreshed.length);
       setPosts(refreshed);
       console.log("[Admin] setPosts state updated.");
@@ -1024,7 +1027,7 @@ export default function Admin({ lang }: AdminProps) {
       }
 
       // Reload pages
-      const resList = await fetch(`/api/pages/${lang}`);
+      const resList = await fetch(`/api/pages/${selectedLang}`);
       if (resList.ok) {
         const listData = await resList.json();
         setPages(listData);
@@ -1048,7 +1051,7 @@ export default function Admin({ lang }: AdminProps) {
 
     setPageDeletingId(pageId);
     try {
-      const response = await fetch(`/api/pages/${lang}?id=${pageId}`, {
+      const response = await fetch(`/api/pages/${selectedLang}?id=${pageId}`, {
         method: "DELETE",
       });
 
@@ -1248,15 +1251,33 @@ export default function Admin({ lang }: AdminProps) {
                 {/* POSTS WORKSPACE */}
                 {activeTab === "posts" && (
                   <div className="space-y-6">
-                    <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 max-w-md shadow-sm">
-                      <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
-                      <input
-                        type="text"
-                        placeholder={t.admin.searchPlaceholder}
-                        value={postsQuery}
-                        onChange={(e) => setPostsQuery(e.target.value)}
-                        className="bg-transparent border-none outline-none text-sm w-full text-foreground"
-                      />
+                    <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                      <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 w-full sm:max-w-md shadow-sm">
+                        <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder={t.admin.searchPlaceholder}
+                          value={postsQuery}
+                          onChange={(e) => setPostsQuery(e.target.value)}
+                          className="bg-transparent border-none outline-none text-sm w-full text-foreground"
+                        />
+                      </div>
+
+                      <div className="flex bg-muted/60 p-1 rounded-lg border border-border shrink-0">
+                        {(["pt", "en", "es"] as const).map((langCode) => (
+                          <button
+                            key={langCode}
+                            onClick={() => setSelectedLang(langCode)}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                              selectedLang === langCode
+                                ? "bg-card text-foreground shadow-sm"
+                                : "text-foreground/60 hover:text-foreground"
+                            }`}
+                          >
+                            {langCode === "pt" ? "Português" : langCode === "en" ? "English" : "Español"}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {postsStatus === "loading" && (
@@ -1693,15 +1714,33 @@ export default function Admin({ lang }: AdminProps) {
                 {/* PAGES WORKSPACE */}
                 {activeTab === "pages" && (
                   <div className="space-y-6">
-                    <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 max-w-md shadow-sm">
-                      <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
-                      <input
-                        type="text"
-                        placeholder="Buscar páginas por título ou slug..."
-                        value={pagesQuery}
-                        onChange={(e) => setPagesQuery(e.target.value)}
-                        className="bg-transparent border-none outline-none text-sm w-full text-foreground"
-                      />
+                    <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                      <div className="flex items-center bg-card border border-border rounded-xl px-3 py-2 w-full sm:max-w-md shadow-sm">
+                        <Search className="w-4 h-4 text-foreground/40 mr-2 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Buscar páginas por título ou slug..."
+                          value={pagesQuery}
+                          onChange={(e) => setPagesQuery(e.target.value)}
+                          className="bg-transparent border-none outline-none text-sm w-full text-foreground"
+                        />
+                      </div>
+
+                      <div className="flex bg-muted/60 p-1 rounded-lg border border-border shrink-0">
+                        {(["pt", "en", "es"] as const).map((langCode) => (
+                          <button
+                            key={langCode}
+                            onClick={() => setSelectedLang(langCode)}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                              selectedLang === langCode
+                                ? "bg-card text-foreground shadow-sm"
+                                : "text-foreground/60 hover:text-foreground"
+                            }`}
+                          >
+                            {langCode === "pt" ? "Português" : langCode === "en" ? "English" : "Español"}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {pagesStatus === "loading" && (
@@ -1743,7 +1782,7 @@ export default function Admin({ lang }: AdminProps) {
                                       {page.title}
                                     </h3>
                                     <div className="text-xs text-foreground/60 flex items-center gap-3">
-                                      <span>Rota: <code className="bg-muted px-1 py-0.5 rounded text-foreground/90 font-mono">/{lang}/{page.slug || "(vazio)"}</code></span>
+                                      <span>Rota: <code className="bg-muted px-1 py-0.5 rounded text-foreground/90 font-mono">/{selectedLang}/{page.slug || "(vazio)"}</code></span>
                                       <span>•</span>
                                       <span>Atualizado em: {new Date(page.updatedAt).toLocaleDateString()}</span>
                                     </div>
