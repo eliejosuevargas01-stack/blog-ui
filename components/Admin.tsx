@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
 import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search, Wand2, Sparkles, CheckSquare } from "lucide-react";
@@ -438,6 +439,12 @@ export default function Admin({ lang }: AdminProps) {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchModalPostId, setBatchModalPostId] = useState<string | null>(null);
   const [batchSelectedSlots, setBatchSelectedSlots] = useState<Record<number, boolean>>({ 1: true });
+
+  const router = useRouter();
+
+  useEffect(() => {
+    setSelectedLang(lang);
+  }, [lang]);
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
@@ -1267,7 +1274,10 @@ export default function Admin({ lang }: AdminProps) {
                         {(["pt", "en", "es"] as const).map((langCode) => (
                           <button
                             key={langCode}
-                            onClick={() => setSelectedLang(langCode)}
+                            onClick={() => {
+                              setSelectedLang(langCode);
+                              router.push(`/admin?lang=${langCode}`);
+                            }}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                               selectedLang === langCode
                                 ? "bg-card text-foreground shadow-sm"
@@ -1730,7 +1740,10 @@ export default function Admin({ lang }: AdminProps) {
                         {(["pt", "en", "es"] as const).map((langCode) => (
                           <button
                             key={langCode}
-                            onClick={() => setSelectedLang(langCode)}
+                            onClick={() => {
+                              setSelectedLang(langCode);
+                              router.push(`/admin?lang=${langCode}`);
+                            }}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                               selectedLang === langCode
                                 ? "bg-card text-foreground shadow-sm"

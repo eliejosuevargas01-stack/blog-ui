@@ -18,7 +18,7 @@ const TECH_IMAGES = [
 ];
 
 function getNextTechImage(index: number): string {
-  return TECH_IMAGES[index % TECH_IMAGES.length];
+  return "";
 }
 
 function getNextPublishDate(): Date {
@@ -511,7 +511,7 @@ export async function POST(req: NextRequest) {
         slugMap[lang] = slug;
 
         let transBlocks: any[] = [];
-        let transTitle = titulo || incomingTitle || "";
+        let transTitle = titulo || incomingTitle || meta_title || "";
         let transMainImage = "";
         let wordCount = 0;
 
@@ -560,7 +560,7 @@ export async function POST(req: NextRequest) {
           transBlocks = parsed.blocks;
         }
 
-        const title = transTitle || "Article";
+        const title = transTitle || ptPost?.title || "Article";
         const mainImage = transMainImage || getNextTechImage(0);
         const blocks = transBlocks;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const finalTag = tag || originalPost?.tag || "Mercado Tech";
     const finalCategory = category || originalPost?.category || "Mercado Tech";
-    const finalImg = img || originalPost?.img || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&h=680&fit=crop&auto=format";
+    const finalImg = img || originalPost?.img || "";
     const finalImgFocalPoint = imgFocalPoint || originalPost?.imgFocalPoint || "center";
     const finalReadTime = readTime || originalPost?.readTime || "5 min";
 

@@ -42,6 +42,10 @@ function HeaderContent({ lang, pageKey, t, languagePaths }: HeaderProps) {
   const aboutPath = buildPath(lang, "about");
 
   const handleLanguageChange = (nextLang: Language) => {
+    if (pageKey === "admin") {
+      router.push(`/admin?lang=${nextLang}`);
+      return;
+    }
     const targetPath = alternates[nextLang] ?? buildPath(nextLang, pageKey);
     const search = searchParams.toString();
     const searchString = search ? `?${search}` : "";

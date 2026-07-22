@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     const readTime = body.readTime || "5 min";
 
     // Use default image if none found in blocks
-    const finalCoverImg = coverImg || "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200";
+    const finalCoverImg = coverImg || "";
 
     // Standard blocks fallback
     const finalBlocks = blocks.length > 0 ? blocks : (Array.isArray(body.blocks) ? body.blocks : []);
