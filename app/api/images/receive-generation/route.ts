@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import fs from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { getUploadsDir } from "@/lib/uploads-storage";
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,8 +103,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save image to process.cwd()/uploads directory (served by /uploads/[filename] route with Sharp webp optimization)
-    const uploadsDir = path.join(process.cwd(), "uploads");
+    // Save image to persistent storage directory (uses /app/html-storage/uploads if on Coolify persistent volume)
+    const uploadsDir = getUploadsDir();
     await fs.mkdir(uploadsDir, { recursive: true });
 
     const fileName = `generated-${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;

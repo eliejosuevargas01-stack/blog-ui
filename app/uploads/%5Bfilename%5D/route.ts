@@ -3,9 +3,9 @@ import fs from "fs";
 import path from "path";
 import sharp from "sharp";
 
-export const dynamic = "force-dynamic";
+import { getUploadsDir } from "@/lib/uploads-storage";
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: Request,
@@ -15,11 +15,22 @@ export async function GET(
     const { filename } = params;
     const decodedFilename = decodeURIComponent(filename);
     const ext = path.extname(decodedFilename).toLowerCase();
-    const filePath = path.join(UPLOADS_DIR, decodedFilename);
 
-    // Verificar se o arquivo original existe
+    const uploadsDir = getUploadsDir();
+    let filePath = path.join(uploadsDir, decodedFilename);
+
     if (!fs.existsSync(filePath)) {
-      return new Response("Arquivo não encontrado", { status: 404 });
+      const fallbackLocations = [
+        path.join(process.cwd(), "uploads", decodedFilename),
+        path.join("/app/html-storage/uploads", decodedFilename),
+        path.join("/app/html-storage", decodedFilename),
+      ];
+      const found = fallbackLocations.find((p) => fs.existsSync(p));
+      if (found) {
+        filePath = found;
+      } else {
+        return new Response("Arquivo não encontrado", { status: 404 });
+      }
     }
 
     // Obter parâmetro de largura ?w=
@@ -37,7 +48,7 @@ export async function GET(
     if (ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp") {
       // Nome do arquivo em cache ex: foto-123.w600.webp
       const cacheFilename = decodedFilename.replace(/\.(jpe?g|png|webp)$/i, "") + `.w${targetWidth}.webp`;
-      const cachePath = path.join(UPLOADS_DIR, cacheFilename);
+      const cachePath = path.join(uploadsDir, cacheFilename);
 
       // Checar se já existe versão correspondente em cache no disco
       if (!fs.existsSync(cachePath)) {

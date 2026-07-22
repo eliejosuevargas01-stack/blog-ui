@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
+import { getUploadsDir } from "@/lib/uploads-storage";
 
 export async function POST(request: Request) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
 
     // Gerar nome de arquivo seguro com extensão .webp
     const filename = `${Date.now()}-${Math.floor(Math.random() * 100000)}.webp`;
-    const uploadDir = path.join(process.cwd(), "uploads");
+    const uploadDir = getUploadsDir();
     const filePath = path.join(uploadDir, filename);
 
     // Garantir que o diretório existe (cria recursivamente se necessário)
