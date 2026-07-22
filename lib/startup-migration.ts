@@ -309,7 +309,7 @@ export async function runMigrationIfNeeded() {
 
       try {
         await prisma.post.upsert({
-          where: { slug },
+          where: { slug_lang: { slug, lang } },
           update: {
             lang, date: postDate, hn_id: group.hn_id,
             slugs: slugsMap as any,

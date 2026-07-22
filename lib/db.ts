@@ -50,6 +50,7 @@ export function mapDbPostToBlogPost(post: any, dynamicSlugs?: Record<string, str
     excerpt: post.excerpt,
     description: post.excerpt,
     category: post.category,
+    tag: post.tag,
     image: post.img,
     imageThumb: post.img,
     tags: tags,
@@ -80,25 +81,38 @@ export async function getDbPostsForLang(lang: string) {
       orderBy: { date: "desc" }
     });
 
-    // Batch fetch translation slugs using the universal hn_id key
+    // Batch fetch translation slugs using shared id and hn_id keys
+    const postIds = dbPosts.map(p => p.id).filter(Boolean) as string[];
     const hnIds = dbPosts.map(p => p.hn_id).filter(Boolean) as string[];
-    const allTranslations = hnIds.length > 0 ? await prisma.post.findMany({
-      where: { hn_id: { in: hnIds } },
-      select: { hn_id: true, lang: true, slug: true }
+
+    const allTranslations = (postIds.length > 0 || hnIds.length > 0) ? await prisma.post.findMany({
+      where: {
+        OR: [
+          postIds.length > 0 ? { id: { in: postIds } } : {},
+          hnIds.length > 0 ? { hn_id: { in: hnIds } } : {}
+        ]
+      },
+      select: { id: true, hn_id: true, lang: true, slug: true }
     }) : [];
 
-    const slugsMapByHnId: Record<string, Record<string, string>> = {};
+    const slugsMapById: Record<string, Record<string, string>> = {};
     allTranslations.forEach(t => {
-      if (t.hn_id) {
-        if (!slugsMapByHnId[t.hn_id]) {
-          slugsMapByHnId[t.hn_id] = {};
+      if (t.id) {
+        if (!slugsMapById[t.id]) {
+          slugsMapById[t.id] = {};
         }
-        slugsMapByHnId[t.hn_id][t.lang] = t.slug;
+        slugsMapById[t.id][t.lang] = t.slug;
+      }
+      if (t.hn_id) {
+        if (!slugsMapById[t.hn_id]) {
+          slugsMapById[t.hn_id] = {};
+        }
+        slugsMapById[t.hn_id][t.lang] = t.slug;
       }
     });
 
     return dbPosts.map(post => {
-      const dynamicSlugs = post.hn_id ? slugsMapByHnId[post.hn_id] : undefined;
+      const dynamicSlugs = slugsMapById[post.id] || (post.hn_id ? slugsMapById[post.hn_id] : undefined);
       return mapDbPostToBlogPost(post, dynamicSlugs);
     });
   } catch (error) {

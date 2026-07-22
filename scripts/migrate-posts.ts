@@ -170,7 +170,7 @@ async function migrate() {
         console.log(`Migrating post [${lang}]: ${title} (${slug})`);
 
         await prisma.post.upsert({
-          where: { slug: slug },
+          where: { slug_lang: { slug: slug, lang: lang } },
           update: {
             lang: lang,
             slugs: (post.slugs as any) || null,

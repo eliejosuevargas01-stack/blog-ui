@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
 
       // Find the post
       const targetPost = slug 
-        ? await prisma.post.findUnique({ where: { slug } })
+        ? await prisma.post.findFirst({ where: { slug } })
         : await prisma.post.findFirst({ where: { hn_id: hnId, lang: "pt" } });
 
       if (!targetPost) {
@@ -344,18 +344,18 @@ export async function POST(req: NextRequest) {
         }
 
         await prisma.post.update({
-          where: { slug: postToUpdate.slug },
+          where: { id_lang: { id: postToUpdate.id, lang: postToUpdate.lang } },
           data: {
             img: updatedImg,
             blocks: blocks as any,
-            image_status: imageStatus
+            image_status: imageStatus as any
           }
         });
       }
 
       // Check if this was the last image needed for the PT version, if so trigger translation!
       if (ptPost) {
-        const freshPtPost = await prisma.post.findUnique({ where: { slug: ptSlug } });
+        const freshPtPost = await prisma.post.findUnique({ where: { slug_lang: { slug: ptSlug, lang: "pt" } } });
         if (freshPtPost) {
           let freshBlocks: any[] = [];
           if (Array.isArray(freshPtPost.blocks)) {
@@ -506,7 +506,7 @@ export async function POST(req: NextRequest) {
         }
 
         const savedPost = await prisma.post.upsert({
-          where: { slug: slug },
+          where: { slug_lang: { slug: slug, lang: lang } },
           update: {
             lang: lang,
             date: publishDate,
@@ -569,7 +569,7 @@ export async function POST(req: NextRequest) {
         console.log("[Publish] Linking translation slugs:", slugMap);
         for (const [lang, slug] of Object.entries(slugMap)) {
           await prisma.post.update({
-            where: { slug: slug },
+            where: { slug_lang: { slug: slug, lang: lang } },
             data: {
               slugs: slugMap
             }
@@ -665,7 +665,7 @@ export async function POST(req: NextRequest) {
 
         // Upsert PT post
         const savedPost = await prisma.post.upsert({
-          where: { slug: slug },
+          where: { slug_lang: { slug: slug, lang: "pt" } },
           update: {
             lang: "pt",
             date: scheduledDate,

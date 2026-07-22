@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     // Find the post
     let postToDelete = null;
     if (slug) {
-      postToDelete = await prisma.post.findUnique({ where: { slug } });
+      postToDelete = await prisma.post.findFirst({ where: { slug } });
     } else if (id) {
       // Try by database UUID or legacy ID string
       postToDelete = await prisma.post.findFirst({

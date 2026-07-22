@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
-import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search, Wand2, Sparkles, CheckSquare } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -54,6 +54,7 @@ interface PostDraft {
   title: string;
   slug: string;
   category: string;
+  tag: string;
   excerpt: string;
   description: string;
   blocks: PostBlockDraft[];
@@ -181,6 +182,7 @@ const buildDraft = (post: BlogPost): PostDraft => ({
   title: post.title ?? "",
   slug: post.slug ?? "",
   category: post.category ?? "",
+  tag: post.tag ?? "",
   excerpt: post.excerpt ?? "",
   description: post.description ?? "",
   blocks: splitContentIntoBlocks(post.contentHtml ?? post.content ?? ""),
@@ -230,7 +232,152 @@ function Field({
       <Label className="text-xs uppercase tracking-wider text-foreground/80">{label}</Label>
       {children}
       {hint && <p className="text-xs text-foreground/60">{hint}</p>}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+interface BlockLinkMapperProps {
+  contentHtml: string;
+  currentLang: Language;
+  allPosts: BlogPost[];
+  onUpdateContentHtml: (newHtml: string) => void;
+}
+
+function BlockLinkMapper({
+  contentHtml,
+  currentLang,
+  allPosts,
+  onUpdateContentHtml,
+}: BlockLinkMapperProps) {
+  const langPosts = useMemo(() => {
+    return allPosts.filter((p) => (p.lang ?? "pt") === currentLang);
+  }, [allPosts, currentLang]);
+
+  const links = useMemo(() => {
+    if (!contentHtml) return [];
+    const regex = /<a\s+[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(contentHtml)) !== null) {
+      matches.push({
+        fullMatch: match[0],
+        href: match[1],
+        anchorText: match[2].replace(/<[^>]*>/g, "").trim(),
+        index: match.index,
+      });
+    }
+    return matches;
+  }, [contentHtml]);
+
+  if (links.length === 0) {
+    return null;
+  }
+
+  const handleSelectPostForLink = (fullMatch: string, targetSlug: string) => {
+    if (!targetSlug) return;
+    const targetUrl = `/${currentLang}/post/${targetSlug}`;
+    const updatedLink = fullMatch.replace(/href=["']([^"']*)["']/i, `href="${targetUrl}"`);
+    const newHtml = contentHtml.replace(fullMatch, updatedLink);
+    onUpdateContentHtml(newHtml);
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-border/70 bg-background/60 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-semibold text-foreground/80">
+        <Globe className="w-3.5 h-3.5 text-secondary" />
+        <span>Links Encontrados neste Bloco (Filtrados por idioma: {currentLang.toUpperCase()}):</span>
+      </div>
+      <div className="space-y-2">
+        {links.map((link, idx) => (
+          <div
+            key={`${link.href}-${idx}`}
+            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-card p-2 text-xs"
+          >
+            <div className="flex flex-col max-w-md">
+              <span className="font-medium text-foreground">{link.anchorText || "Link sem texto"}</span>
+              <span className="text-[11px] text-foreground/60 truncate">{link.href}</span>
+            </div>
+            <select
+              className="bg-muted border border-border rounded px-2.5 py-1 text-xs text-foreground outline-none focus:border-secondary"
+              onChange={(e) => handleSelectPostForLink(link.fullMatch, e.target.value)}
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Mapear para Post ({currentLang.toUpperCase()})...
+              </option>
+              {langPosts.map((p) => (
+                <option key={p.id + p.slug} value={p.slug}>
+                  {p.title} (/{currentLang}/post/{p.slug})
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface FocalPointPickerProps {
+  imageSrc: string;
+  focalPoint: string;
+  onChangeFocalPoint: (fp: string) => void;
+}
+
+function FocalPointPicker({
+  imageSrc,
+  focalPoint,
+  onChangeFocalPoint,
+}: FocalPointPickerProps) {
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    onChangeFocalPoint(`${x}% ${y}%`);
+  };
+
+  const match = focalPoint.match(/(\d+)%\s+(\d+)%/);
+  const posX = match ? `${match[1]}%` : "50%";
+  const posY = match ? `${match[2]}%` : "50%";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs text-foreground/70">
+        <span>Ponto Focal ({focalPoint || "center"}):</span>
+        <button
+          type="button"
+          className="text-secondary text-[11px] hover:underline"
+          onClick={() => onChangeFocalPoint("center")}
+        >
+          Resetar ao Centro
+        </button>
+      </div>
+
+      {imageSrc ? (
+        <div
+          className="relative aspect-video w-full cursor-crosshair overflow-hidden rounded-lg border border-border bg-muted/40"
+          onClick={handleImageClick}
+          title="Clique na imagem para definir o Ponto Focal"
+        >
+          <img
+            src={imageSrc}
+            alt="Preview"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: focalPoint || "center" }}
+          />
+          <div
+            className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-destructive shadow-md pointer-events-none"
+            style={{ left: posX, top: posY }}
+          />
+          <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white font-mono">
+            {posX} {posY}
+          </div>
+        </div>
+      ) : (
+        <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-foreground/50">
+          Sem imagem para preview
+        </div>
+      )}
     </div>
   );
 }
@@ -268,6 +415,18 @@ export default function Admin({ lang }: AdminProps) {
   const [pageSavingId, setPageSavingId] = useState<string | null>(null);
   const [pageDeletingId, setPageDeletingId] = useState<string | null>(null);
   const [pageDraftErrors, setPageDraftErrors] = useState<Record<string, string>>({});
+
+  // Plugin & Batch Image states
+  const [autoTranslateEnabled, setAutoTranslateEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("curiosotech_auto_translate_plugin") === "true";
+    }
+    return false;
+  });
+
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchModalPostId, setBatchModalPostId] = useState<string | null>(null);
+  const [batchSelectedSlots, setBatchSelectedSlots] = useState<Record<number, boolean>>({ 1: true });
 
   const isAuthenticated = authStatus === "authenticated";
   const isCheckingAuth = authStatus === "checking";
@@ -411,6 +570,7 @@ export default function Admin({ lang }: AdminProps) {
       excerpt: "",
       description: "",
       category: allowedCategories[0] || "",
+      tag: "Notícias",
       image: "",
       imageThumb: "",
       images: [],
@@ -442,24 +602,26 @@ export default function Admin({ lang }: AdminProps) {
   };
 
   const buildPublishPayload = (post: BlogPost, draft: PostDraft, overrides: Record<string, unknown> = {}) => {
-    const keywords = draft.tags
+    const titleVal = (draft.title || "").trim();
+    const slugVal = (draft.slug || "").trim();
+    const keywords = (draft.tags || "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-    const primaryKeyword = draft.category || keywords[0] || post.category || "Geral";
-    const contentHtml = buildContentHtmlFromBlocks(draft.title.trim(), draft.blocks);
+    const primaryKeyword = draft.tag || keywords[0] || post.tag || "Notícias";
+    const contentHtml = buildContentHtmlFromBlocks(titleVal, draft.blocks || []);
 
     return {
       output: {
-        titulo: draft.title.trim(),
-        title: draft.title.trim(),
+        titulo: titleVal,
+        title: titleVal,
         conteudo_html: contentHtml,
-        slug: draft.slug.trim(),
+        slug: slugVal,
         categoria: draft.category || post.category || "Mercado Tech",
         url_categoria: `/${lang}/${draft.category ? draft.category.toLowerCase().replace(/\s+/g, "-") : "posts"}`,
-        excerpt: draft.excerpt,
-        meta_title: draft.metaTitle || draft.title,
-        meta_description: draft.metaDescription || draft.excerpt,
+        excerpt: draft.excerpt || "",
+        meta_title: draft.metaTitle || titleVal,
+        meta_description: draft.metaDescription || draft.excerpt || "",
         tags: keywords,
         palavra_chave_principal: primaryKeyword,
         imagem_destaque: draft.image || post.image || "",
@@ -467,8 +629,8 @@ export default function Admin({ lang }: AdminProps) {
         hero_focal_point: "center",
         hn_id: post.hnId || undefined,
         date: draft.date || post.date || new Date().toISOString(),
-        id: post.id.startsWith("temp-") ? undefined : post.id,
-        published: draft.published,
+        id: post.id && !post.id.startsWith("temp-") ? post.id : undefined,
+        published: !!draft.published,
         ...overrides,
       },
     };
@@ -557,6 +719,11 @@ export default function Admin({ lang }: AdminProps) {
 
       toast({ title: t.admin.toast.saveSuccess });
       setEditingPostId(null);
+
+      if (autoTranslateEnabled) {
+        console.log("[Auto-Translate Plugin] Plugin active. Triggering translation for:", postId);
+        handleManualTranslate(postId);
+      }
     } catch (error) {
       toast({
         title: t.admin.toast.saveError,
@@ -565,6 +732,130 @@ export default function Admin({ lang }: AdminProps) {
       });
     } finally {
       setPostSavingId(null);
+    }
+  };
+
+  const handleGenerateSingleImage = async (postId: string, placeIndex: number, promptText?: string) => {
+    const compoundId = `${postId}=${placeIndex}`;
+    try {
+      toast({
+        title: "Solicitando imagem IA...",
+        description: `Enviando requisição de geração para '${compoundId}'`,
+      });
+      const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "generate_single_img",
+          compoundId: compoundId,
+          prompt: promptText || "Imagem conceitual de tecnologia e mercado",
+        }),
+      });
+      if (response.ok) {
+        toast({
+          title: "Webhook acionado com sucesso!",
+          description: `Disparo efetuado para compoundId: ${compoundId}`,
+        });
+      } else {
+        toast({
+          title: "Aviso no webhook",
+          description: `Webhook respondeu com status ${response.status}`,
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro ao comunicar com webhook",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleManualTranslate = async (postId: string) => {
+    const draft = postDrafts[postId] || posts.find((p) => p.id === postId);
+    if (!draft) return;
+    try {
+      toast({
+        title: "Enviando para tradução...",
+        description: `Disparando webhook de tradução para '${draft.title}'`,
+      });
+      const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "translate",
+          id: postId,
+          lang: lang,
+          title: draft.title,
+          excerpt: draft.excerpt,
+          blocks: (postDrafts[postId]?.blocks || []).map((b: any) => ({
+            text: b.contentHtml || b.text || "",
+            image: b.image || "",
+            focalPoint: b.focalPoint || "center",
+          })),
+        }),
+      });
+      if (response.ok) {
+        toast({
+          title: "Tradução Solicitada!",
+          description: "Webhook do n8n acionado para tradução.",
+        });
+      } else {
+        toast({
+          title: "Erro no Webhook",
+          description: `Status ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro de Conexão",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenBatchImageModal = (postId: string) => {
+    setBatchModalPostId(postId);
+    const draft = postDrafts[postId];
+    const initialSlots: Record<number, boolean> = { 1: true };
+    if (draft && draft.blocks) {
+      draft.blocks.forEach((_, idx) => {
+        initialSlots[idx + 2] = true;
+      });
+    }
+    setBatchSelectedSlots(initialSlots);
+    setBatchModalOpen(true);
+  };
+
+  const handleExecuteBatchImageGenerate = async () => {
+    if (!batchModalPostId) return;
+    const selectedIndexes = Object.entries(batchSelectedSlots)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([indexStr]) => parseInt(indexStr, 10));
+
+    if (selectedIndexes.length === 0) {
+      toast({ title: "Nenhuma imagem selecionada", variant: "destructive" });
+      return;
+    }
+
+    setBatchModalOpen(false);
+    toast({
+      title: "Gerando Imagens em Lote...",
+      description: `Iniciando geração para ${selectedIndexes.length} imagens`,
+    });
+
+    const draft = postDrafts[batchModalPostId];
+
+    for (const placeIdx of selectedIndexes) {
+      const compoundId = `${batchModalPostId}=${placeIdx}`;
+      let altPrompt = draft?.title || "Tecnologia";
+      if (placeIdx > 1 && draft?.blocks?.[placeIdx - 2]) {
+        altPrompt = draft.blocks[placeIdx - 2].contentHtml.replace(/<[^>]*>/g, "").slice(0, 100) || altPrompt;
+      }
+
+      await handleGenerateSingleImage(batchModalPostId, placeIdx, altPrompt);
     }
   };
 
@@ -590,17 +881,39 @@ export default function Admin({ lang }: AdminProps) {
   };
 
   const handleTogglePublish = async (post: BlogPost) => {
+    console.log("[Admin] handleTogglePublish clicked for post:", post);
     const nextPublished = !post.published;
-    const draft = getCurrentPostDraft(post.id) ?? buildDraft(post);
+    let draft;
+    try {
+      draft = getCurrentPostDraft(post.id) ?? buildDraft(post);
+      console.log("[Admin] Resolved draft:", draft);
+    } catch (e) {
+      console.error("[Admin] Error resolving draft:", e);
+      toast({
+        title: "Erro ao resolver rascunho",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setPostSavingId(post.id);
     try {
-      await editPost(buildPublishPayload(post, { ...draft, published: nextPublished }) as any, lang);
+      const payload = buildPublishPayload(post, { ...draft, published: nextPublished });
+      console.log("[Admin] Sending edit/publish payload to API:", payload);
+      const res = await editPost(payload as any, lang);
+      console.log("[Admin] editPost API response:", res);
+      
+      console.log("[Admin] Fetching refreshed post list...");
       const refreshed = await fetchPosts(lang, true);
+      console.log("[Admin] Refreshed posts received. Count:", refreshed.length);
       setPosts(refreshed);
+      console.log("[Admin] setPosts state updated.");
       toast({
         title: nextPublished ? "Artigo publicado!" : "Artigo revertido para rascunho.",
       });
     } catch (error) {
+      console.error("[Admin] Error in handleTogglePublish:", error);
       toast({
         title: "Erro ao atualizar status",
         description: error instanceof Error ? error.message : "Erro desconhecido",
@@ -983,6 +1296,7 @@ export default function Admin({ lang }: AdminProps) {
                                         </h3>
                                         {post.featured && <Badge variant="secondary">Destaque</Badge>}
                                         {post.category && <Badge variant="outline">{post.category}</Badge>}
+                                        {post.tag && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{post.tag}</Badge>}
                                         {post.published ? (
                                           <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20">Publicado</Badge>
                                         ) : (
@@ -1112,9 +1426,23 @@ export default function Admin({ lang }: AdminProps) {
                                       </Field>
                                       <Field label="Tag Principal">
                                         <Input
+                                          value={draft.tag}
+                                          onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, tag: e.target.value } }))}
+                                          placeholder="Ex: IA, Review, Lançamento"
+                                        />
+                                      </Field>
+                                      <Field label="Categoria">
+                                        <select
                                           value={draft.category}
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, category: e.target.value } }))}
-                                        />
+                                          className="w-full bg-[#222222] border border-border rounded-sm text-[14px] text-foreground px-4 py-2.5 outline-none focus:border-primary/50"
+                                        >
+                                          {allowedCategories.map((cat) => (
+                                            <option key={cat} value={cat}>
+                                              {cat}
+                                            </option>
+                                          ))}
+                                        </select>
                                       </Field>
                                       <Field label="Autor">
                                         <Input
@@ -1189,26 +1517,58 @@ export default function Admin({ lang }: AdminProps) {
                                                     </Button>
                                                   </div>
 
-                                                  <div className="space-y-3">
-                                                    <Field label={`Conteúdo do Bloco ${blockIndex + 1} (HTML)`}>
-                                                      <Textarea
-                                                        rows={10}
-                                                        className="font-mono text-sm leading-relaxed"
-                                                        value={block.contentHtml}
-                                                        onChange={(e) =>
+                                                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                    {/* Lado Esquerdo (2 colunas): Editor de texto HTML + BlockLinkMapper */}
+                                                    <div className="lg:col-span-2 space-y-3">
+                                                      <Field label={`Conteúdo do Bloco ${blockIndex + 1} (HTML / Markdown)`}>
+                                                        <Textarea
+                                                          rows={9}
+                                                          className="font-mono text-sm leading-relaxed"
+                                                          value={block.contentHtml}
+                                                          onChange={(e) =>
+                                                            handlePostBlockChange(
+                                                              post.id,
+                                                              blockIndex,
+                                                              "contentHtml",
+                                                              e.target.value,
+                                                            )
+                                                          }
+                                                          placeholder="<h2>Subtítulo</h2><p>Texto do bloco...</p>"
+                                                        />
+                                                      </Field>
+
+                                                      <BlockLinkMapper
+                                                        contentHtml={block.contentHtml}
+                                                        currentLang={lang}
+                                                        allPosts={posts}
+                                                        onUpdateContentHtml={(newHtml) =>
                                                           handlePostBlockChange(
                                                             post.id,
                                                             blockIndex,
                                                             "contentHtml",
-                                                            e.target.value,
+                                                            newHtml,
                                                           )
                                                         }
-                                                        placeholder="<h2>Subtítulo</h2><p>Texto do bloco...</p>"
                                                       />
-                                                    </Field>
+                                                    </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4">
-                                                      <Field label={`Imagem do Bloco ${blockIndex + 1} (Opcional)`}>
+                                                    {/* Lado Direito (1 coluna): Imagem do Bloco + Input + Botão 'Criar Imagem' + Focal Point Picker */}
+                                                    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                                                      <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-semibold text-foreground">IMAGEM DO BLOCO {blockIndex + 1}</span>
+                                                        <Button
+                                                          type="button"
+                                                          size="sm"
+                                                          variant="secondary"
+                                                          className="h-7 text-xs gap-1.5"
+                                                          onClick={() => handleGenerateSingleImage(post.id, blockIndex + 2, block.contentHtml.replace(/<[^>]*>/g, "").slice(0, 100))}
+                                                        >
+                                                          <Wand2 className="w-3 h-3 text-secondary" />
+                                                          Criar Imagem
+                                                        </Button>
+                                                      </div>
+
+                                                      <Field label="URL da Imagem">
                                                         <Input
                                                           value={block.image}
                                                           onChange={(e) =>
@@ -1219,23 +1579,22 @@ export default function Admin({ lang }: AdminProps) {
                                                               e.target.value,
                                                             )
                                                           }
-                                                          placeholder="https://..."
+                                                          placeholder="https://... ou /uploads/..."
                                                         />
                                                       </Field>
-                                                      <Field label="Ponto focal">
-                                                        <Input
-                                                          value={block.focalPoint}
-                                                          onChange={(e) =>
-                                                            handlePostBlockChange(
-                                                              post.id,
-                                                              blockIndex,
-                                                              "focalPoint",
-                                                              e.target.value,
-                                                            )
-                                                          }
-                                                          placeholder="center"
-                                                        />
-                                                      </Field>
+
+                                                      <FocalPointPicker
+                                                        imageSrc={block.image}
+                                                        focalPoint={block.focalPoint}
+                                                        onChangeFocalPoint={(fp) =>
+                                                          handlePostBlockChange(
+                                                            post.id,
+                                                            blockIndex,
+                                                            "focalPoint",
+                                                            fp,
+                                                          )
+                                                        }
+                                                      />
                                                     </div>
                                                   </div>
                                                 </div>
@@ -1275,7 +1634,25 @@ export default function Admin({ lang }: AdminProps) {
                                       </div>
                                     </div>
 
-                                    <div className="flex items-center justify-end gap-3">
+                                    <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleOpenBatchImageModal(post.id)}
+                                        className="gap-2 text-xs"
+                                      >
+                                        <Wand2 className="w-3.5 h-3.5 text-secondary" />
+                                        Criar Imagens
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleManualTranslate(post.id)}
+                                        className="gap-2 text-xs"
+                                      >
+                                        <Globe className="w-3.5 h-3.5 text-secondary" />
+                                        Traduzir
+                                      </Button>
                                       <Button variant="ghost" onClick={() => handleCancelEditPost(post.id)}>
                                         Cancelar
                                       </Button>
@@ -1450,19 +1827,51 @@ export default function Admin({ lang }: AdminProps) {
                 {activeTab === "settings" && (
                   <div className="space-y-6">
                     <div className="border-b border-border pb-3">
-                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções</h2>
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Plugins</h2>
                       <p className="mt-1 text-sm text-foreground/70">
-                        Área reservada para automações, integrações e recursos futuros.
+                        Gerencie as automações, webhooks e integrações ativas no painel Curiosotech.
                       </p>
                     </div>
 
                     <Card className="border border-border/80 bg-card">
-                      <CardContent className="p-6 space-y-3">
-                        <h3 className="text-lg font-semibold text-foreground">Recursos opcionais</h3>
-                        <p className="text-sm text-foreground/70 max-w-2xl">
-                          Por enquanto essa área só exibe a estrutura do CMS. Depois podemos encaixar
-                          webhooks, automações e outras funções sem mexer no editor de posts.
-                        </p>
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-secondary" />
+                          Plugins de Tradução & Automação
+                        </CardTitle>
+                        <CardDescription>
+                          Configure se o sistema deve acionar automaticamente os serviços de tradução ao salvar artigos.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+                          <div className="space-y-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground text-sm">Tradução Automática ao Salvar</span>
+                              <Badge variant={autoTranslateEnabled ? "default" : "outline"} className="text-[10px]">
+                                {autoTranslateEnabled ? "Ativado" : "Desativado"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-foreground/70">
+                              Quando ativado, ao salvar ou publicar qualquer artigo no editor, o sistema enviará uma requisição automática para o webhook de tradução do n8n.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={autoTranslateEnabled}
+                            onCheckedChange={(checked) => {
+                              setAutoTranslateEnabled(checked);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("curiosotech_auto_translate_plugin", checked ? "true" : "false");
+                              }
+                              toast({
+                                title: checked ? "Plugin Ativado" : "Plugin Desativado",
+                                description: checked
+                                  ? "Tradução automática ativada ao salvar posts."
+                                  : "Tradução automática desativada.",
+                              });
+                            }}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -1472,6 +1881,87 @@ export default function Admin({ lang }: AdminProps) {
           </div>
         </section>
       </main>
+
+      {/* Modal Criar Imagens Em Lote */}
+      {batchModalOpen && batchModalPostId && (() => {
+        const draft = postDrafts[batchModalPostId];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2 font-semibold text-lg text-foreground">
+                  <Wand2 className="w-5 h-5 text-secondary" />
+                  <span>Gerar Imagens por IA (Em Lote)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBatchModalOpen(false)}
+                  className="text-foreground/60 hover:text-foreground text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-foreground/70">
+                Selecione abaixo quais imagens você deseja gerar via inteligência artificial para o post <strong>"{draft?.title || batchModalPostId}"</strong>:
+              </p>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {/* Hero Image option (Place 1) */}
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={!!batchSelectedSlots[1]}
+                    onChange={(e) =>
+                      setBatchSelectedSlots((prev) => ({ ...prev, 1: e.target.checked }))
+                    }
+                    className="mt-0.5 rounded border-border"
+                  />
+                  <div className="space-y-0.5 text-xs">
+                    <span className="font-semibold text-foreground block">img-hero (Imagem de Destaque / Hero)</span>
+                    <span className="text-foreground/60 italic">{draft?.title || "Hero Alt"}</span>
+                  </div>
+                </label>
+
+                {/* Blocks Image options (Place N = index + 2) */}
+                {draft?.blocks?.map((b, idx) => {
+                  const placeIdx = idx + 2;
+                  const previewText = b.contentHtml.replace(/<[^>]*>/g, "").slice(0, 80) || `Bloco ${idx + 1}`;
+                  return (
+                    <label
+                      key={`slot-${placeIdx}`}
+                      className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!batchSelectedSlots[placeIdx]}
+                        onChange={(e) =>
+                          setBatchSelectedSlots((prev) => ({ ...prev, [placeIdx]: e.target.checked }))
+                        }
+                        className="mt-0.5 rounded border-border"
+                      />
+                      <div className="space-y-0.5 text-xs">
+                        <span className="font-semibold text-foreground block">img-bloco-{idx + 1} (Bloco {idx + 1})</span>
+                        <span className="text-foreground/60 italic truncate block max-w-sm">{previewText}</span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                <Button variant="ghost" size="sm" onClick={() => setBatchModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleExecuteBatchImageGenerate} className="gap-2">
+                  <Wand2 className="w-3.5 h-3.5" />
+                  Enviar Solicitação
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Footer lang={lang} t={t} />
     </div>

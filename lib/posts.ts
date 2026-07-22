@@ -10,6 +10,7 @@ export interface BlogPost {
   content?: string;
   contentHtml?: string;
   category?: string;
+  tag?: string;
   image?: string;
   imageAlt?: string;
   imageThumb?: string;
@@ -841,7 +842,8 @@ export function normalizePosts(
         ["content", "body", "texto", "text", "conteudo"],
         lang,
       );
-      const rawCategory = pickString(record, ["category", "categoria", "tag"]);
+      const rawCategory = pickString(record, ["category", "categoria"]);
+      const tag = pickString(record, ["tag"]);
       const image = pickString(record, [
         "image",
         "coverImage",
@@ -922,6 +924,10 @@ export function normalizePosts(
       const slug =
         pickLocalizedString(record, ["slug"], lang) ?? slugMap[lang];
       const featured = booleanValue(record.featured) ?? undefined;
+      const published = booleanValue(record.published) ?? undefined;
+      const imageGenerationSent = booleanValue(record.imageGenerationSent ?? record.image_generation_sent) ?? undefined;
+      const imageStatus = record.imageStatus ?? record.image_status ?? undefined;
+      const translationStatus = record.translationStatus ?? record.translation_status ?? undefined;
       const metaTitle = pickLocalizedString(
         record,
         [
@@ -992,6 +998,7 @@ export function normalizePosts(
         content: content ?? undefined,
         contentHtml: contentHtml ?? undefined,
         category: category ?? undefined,
+        tag: tag ?? undefined,
         image: coverImage ?? undefined,
         imageAlt: imageAlt ?? undefined,
         imageThumb: coverImageThumb ?? undefined,
@@ -1006,6 +1013,10 @@ export function normalizePosts(
         slug: slug ?? undefined,
         slugs: Object.keys(slugMap).length > 0 ? slugMap : undefined,
         featured,
+        published,
+        imageGenerationSent,
+        imageStatus,
+        translationStatus,
         metaTitle: metaTitle ?? undefined,
         metaDescription: metaDescription ?? description ?? undefined,
         metaTags,
@@ -1025,7 +1036,7 @@ const buildStaticPostsUrl = (path: string) =>
 
 const fetchJson = async (url: string) => {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
       return { ok: false, payload: null };
     }
@@ -1099,16 +1110,25 @@ const mergePostContent = (primary: BlogPost[], fallback: BlogPost[]) => {
 };
 
 export async function fetchPosts(lang: Language, all = false): Promise<BlogPost[]> {
+  console.log("[fetchPosts] Start. lang:", lang, "all:", all);
   const url = all ? `${POSTS_API_PATH}/${lang}?all=true` : `${POSTS_API_PATH}/${lang}`;
+  console.log("[fetchPosts] Fetching URL:", url);
   const apiResponse = await fetchJson(url);
+  console.log("[fetchPosts] API response received. Ok:", apiResponse.ok);
   if (apiResponse.ok) {
     const apiPosts = normalizePostsPayload(apiResponse.payload, lang);
-    if (apiPosts.every(hasPostContent)) {
+    console.log("[fetchPosts] Normalized apiPosts count:", apiPosts.length);
+    const everyHasContent = apiPosts.every(hasPostContent);
+    console.log("[fetchPosts] everyHasContent check:", everyHasContent);
+    if (everyHasContent) {
+      console.log("[fetchPosts] Returning apiPosts immediately.");
       return apiPosts;
     }
+    console.log("[fetchPosts] Some posts missing content. Loading static fallbacks...");
     const staticLangResponse = await fetchJson(
       buildStaticPostsUrl(`${lang}/posts.json`),
     );
+    console.log("[fetchPosts] Static lang response ok:", staticLangResponse.ok);
     if (staticLangResponse.ok) {
       const staticLangPosts = normalizePostsPayload(
         staticLangResponse.payload,
@@ -1117,6 +1137,7 @@ export async function fetchPosts(lang: Language, all = false): Promise<BlogPost[
       return mergePostContent(apiPosts, staticLangPosts);
     }
     const staticResponse = await fetchJson(buildStaticPostsUrl("posts.json"));
+    console.log("[fetchPosts] Static main response ok:", staticResponse.ok);
     if (staticResponse.ok) {
       const staticPosts = normalizePostsPayload(staticResponse.payload, lang);
       return mergePostContent(apiPosts, staticPosts);
@@ -1124,14 +1145,17 @@ export async function fetchPosts(lang: Language, all = false): Promise<BlogPost[
     return apiPosts;
   }
 
+  console.log("[fetchPosts] API failed. Loading static fallbacks...");
   const staticLangResponse = await fetchJson(
     buildStaticPostsUrl(`${lang}/posts.json`),
   );
+  console.log("[fetchPosts] Static lang response ok:", staticLangResponse.ok);
   if (staticLangResponse.ok) {
     return normalizePostsPayload(staticLangResponse.payload, lang);
   }
 
   const staticResponse = await fetchJson(buildStaticPostsUrl("posts.json"));
+  console.log("[fetchPosts] Static main response ok:", staticResponse.ok);
   if (staticResponse.ok) {
     return normalizePostsPayload(staticResponse.payload, lang);
   }

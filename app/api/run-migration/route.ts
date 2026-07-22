@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
           const postDate = post.date ? new Date(post.date as string) : new Date();
 
           await prisma.post.upsert({
-            where: { slug },
+            where: { slug_lang: { slug, lang } },
             update: {
               lang, date: postDate, slugs: (post.slugs as any) || null,
               tag: mainTag, category: (post.category as string) || "Mercado Tech",

@@ -20,7 +20,7 @@ export async function generateMetadata({
   let post = null;
   try {
     const dbPost = await prisma.post.findUnique({
-      where: { slug: decodedSlug }
+      where: { slug_lang: { slug: decodedSlug, lang: lang } }
     });
     if (dbPost && dbPost.lang === lang) {
       let slugs: Record<string, string> = {};
