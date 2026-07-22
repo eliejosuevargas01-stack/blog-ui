@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getSystemSettings } from "@/lib/settings";
 import fs from "fs/promises";
 import path from "path";
 
@@ -414,30 +415,35 @@ export async function POST(req: NextRequest) {
           }
 
           if (allImagesUploaded && transStatus.en !== "completed" && transStatus.en !== "sent") {
-            console.log(`[Images Upload] All images generated! Updating status to 'sent' and triggering translations for: ${ptSlug}`);
-            
-            const updatedTranslationStatus = { en: "sent", es: "sent" };
-            
-            // Update translation_status for PT post and all other linked posts
-            await prisma.post.updateMany({
-              where: { hn_id: freshPtPost.hn_id || "" },
-              data: {
-                translation_status: updatedTranslationStatus
-              }
-            });
+            const settings = getSystemSettings();
+            if (settings.autoTranslateEnabled) {
+              console.log(`[Images Upload] All images generated! Auto-translate is active. Triggering translations for: ${ptSlug}`);
+              
+              const updatedTranslationStatus = { en: "sent", es: "sent" };
+              
+              // Update translation_status for PT post and all other linked posts
+              await prisma.post.updateMany({
+                where: { hn_id: freshPtPost.hn_id || "" },
+                data: {
+                  translation_status: updatedTranslationStatus
+                }
+              });
 
-            const updatedHtml = reconstructContentHtmlFromBlocks(freshBlocks, freshPtPost.title);
-            await triggerTranslationWebhook({
-              hn_id: freshPtPost.hn_id,
-              conteudo_html: updatedHtml,
-              slug: freshPtPost.slug,
-              categoria: freshPtPost.category,
-              excerpt: freshPtPost.excerpt,
-              meta_title: freshPtPost.seoTitle,
-              meta_description: freshPtPost.seoDescription,
-              tags: freshPtPost.seoKeywords ? freshPtPost.seoKeywords.split(",").map((t: string) => t.trim()) : [],
-              palavra_chave_principal: freshPtPost.tag
-            });
+              const updatedHtml = reconstructContentHtmlFromBlocks(freshBlocks, freshPtPost.title);
+              await triggerTranslationWebhook({
+                hn_id: freshPtPost.hn_id,
+                conteudo_html: updatedHtml,
+                slug: freshPtPost.slug,
+                categoria: freshPtPost.category,
+                excerpt: freshPtPost.excerpt,
+                meta_title: freshPtPost.seoTitle,
+                meta_description: freshPtPost.seoDescription,
+                tags: freshPtPost.seoKeywords ? freshPtPost.seoKeywords.split(",").map((t: string) => t.trim()) : [],
+                palavra_chave_principal: freshPtPost.tag
+              });
+            } else {
+              console.log(`[Images Upload] All images generated! Auto-translate is disabled in settings. Skipping translations trigger for: ${ptSlug}`);
+            }
           }
         }
       }
