@@ -24,6 +24,14 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:filename*",
+        destination: "/api/serve-upload/:filename*",
+      },
+    ];
+  },
   async redirects() {
     return [
       {

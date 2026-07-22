@@ -1,0 +1,87 @@
+import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
+import sharp from "sharp";
+import { getUploadsDir } from "@/lib/uploads-storage";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(
+  request: Request,
+  { params }: { params: { filename: string } }
+) {
+  try {
+    const { filename } = params;
+    const decodedFilename = decodeURIComponent(filename);
+    const ext = path.extname(decodedFilename).toLowerCase();
+
+    const uploadsDir = getUploadsDir();
+    let filePath = path.join(uploadsDir, decodedFilename);
+
+    if (!fs.existsSync(filePath)) {
+      const fallbackLocations = [
+        path.join(process.cwd(), "uploads", decodedFilename),
+        path.join("/app/html-storage/uploads", decodedFilename),
+        path.join("/app/html-storage", decodedFilename),
+      ];
+      const found = fallbackLocations.find((p) => fs.existsSync(p));
+      if (found) {
+        filePath = found;
+      } else {
+        return new Response("Arquivo não encontrado", { status: 404 });
+      }
+    }
+
+    // Obter parâmetro de largura ?w=
+    const { searchParams } = new URL(request.url);
+    const wParam = searchParams.get("w");
+    let targetWidth = 1400; // Largura padrão
+    if (wParam) {
+      const parsedWidth = parseInt(wParam, 10);
+      if (!isNaN(parsedWidth) && parsedWidth > 0 && parsedWidth <= 2500) {
+        targetWidth = parsedWidth;
+      }
+    }
+
+    // Suportar conversão e redimensionamento para formatos de imagem comuns
+    if (ext === ".jpg" || ext === ".jpeg" || ext === ".png" || ext === ".webp") {
+      const cacheFilename = decodedFilename.replace(/\.(jpe?g|png|webp)$/i, "") + `.w${targetWidth}.webp`;
+      const cachePath = path.join(uploadsDir, cacheFilename);
+
+      if (!fs.existsSync(cachePath)) {
+        const inputBuffer = fs.readFileSync(filePath);
+        const webpBuffer = await sharp(inputBuffer)
+          .rotate()
+          .resize({ width: targetWidth, withoutEnlargement: true })
+          .webp({ quality: 82 })
+          .toBuffer();
+        try { fs.writeFileSync(cachePath, webpBuffer); } catch {}
+      }
+
+      const webpBuffer = fs.readFileSync(cachePath);
+      return new Response(webpBuffer, {
+        headers: {
+          "Content-Type": "image/webp",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+
+    // Para outros formatos (ex: gif, svg): servir diretamente
+    const fileBuffer = fs.readFileSync(filePath);
+    let contentType = "application/octet-stream";
+    if (ext === ".gif") contentType = "image/gif";
+    else if (ext === ".svg") contentType = "image/svg+xml";
+    else if (ext === ".avif") contentType = "image/avif";
+
+    return new Response(fileBuffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  } catch (error: any) {
+    console.error("Erro ao servir arquivo:", error);
+    return new Response("Erro interno do servidor", { status: 500 });
+  }
+}
