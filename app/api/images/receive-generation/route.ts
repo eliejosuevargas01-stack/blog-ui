@@ -102,15 +102,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save image locally to persistent storage
-    const uploadsDir = path.join(process.cwd(), "public", "uploads", "posts");
+    // Save image to process.cwd()/uploads directory (served by /uploads/[filename] route with Sharp webp optimization)
+    const uploadsDir = path.join(process.cwd(), "uploads");
     await fs.mkdir(uploadsDir, { recursive: true });
 
     const fileName = `generated-${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`;
     const fullPath = path.join(uploadsDir, fileName);
     await fs.writeFile(fullPath, buffer);
 
-    const publicUrl = `/uploads/posts/${fileName}`;
+    const publicUrl = `/uploads/${fileName}`;
     console.log(`[Image Generation Callback] Saved binary image to disk: ${fullPath} -> Accessible at ${publicUrl}`);
 
     // Update target posts in database

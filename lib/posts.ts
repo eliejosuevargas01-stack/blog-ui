@@ -825,7 +825,7 @@ export function normalizePosts(
           ["description", "descricao", "summary", "resumo"],
           lang,
         ) ?? undefined;
-      const contentHtml = pickLocalizedString(
+      let contentHtml = pickLocalizedString(
         record,
         [
           "contentHtml",
@@ -837,6 +837,28 @@ export function normalizePosts(
         ],
         lang,
       );
+
+      if (!contentHtml && record.blocks) {
+        let bList: any[] = [];
+        if (Array.isArray(record.blocks)) {
+          bList = record.blocks;
+        } else if (typeof record.blocks === "string") {
+          try {
+            bList = JSON.parse(record.blocks);
+          } catch {}
+        }
+        if (bList.length > 0) {
+          contentHtml = bList
+            .map((b) => {
+              let seg = b.contentHtml || b.text || "";
+              if (b.image && !seg.includes(b.image)) {
+                seg += `\n<figure class="my-8">\n  <img src="${b.image}" alt="Imagem do bloco" class="w-full rounded-2xl border border-border/80 shadow-sm" style="object-position: ${b.focalPoint || "center"}" />\n</figure>`;
+              }
+              return seg;
+            })
+            .join("\n\n");
+        }
+      }
       const content = pickLocalizedString(
         record,
         ["content", "body", "texto", "text", "conteudo"],

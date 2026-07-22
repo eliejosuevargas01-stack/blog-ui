@@ -23,12 +23,15 @@ function reconstructContentHtml(blocksJson: any): string {
   }
 
   return blocks.map((block) => {
-    let segment = block.text || "";
+    let segment = block.contentHtml || block.text || "";
     if (block.image) {
-      segment += `\n<figure>\n  <img src="${block.image}" alt="Image" />\n</figure>`;
+      // Avoid duplicate img tags if segment already contains this image url
+      if (!segment.includes(block.image)) {
+        segment += `\n<figure class="my-8">\n  <img src="${block.image}" alt="Imagem do bloco" class="w-full rounded-2xl border border-border/80 shadow-sm" style="object-position: ${block.focalPoint || 'center'}" />\n</figure>`;
+      }
     }
     return segment;
-  }).join("\n");
+  }).join("\n\n");
 }
 
 export function mapDbPostToBlogPost(post: any, dynamicSlugs?: Record<string, string>) {
