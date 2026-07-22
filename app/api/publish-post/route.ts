@@ -466,14 +466,15 @@ export async function POST(req: NextRequest) {
       const output = firstItem.output;
       const languages = ["en", "es"] as const;
       
-      // Find the corresponding Portuguese post to copy publication date, images, and link translations
-      const ptPost = await prisma.post.findFirst({
-        where: { lang: "pt" },
-        orderBy: { createdAt: "desc" }
-      });
+      const targetId = firstItem.body?.id || firstItem.hn_id || firstItem.hnId || firstItem.id || null;
+      
+      // Find the corresponding Portuguese post using the ID from the payload or the latest as fallback
+      const ptPost = targetId
+        ? await prisma.post.findFirst({ where: { id: targetId, lang: "pt" } })
+        : await prisma.post.findFirst({ where: { lang: "pt" }, orderBy: { createdAt: "desc" } });
 
       if (!ptPost) {
-        console.warn("[Publish] Could not find any recent 'pt' post to link translations to.");
+        console.warn(`[Publish] Could not find any recent 'pt' post for targetId '${targetId}' to link translations to.`);
       }
 
       const publishDate = ptPost ? ptPost.date : getNextPublishDate();
@@ -596,47 +597,93 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const savedPost = await prisma.post.upsert({
-          where: { slug_lang: { slug: slug, lang: lang } },
-          update: {
-            lang: lang,
-            date: publishDate,
-            hn_id: hn_id,
-            tag: mainTag,
-            category: categoria || "Tech Market",
-            title: title,
-            excerpt: excerpt || "",
-            readTime: readTime,
-            img: finalMainImage,
-            imgFocalPoint: "center",
-            blocks: finalBlocks as any,
-            seoTitle: meta_title || title,
-            seoDescription: meta_description || excerpt || "",
-            seoKeywords: seoKeywords,
-            published: false // Translations are saved as drafts, waiting for publication
-          },
-          create: {
-            slug: slug,
-            lang: lang,
-            date: publishDate,
-            hn_id: hn_id,
-            tag: mainTag,
-            category: categoria || "Tech Market",
-            title: title,
-            excerpt: excerpt || "",
-            readTime: readTime,
-            img: finalMainImage,
-            imgFocalPoint: "center",
-            blocks: finalBlocks as any,
-            seoTitle: meta_title || title,
-            seoDescription: meta_description || excerpt || "",
-            seoKeywords: seoKeywords,
-            published: false,
-            image_generation_sent: true,
-            image_status: imageStatus,
-            translation_status: { en: "completed", es: "completed" }
-          }
-        });
+        let savedPost;
+        if (ptPost) {
+          savedPost = await prisma.post.upsert({
+            where: { id_lang: { id: ptPost.id, lang: lang } },
+            update: {
+              lang: lang,
+              date: publishDate,
+              hn_id: hn_id,
+              tag: mainTag,
+              category: categoria || "Tech Market",
+              title: title,
+              excerpt: excerpt || "",
+              readTime: readTime,
+              img: finalMainImage,
+              imgFocalPoint: "center",
+              blocks: finalBlocks as any,
+              seoTitle: meta_title || title,
+              seoDescription: meta_description || excerpt || "",
+              seoKeywords: seoKeywords,
+              published: false // Translations are saved as drafts, waiting for publication
+            },
+            create: {
+              id: ptPost.id,
+              slug: slug,
+              lang: lang,
+              date: publishDate,
+              hn_id: hn_id,
+              tag: mainTag,
+              category: categoria || "Tech Market",
+              title: title,
+              excerpt: excerpt || "",
+              readTime: readTime,
+              img: finalMainImage,
+              imgFocalPoint: "center",
+              blocks: finalBlocks as any,
+              seoTitle: meta_title || title,
+              seoDescription: meta_description || excerpt || "",
+              seoKeywords: seoKeywords,
+              published: false,
+              image_generation_sent: true,
+              image_status: imageStatus,
+              translation_status: { en: "completed", es: "completed" }
+            }
+          });
+        } else {
+          savedPost = await prisma.post.upsert({
+            where: { slug_lang: { slug: slug, lang: lang } },
+            update: {
+              lang: lang,
+              date: publishDate,
+              hn_id: hn_id,
+              tag: mainTag,
+              category: categoria || "Tech Market",
+              title: title,
+              excerpt: excerpt || "",
+              readTime: readTime,
+              img: finalMainImage,
+              imgFocalPoint: "center",
+              blocks: finalBlocks as any,
+              seoTitle: meta_title || title,
+              seoDescription: meta_description || excerpt || "",
+              seoKeywords: seoKeywords,
+              published: false // Translations are saved as drafts, waiting for publication
+            },
+            create: {
+              slug: slug,
+              lang: lang,
+              date: publishDate,
+              hn_id: hn_id,
+              tag: mainTag,
+              category: categoria || "Tech Market",
+              title: title,
+              excerpt: excerpt || "",
+              readTime: readTime,
+              img: finalMainImage,
+              imgFocalPoint: "center",
+              blocks: finalBlocks as any,
+              seoTitle: meta_title || title,
+              seoDescription: meta_description || excerpt || "",
+              seoKeywords: seoKeywords,
+              published: false,
+              image_generation_sent: true,
+              image_status: imageStatus,
+              translation_status: { en: "completed", es: "completed" }
+            }
+          });
+        }
 
         results.push({
           lang,
