@@ -849,11 +849,15 @@ export async function POST(req: NextRequest) {
 
         const scheduledDate = postData.date ? new Date(postData.date) : publishDate;
 
-        // Upsert PT post
+        const targetLang = req.nextUrl.searchParams.get("lang") || postData.lang || "pt";
+
+        // Upsert post (supports any language: pt, en, es)
         const savedPost = await prisma.post.upsert({
-          where: { slug_lang: { slug: slug, lang: "pt" } },
+          where: postData.id
+            ? { id_lang: { id: postData.id, lang: targetLang } }
+            : { slug_lang: { slug: slug, lang: targetLang } },
           update: {
-            lang: "pt",
+            lang: targetLang,
             date: scheduledDate,
             hn_id: hn_id,
             tag: mainTag,
@@ -872,8 +876,9 @@ export async function POST(req: NextRequest) {
             published: postData.published !== undefined ? postData.published : undefined
           },
           create: {
+            id: postData.id && !postData.id.startsWith("temp-") ? postData.id : undefined,
             slug: slug,
-            lang: "pt",
+            lang: targetLang,
             date: scheduledDate,
             hn_id: hn_id,
             tag: mainTag,
@@ -887,7 +892,7 @@ export async function POST(req: NextRequest) {
             seoTitle: meta_title || title,
             seoDescription: meta_description || excerpt || "",
             seoKeywords: seoKeywords,
-            slugs: { pt: slug },
+            slugs: postData.slugs ? postData.slugs : { [targetLang]: slug },
             published: postData.published !== undefined ? postData.published : false, // Defaults to draft (false)
             image_generation_sent: true,
             image_status: imageStatus,

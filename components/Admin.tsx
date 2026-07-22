@@ -650,7 +650,7 @@ export default function Admin({ lang }: AdminProps) {
         conteudo_html: contentHtml,
         slug: slugVal,
         categoria: draft.category || post.category || "Mercado Tech",
-        url_categoria: `/${lang}/${draft.category ? draft.category.toLowerCase().replace(/\s+/g, "-") : "posts"}`,
+        url_categoria: `/${selectedLang}/${draft.category ? draft.category.toLowerCase().replace(/\s+/g, "-") : "posts"}`,
         excerpt: draft.excerpt || "",
         meta_title: draft.metaTitle || titleVal,
         meta_description: draft.metaDescription || draft.excerpt || "",
