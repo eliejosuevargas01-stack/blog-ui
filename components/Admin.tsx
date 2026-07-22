@@ -1835,51 +1835,18 @@ export default function Admin({ lang }: AdminProps) {
                 {activeTab === "settings" && (
                   <div className="space-y-6">
                     <div className="border-b border-border pb-3">
-                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Plugins</h2>
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Configurações</h2>
                       <p className="mt-1 text-sm text-foreground/70">
-                        Gerencie as automações, webhooks e integrações ativas no painel Curiosotech.
+                        Área de controle de plugins e automações do portal Curiosotech.
                       </p>
                     </div>
 
                     <Card className="border border-border/80 bg-card">
-                      <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-                          <Globe className="w-5 h-5 text-secondary" />
-                          Plugins de Tradução & Automação
-                        </CardTitle>
-                        <CardDescription>
-                          Configure se o sistema deve acionar automaticamente os serviços de tradução ao salvar artigos.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-                          <div className="space-y-1 pr-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground text-sm">Tradução Automática ao Salvar</span>
-                              <Badge variant={autoTranslateEnabled ? "default" : "outline"} className="text-[10px]">
-                                {autoTranslateEnabled ? "Ativado" : "Desativado"}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-foreground/70">
-                              Quando ativado, ao salvar ou publicar qualquer artigo no editor, o sistema enviará uma requisição automática para o webhook de tradução do n8n.
-                            </p>
-                          </div>
-                          <Switch
-                            checked={autoTranslateEnabled}
-                            onCheckedChange={(checked) => {
-                              setAutoTranslateEnabled(checked);
-                              if (typeof window !== "undefined") {
-                                localStorage.setItem("curiosotech_auto_translate_plugin", checked ? "true" : "false");
-                              }
-                              toast({
-                                title: checked ? "Plugin Ativado" : "Plugin Desativado",
-                                description: checked
-                                  ? "Tradução automática ativada ao salvar posts."
-                                  : "Tradução automática desativada.",
-                              });
-                            }}
-                          />
-                        </div>
+                      <CardContent className="p-6 space-y-3">
+                        <h3 className="text-lg font-semibold text-foreground">Traduções e Imagens por Demanda</h3>
+                        <p className="text-xs text-foreground/70 max-w-2xl">
+                          As traduções automáticas são disparadas exclusivamente na criação de novos artigos via API ou manualmente utilizando o botão "Traduzir" localizado no editor de posts.
+                        </p>
                       </CardContent>
                     </Card>
                   </div>

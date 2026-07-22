@@ -43,6 +43,40 @@ function reconstructContentHtmlFromBlocks(blocks: any[], title: string): string 
   return html;
 }
 
+function parseIndividualBlock(blockHtml: string) {
+  let cleanHtml = blockHtml;
+  let image = "";
+  let altText = "";
+
+  const figureRegex = /<figure[^>]*>([\s\S]*?)<\/figure>/i;
+  const figMatch = cleanHtml.match(figureRegex);
+  if (figMatch) {
+    const inner = figMatch[1];
+    const imgMatch = inner.match(/<img[^>]+src=["']([^"']*)["']/i);
+    if (imgMatch) {
+      image = imgMatch[1];
+    }
+    const altMatch = inner.match(/alt=["']([^"']*)["']/i);
+    if (altMatch) {
+      altText = altMatch[1];
+    }
+    cleanHtml = cleanHtml.replace(figureRegex, "").trim();
+  } else {
+    const imgRegex = /<img[^>]+src=["']([^"']*)["'][^>]*>/i;
+    const imgMatch = cleanHtml.match(imgRegex);
+    if (imgMatch) {
+      image = imgMatch[1];
+      const altMatch = cleanHtml.match(/alt=["']([^"']*)["']/i);
+      if (altMatch) {
+        altText = altMatch[1];
+      }
+      cleanHtml = cleanHtml.replace(imgRegex, "").trim();
+    }
+  }
+
+  return { contentHtml: cleanHtml, image, altText };
+}
+
 function parsePostHtml(html: string) {
   let title = "";
   // 1. Extract h1 title
@@ -469,20 +503,59 @@ export async function POST(req: NextRequest) {
 
         slugMap[lang] = slug;
 
-        let rawHtml = "";
+        let transBlocks: any[] = [];
+        let transTitle = titulo || incomingTitle || "";
+        let transMainImage = "";
+        let wordCount = 0;
+
         if (typeof conteudo_html === "object" && conteudo_html !== null) {
           const keys = Object.keys(conteudo_html).sort((a, b) => {
             const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
             const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
             return numA - numB;
           });
-          rawHtml = keys.map((k) => (conteudo_html as Record<string, string>)[k] || "").join("\n\n");
+
+          keys.forEach((key, idx) => {
+            let blockHtml = (conteudo_html as Record<string, string>)[key] || "";
+            wordCount += blockHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+
+            if (idx === 0) {
+              const h1Match = blockHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+              if (h1Match) {
+                if (!transTitle) {
+                  transTitle = h1Match[1].replace(/<[^>]*>/g, "").trim();
+                }
+                blockHtml = blockHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, "").trim();
+              }
+            }
+
+            const parsedBlock = parseIndividualBlock(blockHtml);
+            if (parsedBlock.image) {
+              if (parsedBlock.image.includes("COLE_LINK_IMAGEM")) {
+                parsedBlock.image = getNextTechImage(idx);
+              }
+              if (!transMainImage) {
+                transMainImage = parsedBlock.image;
+              }
+            }
+
+            transBlocks.push({
+              text: parsedBlock.contentHtml,
+              image: parsedBlock.image,
+              focalPoint: "center"
+            });
+          });
         } else if (typeof conteudo_html === "string") {
-          rawHtml = conteudo_html;
+          const parsed = parsePostHtml(conteudo_html);
+          transTitle = transTitle || parsed.title;
+          transMainImage = parsed.mainImage;
+          wordCount = conteudo_html.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+          transBlocks = parsed.blocks;
         }
 
-        const { title, mainImage, blocks } = parsePostHtml(rawHtml);
-        const wordCount = rawHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+        const title = transTitle || "Article";
+        const mainImage = transMainImage || getNextTechImage(0);
+        const blocks = transBlocks;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;
 
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
@@ -626,25 +699,73 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Missing slug or conteudo_html" }, { status: 400 });
         }
 
-        let rawHtml = "";
+        let mainBlocks: any[] = [];
+        let mainTitle = titulo || incomingTitle || "";
+        let mainImage = "";
+        let wordCount = 0;
+        const imgAltPrompts: string[] = [];
+
         if (typeof conteudo_html === "object" && conteudo_html !== null) {
           const keys = Object.keys(conteudo_html).sort((a, b) => {
             const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
             const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
             return numA - numB;
           });
-          rawHtml = keys.map((k) => (conteudo_html as Record<string, string>)[k] || "").join("\n\n");
+
+          keys.forEach((key, idx) => {
+            let blockHtml = (conteudo_html as Record<string, string>)[key] || "";
+            wordCount += blockHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+
+            if (idx === 0) {
+              const h1Match = blockHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+              if (h1Match) {
+                if (!mainTitle) {
+                  mainTitle = h1Match[1].replace(/<[^>]*>/g, "").trim();
+                }
+                blockHtml = blockHtml.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, "").trim();
+              }
+            }
+
+            const parsedBlock = parseIndividualBlock(blockHtml);
+            if (parsedBlock.altText) {
+              imgAltPrompts.push(parsedBlock.altText);
+            }
+
+            if (parsedBlock.image) {
+              if (parsedBlock.image.includes("COLE_LINK_IMAGEM")) {
+                parsedBlock.image = getNextTechImage(idx);
+              }
+              if (!mainImage) {
+                mainImage = parsedBlock.image;
+              }
+            }
+
+            mainBlocks.push({
+              text: parsedBlock.contentHtml,
+              image: parsedBlock.image,
+              focalPoint: "center"
+            });
+          });
         } else if (typeof conteudo_html === "string") {
-          rawHtml = conteudo_html;
+          const parsed = parsePostHtml(conteudo_html);
+          mainTitle = mainTitle || parsed.title;
+          mainImage = parsed.mainImage;
+          wordCount = conteudo_html.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+          mainBlocks = parsed.blocks;
+
+          const imgMatches = conteudo_html.match(/<img[^>]+alt="([^"]+)"/g);
+          if (imgMatches) {
+            imgMatches.forEach((m: string) => {
+              const altMatch = m.match(/alt="([^"]+)"/);
+              if (altMatch && altMatch[1]) {
+                imgAltPrompts.push(altMatch[1]);
+              }
+            });
+          }
         }
 
-        const parsed = parsePostHtml(rawHtml);
-        const title =
-          (typeof titulo === "string" && titulo.trim()) ||
-          (typeof incomingTitle === "string" && incomingTitle.trim()) ||
-          parsed.title;
-        const { mainImage, blocks } = parsed;
-        const wordCount = rawHtml.replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+        const title = mainTitle || "Article";
+        const blocks = mainBlocks;
         const readTime = `${Math.max(1, Math.round(wordCount / 200))} min`;
 
         const mainTag = palavra_chave_principal || (tags && tags[0]) || "Geral";
@@ -660,18 +781,6 @@ export async function POST(req: NextRequest) {
 
         // Extract hn_id from the incoming post data
         const hn_id = postData.hn_id || postData.hnId || null;
-
-        // Extract prompts from HTML alts to build image status checklist
-        const imgAltPrompts: string[] = [];
-        const imgMatches = rawHtml.match(/<img[^>]+alt="([^"]+)"/g);
-        if (imgMatches) {
-          imgMatches.forEach((m: string) => {
-            const altMatch = m.match(/alt="([^"]+)"/);
-            if (altMatch && altMatch[1]) {
-              imgAltPrompts.push(altMatch[1]);
-            }
-          });
-        }
 
         const imageStatus: Record<string, boolean> = {
           imagem_hero: false
