@@ -27,29 +27,79 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      title,
-      slug: customSlug,
-      tag = "Notícias",
-      category = "Mercado Tech",
-      excerpt = "",
-      readTime = "5 min",
-      img = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200",
-      imgFocalPoint = "center",
-      blocks = [],
-      seoTitle,
-      seoDescription,
-      seoKeywords,
-      lang = "pt",
-      slugs = {},
-      hn_id = null
-    } = body;
+    console.log("[Create Post API] Incoming payload:", body);
 
-    if (!title) {
-      return NextResponse.json({ error: "O título do post é obrigatório." }, { status: 400 });
+    // Adapt n8n post generator payload structure
+    let title = body.title || "";
+    let blocks: any[] = [];
+    let coverImg = body.img || "";
+
+    if (body.conteudo_html && typeof body.conteudo_html === "object") {
+      // Sort blocks by key name: bloco1, bloco2, bloco3...
+      const blockKeys = Object.keys(body.conteudo_html).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+        return numA - numB;
+      });
+
+      blockKeys.forEach((key, idx) => {
+        const htmlContent = body.conteudo_html[key] || "";
+        
+        // Extract first <h1> as title if not already set
+        if (!title && idx === 0) {
+          const h1Match = htmlContent.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+          if (h1Match) {
+            title = h1Match[1].replace(/<[^>]*>/g, "").trim();
+          }
+        }
+
+        // Extract image src if present inside block HTML
+        let blockImage = "";
+        const imgMatch = htmlContent.match(/<img[^>]*src=["']([^"']*)["']/i);
+        if (imgMatch) {
+          blockImage = imgMatch[1];
+          if (!coverImg) {
+            coverImg = blockImage; // Set first found image as post cover
+          }
+        }
+
+        blocks.push({
+          contentHtml: htmlContent,
+          image: blockImage,
+          focalPoint: "50% 50%"
+        });
+      });
     }
 
+    // Default title fallback
+    if (!title && body.meta_title) {
+      title = body.meta_title.split(":")[1]?.trim() || body.meta_title;
+    }
+    if (!title) {
+      title = "Matéria Curiosotech";
+    }
+
+    // Map standard fields
+    const lang = body.lang || "pt";
+    const customSlug = body.slug;
     const finalSlug = customSlug?.trim() || generateSlug(title);
+
+    const category = body.categoria || body.category || "Inteligência Artificial";
+    const tag = (body.tags && body.tags[0]) || body.tag || "Tecnologia";
+    const seoKeywords = Array.isArray(body.tags) ? body.tags.join(", ") : body.seoKeywords || tag;
+
+    const excerpt = body.excerpt || "";
+    const seoTitle = body.meta_title || body.seoTitle || title;
+    const seoDescription = body.meta_description || body.seoDescription || excerpt;
+    const hn_id = body.hn_id || null;
+    const imgFocalPoint = body.imgFocalPoint || "50% 50%";
+    const readTime = body.readTime || "5 min";
+
+    // Use default image if none found in blocks
+    const finalCoverImg = coverImg || "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200";
+
+    // Standard blocks fallback
+    const finalBlocks = blocks.length > 0 ? blocks : (Array.isArray(body.blocks) ? body.blocks : []);
 
     // Verificar se já existe slug idêntico no mesmo idioma
     const existing = await prisma.post.findUnique({
@@ -68,16 +118,16 @@ export async function POST(req: Request) {
       data: {
         slug: finalSlug,
         lang,
-        slugs: slugs && Object.keys(slugs).length > 0 ? slugs : { [lang]: finalSlug },
+        slugs: body.slugs && Object.keys(body.slugs).length > 0 ? body.slugs : { [lang]: finalSlug },
         hn_id,
         tag,
         category,
         title,
         excerpt: excerpt || title,
         readTime,
-        img,
+        img: finalCoverImg,
         imgFocalPoint,
-        blocks: Array.isArray(blocks) ? blocks : [],
+        blocks: finalBlocks,
         seoTitle: seoTitle || title,
         seoDescription: seoDescription || excerpt,
         seoKeywords: seoKeywords || `${tag}, ${category}`,
@@ -101,7 +151,7 @@ export async function POST(req: Request) {
         title: post.title,
         slug: post.slug,
         lang: post.lang,
-        url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/${lang}/post/${post.slug}`,
+        url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://curiosotech.online"}/${lang}/post/${post.slug}`,
       },
     });
   } catch (error: any) {
