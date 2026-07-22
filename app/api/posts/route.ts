@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getSystemSettings } from "@/lib/settings";
 
 function generateSlug(title: string): string {
   return title
@@ -142,6 +143,36 @@ export async function POST(req: Request) {
     revalidatePath(`/${lang}/artigos`);
     revalidatePath(`/${lang}/post/${finalSlug}`);
     revalidatePath("/sitemap.xml");
+
+    // Automatically trigger translation webhook for posts created via API only if autoTranslateEnabled is active
+    const settings = getSystemSettings();
+    if (settings.autoTranslateEnabled) {
+      try {
+        console.log(`[Create Post API] Auto-translate is active. Triggering translation webhook for post: ${post.id}`);
+        fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "translate",
+            id: post.id,
+            lang: post.lang,
+            title: post.title,
+            excerpt: post.excerpt,
+            blocks: (post.blocks as any[] || []).map((b: any) => ({
+              text: b.contentHtml || b.text || "",
+              image: b.image || "",
+              focalPoint: b.focalPoint || "center",
+            })),
+          }),
+        }).catch((err) => {
+          console.error("[Create Post API] Failed to trigger translation webhook (async):", err.message);
+        });
+      } catch (e: any) {
+        console.error("[Create Post API] Failed to trigger translation webhook:", e.message);
+      }
+    } else {
+      console.log("[Create Post API] Auto-translate is disabled in settings. Skipping webhook trigger.");
+    }
 
     return NextResponse.json({
       success: true,

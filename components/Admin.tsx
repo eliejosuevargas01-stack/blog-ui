@@ -499,6 +499,20 @@ export default function Admin({ lang }: AdminProps) {
     }
   }, [isAuthenticated, lang]);
 
+  // Fetch settings when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetch("/api/settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (typeof data.autoTranslateEnabled === "boolean") {
+            setAutoTranslateEnabled(data.autoTranslateEnabled);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isAuthenticated]);
+
   // Login handler
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -728,10 +742,7 @@ export default function Admin({ lang }: AdminProps) {
       toast({ title: t.admin.toast.saveSuccess });
       setEditingPostId(null);
 
-      if (autoTranslateEnabled) {
-        console.log("[Auto-Translate Plugin] Plugin active. Triggering translation for:", postId);
-        handleManualTranslate(postId);
-      }
+
     } catch (error) {
       toast({
         title: t.admin.toast.saveError,
@@ -1835,18 +1846,59 @@ export default function Admin({ lang }: AdminProps) {
                 {activeTab === "settings" && (
                   <div className="space-y-6">
                     <div className="border-b border-border pb-3">
-                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Configurações</h2>
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Plugins</h2>
                       <p className="mt-1 text-sm text-foreground/70">
-                        Área de controle de plugins e automações do portal Curiosotech.
+                        Gerencie as automações, webhooks e integrações ativas no painel Curiosotech.
                       </p>
                     </div>
 
                     <Card className="border border-border/80 bg-card">
-                      <CardContent className="p-6 space-y-3">
-                        <h3 className="text-lg font-semibold text-foreground">Traduções e Imagens por Demanda</h3>
-                        <p className="text-xs text-foreground/70 max-w-2xl">
-                          As traduções automáticas são disparadas exclusivamente na criação de novos artigos via API ou manualmente utilizando o botão "Traduzir" localizado no editor de posts.
-                        </p>
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-secondary" />
+                          Plugins de Tradução & Automação
+                        </CardTitle>
+                        <CardDescription>
+                          Configure se o sistema deve acionar automaticamente os serviços de tradução ao receber novos posts via API.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+                          <div className="space-y-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground text-sm">Tradução Automática de Posts via API</span>
+                              <Badge variant={autoTranslateEnabled ? "default" : "outline"} className="text-[10px]">
+                                {autoTranslateEnabled ? "Ativado" : "Desativado"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-foreground/70">
+                              Quando ativado, ao receber a publicação de um novo artigo através da API automática, o sistema enviará uma requisição para o webhook de tradução do n8n.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={autoTranslateEnabled}
+                            onCheckedChange={async (checked) => {
+                              setAutoTranslateEnabled(checked);
+                              try {
+                                const response = await fetch("/api/settings", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ autoTranslateEnabled: checked }),
+                                });
+                                if (response.ok) {
+                                  toast({
+                                    title: checked ? "Plugin Ativado" : "Plugin Desativado",
+                                    description: checked
+                                      ? "Tradução automática ativada para novos artigos criados via API."
+                                      : "Tradução automática desativada.",
+                                  });
+                                }
+                              } catch (error) {
+                                console.error("Erro ao salvar configurações:", error);
+                              }
+                            }}
+                          />
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
