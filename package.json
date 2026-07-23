@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test": "npx tsx --test tests/integration.test.ts",
     "lighthouse": "next build && (next start & (sleep 5 && pnpm dlx lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --chrome-flags=\"--headless\" && kill $!))"
   },
   "dependencies": {
@@ -72,6 +73,7 @@
     "prisma": "6.2.1",
     "react-hook-form": "^7.62.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.1",
     "typescript": "^5.4.5"
   }
 }
