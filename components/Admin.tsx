@@ -793,7 +793,7 @@ export default function Admin({ lang }: AdminProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "generate_single_img",
+          action: "generate_img",
           compoundId: compoundId,
           prompt: promptText || "Imagem conceitual de tecnologia e mercado",
         }),
@@ -2138,7 +2138,7 @@ export default function Admin({ lang }: AdminProps) {
                                 <div className="text-xs font-semibold text-foreground">Horário Padrão de Publicação (Diário)</div>
                                 <p className="text-[11px] text-foreground/60">Os posts serão publicados automaticamente neste horário do dia.</p>
                               </div>
-                              <input
+                              <Input
                                 type="time"
                                 value={schedulerHour}
                                 onChange={async (e) => {
@@ -2146,7 +2146,7 @@ export default function Admin({ lang }: AdminProps) {
                                   setSchedulerHour(val);
                                   await handleSaveSetting({ schedulerHour: val });
                                 }}
-                                className="bg-[#222222] border border-border rounded px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50"
+                                className="w-[150px] bg-card text-foreground"
                               />
                             </div>
                           )}
