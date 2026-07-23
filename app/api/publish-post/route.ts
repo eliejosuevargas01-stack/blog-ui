@@ -24,9 +24,18 @@ function getNextTechImage(index: number): string {
 function getNextPublishDate(): Date {
   const now = new Date();
   const pubDate = new Date(now);
-  pubDate.setHours(7, 0, 0, 0);
   
-  // If we are already past 7:00 AM today, schedule for tomorrow at 7:00 AM
+  const settings = getSystemSettings();
+  if (settings.schedulerEnabled && settings.schedulerHour) {
+    const parts = settings.schedulerHour.split(":");
+    const hour = parseInt(parts[0], 10) || 7;
+    const minute = parseInt(parts[1], 10) || 0;
+    pubDate.setHours(hour, minute, 0, 0);
+  } else {
+    pubDate.setHours(7, 0, 0, 0);
+  }
+  
+  // If we are already past the scheduled time today, schedule for tomorrow
   if (now >= pubDate) {
     pubDate.setDate(pubDate.getDate() + 1);
   }
@@ -835,12 +844,62 @@ export async function POST(req: NextRequest) {
         // Extract hn_id from the incoming post data
         const hn_id = postData.hn_id || postData.hnId || null;
 
-        const imageStatus: Record<string, boolean> = {
-          imagem_hero: false
-        };
-        if (imgAltPrompts[0]) imageStatus["img-bloco-1"] = false;
-        if (imgAltPrompts[1]) imageStatus["img-bloco-2"] = false;
-        if (imgAltPrompts[2]) imageStatus["img-bloco-3"] = false;
+        const settings = getSystemSettings();
+
+        // Build imageStatus and imagePrompts dynamically based on settings plugin configuration
+        const imageStatus: Record<string, boolean> = {};
+        const imagePrompts: Record<string, string> = {};
+
+        if (settings.autoImageEnabled) {
+          // Hero image
+          if (settings.autoImageHero) {
+            imageStatus["imagem_hero"] = false;
+            imagePrompts["imagem_hero"] = meta_description || excerpt || title;
+          } else {
+            imageStatus["imagem_hero"] = true; // Bypassed
+          }
+
+          // Blocks images
+          if (imgAltPrompts[0]) {
+            if (settings.autoImageBlock1) {
+              imageStatus["img-bloco-1"] = false;
+              imagePrompts["img-bloco-1"] = imgAltPrompts[0];
+            } else {
+              imageStatus["img-bloco-1"] = true; // Bypassed
+            }
+          }
+          if (imgAltPrompts[1]) {
+            if (settings.autoImageBlock2) {
+              imageStatus["img-bloco-2"] = false;
+              imagePrompts["img-bloco-2"] = imgAltPrompts[1];
+            } else {
+              imageStatus["img-bloco-2"] = true; // Bypassed
+            }
+          }
+          if (imgAltPrompts[2]) {
+            if (settings.autoImageBlock3) {
+              imageStatus["img-bloco-3"] = false;
+              imagePrompts["img-bloco-3"] = imgAltPrompts[2];
+            } else {
+              imageStatus["img-bloco-3"] = true; // Bypassed
+            }
+          }
+          if (imgAltPrompts[3]) {
+            if (settings.autoImageBlock4) {
+              imageStatus["img-bloco-4"] = false;
+              imagePrompts["img-bloco-4"] = imgAltPrompts[3];
+            } else {
+              imageStatus["img-bloco-4"] = true; // Bypassed
+            }
+          }
+        } else {
+          // Bypassed entirely
+          imageStatus["imagem_hero"] = true;
+          if (imgAltPrompts[0]) imageStatus["img-bloco-1"] = true;
+          if (imgAltPrompts[1]) imageStatus["img-bloco-2"] = true;
+          if (imgAltPrompts[2]) imageStatus["img-bloco-3"] = true;
+          if (imgAltPrompts[3]) imageStatus["img-bloco-4"] = true;
+        }
 
         const translationStatus = {
           en: "not_started",
@@ -910,13 +969,34 @@ export async function POST(req: NextRequest) {
         // Trigger n8n image generation ONLY if this is a newly created post (not edited from admin)
         const isNewPost = !postData.id;
         if (isNewPost) {
-          const imagePrompts = {
-            imagem_hero: meta_description || excerpt || title,
-            "img-bloco-1": imgAltPrompts[0] || "",
-            "img-bloco-2": imgAltPrompts[1] || "",
-            "img-bloco-3": imgAltPrompts[2] || ""
-          };
-          triggerImageGenerationWebhook(slug, imagePrompts);
+          if (Object.keys(imagePrompts).length > 0) {
+            triggerImageGenerationWebhook(slug, imagePrompts);
+          } else if (settings.autoTranslateEnabled && targetLang === "pt") {
+            // Trigger translation immediately since no images are pending!
+            console.log(`[Publish API] No images to generate. Triggering translation immediately for: ${slug}`);
+            
+            // Mark translation as sent
+            const updatedTranslationStatus = { en: "sent", es: "sent" };
+            await prisma.post.update({
+              where: { id_lang: { id: savedPost.id, lang: "pt" } },
+              data: {
+                translation_status: updatedTranslationStatus
+              }
+            });
+
+            const rebuiltHtml = reconstructContentHtmlFromBlocks(blocks, title);
+            await triggerTranslationWebhook({
+              hn_id: hn_id || savedPost.id,
+              conteudo_html: rebuiltHtml,
+              slug: slug,
+              categoria: categoria || "Mercado Tech",
+              excerpt: excerpt || "",
+              meta_title: meta_title || title,
+              meta_description: meta_description || excerpt || "",
+              tags: tags || [],
+              palavra_chave_principal: mainTag
+            });
+          }
         }
       }
 

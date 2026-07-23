@@ -100,6 +100,15 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+const toLocalDatetimeString = (dateStr?: string) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().slice(0, 16);
+};
+
 const extractBlockImage = (html: string) => {
   const figureMatch = html.match(
     /<figure[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["'][^>]*>[\s\S]*?<\/figure>/i,
@@ -429,12 +438,15 @@ export default function Admin({ lang }: AdminProps) {
   const [pageDraftErrors, setPageDraftErrors] = useState<Record<string, string>>({});
 
   // Plugin & Batch Image states
-  const [autoTranslateEnabled, setAutoTranslateEnabled] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("curiosotech_auto_translate_plugin") === "true";
-    }
-    return false;
-  });
+  const [autoTranslateEnabled, setAutoTranslateEnabled] = useState<boolean>(false);
+  const [autoImageEnabled, setAutoImageEnabled] = useState<boolean>(true);
+  const [autoImageHero, setAutoImageHero] = useState<boolean>(true);
+  const [autoImageBlock1, setAutoImageBlock1] = useState<boolean>(false);
+  const [autoImageBlock2, setAutoImageBlock2] = useState<boolean>(false);
+  const [autoImageBlock3, setAutoImageBlock3] = useState<boolean>(false);
+  const [autoImageBlock4, setAutoImageBlock4] = useState<boolean>(false);
+  const [schedulerEnabled, setSchedulerEnabled] = useState<boolean>(true);
+  const [schedulerHour, setSchedulerHour] = useState<string>("07:00");
 
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchModalPostId, setBatchModalPostId] = useState<string | null>(null);
@@ -515,9 +527,15 @@ export default function Admin({ lang }: AdminProps) {
       fetch("/api/settings")
         .then((res) => res.json())
         .then((data) => {
-          if (typeof data.autoTranslateEnabled === "boolean") {
-            setAutoTranslateEnabled(data.autoTranslateEnabled);
-          }
+          if (typeof data.autoTranslateEnabled === "boolean") setAutoTranslateEnabled(data.autoTranslateEnabled);
+          if (typeof data.autoImageEnabled === "boolean") setAutoImageEnabled(data.autoImageEnabled);
+          if (typeof data.autoImageHero === "boolean") setAutoImageHero(data.autoImageHero);
+          if (typeof data.autoImageBlock1 === "boolean") setAutoImageBlock1(data.autoImageBlock1);
+          if (typeof data.autoImageBlock2 === "boolean") setAutoImageBlock2(data.autoImageBlock2);
+          if (typeof data.autoImageBlock3 === "boolean") setAutoImageBlock3(data.autoImageBlock3);
+          if (typeof data.autoImageBlock4 === "boolean") setAutoImageBlock4(data.autoImageBlock4);
+          if (typeof data.schedulerEnabled === "boolean") setSchedulerEnabled(data.schedulerEnabled);
+          if (typeof data.schedulerHour === "string") setSchedulerHour(data.schedulerHour);
         })
         .catch(console.error);
     }
@@ -1506,6 +1524,17 @@ export default function Admin({ lang }: AdminProps) {
                                           onChange={(e) => setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, readTime: e.target.value } }))}
                                         />
                                       </Field>
+                                      <Field label="Data e Hora de Publicação">
+                                        <Input
+                                          type="datetime-local"
+                                          value={toLocalDatetimeString(draft.date)}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isoString = val ? new Date(val).toISOString() : "";
+                                            setPostDrafts((prev) => ({ ...prev, [post.id]: { ...draft, date: isoString } }));
+                                          }}
+                                        />
+                                      </Field>
                                     </div>
 
                                     <div className="space-y-4">
@@ -1895,66 +1924,237 @@ export default function Admin({ lang }: AdminProps) {
                   </div>
                 )}
 
-                {activeTab === "settings" && (
-                  <div className="space-y-6">
-                    <div className="border-b border-border pb-3">
-                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Plugins</h2>
-                      <p className="mt-1 text-sm text-foreground/70">
-                        Gerencie as automações, webhooks e integrações ativas no painel Curiosotech.
-                      </p>
-                    </div>
+                {activeTab === "settings" && (() => {
+                  const handleSaveSetting = async (updatedFields: Record<string, unknown>) => {
+                    try {
+                      const response = await fetch("/api/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedFields),
+                      });
+                      if (response.ok) {
+                        toast({
+                          title: "Configurações salvas",
+                          description: "As alterações foram gravadas com sucesso no servidor."
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Erro ao salvar configurações:", error);
+                    }
+                  };
 
-                    <Card className="border border-border/80 bg-card">
-                      <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-                          <Globe className="w-5 h-5 text-secondary" />
-                          Plugins de Tradução & Automação
-                        </CardTitle>
-                        <CardDescription>
-                          Configure se o sistema deve acionar automaticamente os serviços de tradução ao receber novos posts via API.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-                          <div className="space-y-1 pr-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground text-sm">Tradução Automática de Posts via API</span>
-                              <Badge variant={autoTranslateEnabled ? "default" : "outline"} className="text-[10px]">
-                                {autoTranslateEnabled ? "Ativado" : "Desativado"}
-                              </Badge>
+                  return (
+                    <div className="space-y-6">
+                      <div className="border-b border-border pb-3">
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Funções e Plugins</h2>
+                        <p className="mt-1 text-sm text-foreground/70">
+                          Gerencie as automações, webhooks e integrações ativas no painel Curiosotech.
+                        </p>
+                      </div>
+
+                      {/* Card 1: Tradução Automática */}
+                      <Card className="border border-border/80 bg-card">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <Globe className="w-5 h-5 text-secondary" />
+                            Plugins de Tradução & Automação
+                          </CardTitle>
+                          <CardDescription>
+                            Configure se o sistema deve acionar automaticamente os serviços de tradução ao receber novos posts via API.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+                            <div className="space-y-1 pr-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground text-sm">Tradução Automática de Posts via API</span>
+                                <Badge variant={autoTranslateEnabled ? "default" : "outline"} className="text-[10px]">
+                                  {autoTranslateEnabled ? "Ativado" : "Desativado"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-foreground/70">
+                                Quando ativado, ao receber a publicação de um novo artigo através da API automática, o sistema enviará uma requisição para o webhook de tradução do n8n.
+                              </p>
                             </div>
-                            <p className="text-xs text-foreground/70">
-                              Quando ativado, ao receber a publicação de um novo artigo através da API automática, o sistema enviará uma requisição para o webhook de tradução do n8n.
-                            </p>
+                            <Switch
+                              checked={autoTranslateEnabled}
+                              onCheckedChange={async (checked) => {
+                                setAutoTranslateEnabled(checked);
+                                await handleSaveSetting({ autoTranslateEnabled: checked });
+                              }}
+                            />
                           </div>
-                          <Switch
-                            checked={autoTranslateEnabled}
-                            onCheckedChange={async (checked) => {
-                              setAutoTranslateEnabled(checked);
-                              try {
-                                const response = await fetch("/api/settings", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ autoTranslateEnabled: checked }),
-                                });
-                                if (response.ok) {
-                                  toast({
-                                    title: checked ? "Plugin Ativado" : "Plugin Desativado",
-                                    description: checked
-                                      ? "Tradução automática ativada para novos artigos criados via API."
-                                      : "Tradução automática desativada.",
-                                  });
-                                }
-                              } catch (error) {
-                                console.error("Erro ao salvar configurações:", error);
-                              }
-                            }}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Card 2: Geração de Imagens por IA */}
+                      <Card className="border border-border/80 bg-card">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <Wand2 className="w-5 h-5 text-secondary" />
+                            Geração de Imagens por IA (API / n8n)
+                          </CardTitle>
+                          <CardDescription>
+                            Configure se o sistema deve gerar automaticamente imagens por Inteligência Artificial para novos artigos recebidos da API.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+                            <div className="space-y-1 pr-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground text-sm">Geração Automática de Imagens</span>
+                                <Badge variant={autoImageEnabled ? "default" : "outline"} className="text-[10px]">
+                                  {autoImageEnabled ? "Ativado" : "Desativado"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-foreground/70">
+                                Quando ativado, envia requisições para a API do n8n para desenhar imagens com base no contexto do artigo.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={autoImageEnabled}
+                              onCheckedChange={async (checked) => {
+                                setAutoImageEnabled(checked);
+                                await handleSaveSetting({ autoImageEnabled: checked });
+                              }}
+                            />
+                          </div>
+
+                          {autoImageEnabled && (
+                            <div className="p-4 rounded-xl border border-border bg-muted/10 space-y-4">
+                              <div className="text-sm font-semibold text-foreground">Selecione quais imagens gerar automaticamente:</div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <label className="flex items-center space-x-2.5 text-sm text-foreground cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={autoImageHero}
+                                    onChange={async (e) => {
+                                      const val = e.target.checked;
+                                      setAutoImageHero(val);
+                                      await handleSaveSetting({ autoImageHero: val });
+                                    }}
+                                    className="rounded border-border bg-[#222222] text-primary focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                  />
+                                  <span>Imagem de Destaque / Hero</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 text-sm text-foreground cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={autoImageBlock1}
+                                    onChange={async (e) => {
+                                      const val = e.target.checked;
+                                      setAutoImageBlock1(val);
+                                      await handleSaveSetting({ autoImageBlock1: val });
+                                    }}
+                                    className="rounded border-border bg-[#222222] text-primary focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                  />
+                                  <span>Imagem do Bloco 1</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 text-sm text-foreground cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={autoImageBlock2}
+                                    onChange={async (e) => {
+                                      const val = e.target.checked;
+                                      setAutoImageBlock2(val);
+                                      await handleSaveSetting({ autoImageBlock2: val });
+                                    }}
+                                    className="rounded border-border bg-[#222222] text-primary focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                  />
+                                  <span>Imagem do Bloco 2</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 text-sm text-foreground cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={autoImageBlock3}
+                                    onChange={async (e) => {
+                                      const val = e.target.checked;
+                                      setAutoImageBlock3(val);
+                                      await handleSaveSetting({ autoImageBlock3: val });
+                                    }}
+                                    className="rounded border-border bg-[#222222] text-primary focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                  />
+                                  <span>Imagem do Bloco 3</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 text-sm text-foreground cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={autoImageBlock4}
+                                    onChange={async (e) => {
+                                      const val = e.target.checked;
+                                      setAutoImageBlock4(val);
+                                      await handleSaveSetting({ autoImageBlock4: val });
+                                    }}
+                                    className="rounded border-border bg-[#222222] text-primary focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                                  />
+                                  <span>Imagem do Bloco 4</span>
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Card 3: Temporizador de Publicação */}
+                      <Card className="border border-border/80 bg-card">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <CheckSquare className="w-5 h-5 text-secondary" />
+                            Temporizador de Publicação Automática
+                          </CardTitle>
+                          <CardDescription>
+                            Configure as regras de agendamento automático de data e hora para posts vindos via API.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
+                            <div className="space-y-1 pr-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground text-sm">Agendamento Automático (Scheduler)</span>
+                                <Badge variant={schedulerEnabled ? "default" : "outline"} className="text-[10px]">
+                                  {schedulerEnabled ? "Ativado" : "Desativado"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-foreground/70">
+                                Quando ativado, os novos artigos serão agendados para a próxima data disponível no horário padrão definido.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={schedulerEnabled}
+                              onCheckedChange={async (checked) => {
+                                setSchedulerEnabled(checked);
+                                await handleSaveSetting({ schedulerEnabled: checked });
+                              }}
+                            />
+                          </div>
+
+                          {schedulerEnabled && (
+                            <div className="p-4 rounded-xl border border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div className="space-y-1">
+                                <div className="text-xs font-semibold text-foreground">Horário Padrão de Publicação (Diário)</div>
+                                <p className="text-[11px] text-foreground/60">Os posts serão publicados automaticamente neste horário do dia.</p>
+                              </div>
+                              <input
+                                type="time"
+                                value={schedulerHour}
+                                onChange={async (e) => {
+                                  const val = e.target.value;
+                                  setSchedulerHour(val);
+                                  await handleSaveSetting({ schedulerHour: val });
+                                }}
+                                className="bg-[#222222] border border-border rounded px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50"
+                              />
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
