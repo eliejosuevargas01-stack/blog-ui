@@ -222,28 +222,43 @@ async function triggerTranslationWebhook(postData: any) {
   }
 }
 
-async function triggerImageGenerationWebhook(slug: string, prompts: any) {
-  try {
-    console.log("[Images] Triggering n8n image generation webhook for slug:", slug);
-    const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "generate_img",
-        slug: slug,
-        prompts: prompts
-      })
-    });
+const SLOT_TO_POSITION: Record<string, number> = {
+  imagem_hero: 1,
+  "img-bloco-1": 2,
+  "img-bloco-2": 3,
+  "img-bloco-3": 4,
+  "img-bloco-4": 5
+};
 
-    if (!response.ok) {
-      console.error("[Images] Failed to trigger webhook. Status:", response.status);
-    } else {
-      console.log("[Images] Webhook triggered successfully!");
+async function triggerImageGenerationWebhook(postId: string, prompts: Record<string, string>) {
+  for (const [slotName, promptText] of Object.entries(prompts)) {
+    if (!promptText) continue;
+    const position = SLOT_TO_POSITION[slotName];
+    if (!position) continue;
+
+    const compoundId = `${postId}=${position}`;
+    try {
+      console.log(`[Images] Triggering image generation for slot: ${slotName} (compoundId: ${compoundId})`);
+      const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "generate_img",
+          compoundId: compoundId,
+          prompt: promptText
+        })
+      });
+
+      if (!response.ok) {
+        console.error(`[Images] Failed to trigger image generation for compoundId: ${compoundId}. Status: ${response.status}`);
+      } else {
+        console.log(`[Images] Image generation triggered successfully for compoundId: ${compoundId}`);
+      }
+    } catch (error) {
+      console.error(`[Images] Error triggering webhook for compoundId: ${compoundId}:`, error);
     }
-  } catch (error) {
-    console.error("[Images] Error triggering webhook:", error);
   }
 }
 
@@ -970,7 +985,7 @@ export async function POST(req: NextRequest) {
         const isNewPost = !postData.id;
         if (isNewPost) {
           if (Object.keys(imagePrompts).length > 0) {
-            triggerImageGenerationWebhook(slug, imagePrompts);
+            await triggerImageGenerationWebhook(savedPost.id, imagePrompts);
           } else if (settings.autoTranslateEnabled && targetLang === "pt") {
             // Trigger translation immediately since no images are pending!
             console.log(`[Publish API] No images to generate. Triggering translation immediately for: ${slug}`);
