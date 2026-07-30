@@ -17,8 +17,15 @@ const teko = Teko({
 });
 
 export const metadata: Metadata = {
-  title: "Curioso",
-  description: "Portal editorial de tecnologia e inteligência artificial",
+  title: "CuriosoTech · Tecnologia, Geopolítica e Curiosidades",
+  description: "Portal editorial sobre bastidores da tecnologia, inteligência artificial, geopolítica e curiosidades do mundo conectado.",
+  robots: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+  },
 };
 
 export default function RootLayout({

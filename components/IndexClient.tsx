@@ -397,54 +397,60 @@ export default function Index({ lang, initialPosts: propsInitialPosts }: IndexPr
 
             {!showLoading && !showError && portal.highlightPost && (
               <Link
-              href={buildPostPath(
-                lang,
-                portal.highlightPost.slugs?.[lang] ??
-                  portal.highlightPost.slug ??
-                  portal.highlightPost.id,
-              )}
-              className="group grid gap-6 lg:grid-cols-[1.2fr_0.8fr] rounded-3xl border border-border bg-card/80 overflow-hidden hover:border-secondary transition-all hover:shadow-2xl"
-            >
-                <div className="p-8 lg:p-10 flex flex-col justify-center">
-                  {portal.highlightPost.category && (
-                    <span className="inline-flex w-fit items-center px-3 py-1 rounded-full bg-secondary/15 text-secondary text-xs font-semibold uppercase tracking-wide mb-4">
-                      {portal.highlightPost.category}
-                    </span>
-                  )}
-                  <h3 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-                    {portal.highlightPost.title}
-                  </h3>
-                  {(portal.highlightPost.excerpt ||
-                    portal.highlightPost.description) && (
-                    <p className="text-lg text-foreground/80 mb-6">
-                      {portal.highlightPost.excerpt ??
-                        portal.highlightPost.description}
-                    </p>
-                  )}
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-secondary">
+                href={buildPostPath(
+                  lang,
+                  portal.highlightPost.slugs?.[lang] ??
+                    portal.highlightPost.slug ??
+                    portal.highlightPost.id,
+                )}
+                className="group grid gap-0 lg:grid-cols-[1fr_1.3fr] rounded-3xl border border-border/80 bg-card/90 overflow-hidden hover:border-secondary transition-all hover:shadow-2xl min-h-[440px]"
+                itemScope
+                itemType="https://schema.org/NewsArticle"
+              >
+                <div className="p-8 lg:p-12 flex flex-col justify-between order-2 lg:order-1">
+                  <div>
+                    {portal.highlightPost.category && (
+                      <span className="inline-flex w-fit items-center px-3.5 py-1.5 rounded-full bg-secondary/15 text-secondary text-xs font-bold uppercase tracking-wider mb-4 border border-secondary/20">
+                        {portal.highlightPost.category}
+                      </span>
+                    )}
+                    <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-4 leading-tight group-hover:text-secondary transition-colors" itemProp="headline">
+                      {portal.highlightPost.title}
+                    </h3>
+                    {(portal.highlightPost.excerpt ||
+                      portal.highlightPost.description) && (
+                      <p className="text-base sm:text-lg text-foreground/80 line-clamp-3 leading-relaxed mb-6" itemProp="description">
+                        {portal.highlightPost.excerpt ??
+                          portal.highlightPost.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="inline-flex items-center gap-2 text-base font-bold text-secondary group-hover:translate-x-1 transition-transform">
                     {t.home.highlight.cta}
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="w-5 h-5" />
                   </span>
                 </div>
-                <div className="relative h-64 lg:h-full bg-muted">
+                <div className="relative min-h-[300px] lg:min-h-[480px] h-full bg-muted order-1 lg:order-2 overflow-hidden">
                   {portal.highlightPost.image ? (
                     <Image
                       src={
-                        portal.highlightPost.imageThumb ??
                         portal.highlightPost.image
                       }
                       alt={portal.highlightPost.title}
                       width={1200}
                       height={675}
                       priority
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      quality={90}
+                      sizes="(max-width: 1200px) 100vw, 1200px"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      itemProp="image"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                      <Sparkles className="w-16 h-16 text-secondary/40" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/15 to-secondary/15">
+                      <Sparkles className="w-20 h-20 text-secondary/40 animate-pulse" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                 </div>
               </Link>
             )}
