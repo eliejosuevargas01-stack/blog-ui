@@ -795,12 +795,21 @@ export default function Admin({ lang }: AdminProps) {
 
   const handleGenerateSingleImage = async (postId: string, placeIndex: number, promptText?: string) => {
     const compoundId = `${postId}=${placeIndex}`;
+    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
+    if (!webhookUrl) {
+      toast({
+        title: "Webhook não configurado",
+        description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       toast({
         title: "Solicitando imagem IA...",
         description: `Enviando requisição de geração para '${compoundId}'`,
       });
-      const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+      const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -832,12 +841,21 @@ export default function Admin({ lang }: AdminProps) {
   const handleManualTranslate = async (postId: string) => {
     const draft = postDrafts[postId] || posts.find((p) => p.id === postId);
     if (!draft) return;
+    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
+    if (!webhookUrl) {
+      toast({
+        title: "Webhook não configurado",
+        description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       toast({
         title: "Enviando para tradução...",
         description: `Disparando webhook de tradução para '${draft.title}'`,
       });
-      const response = await fetch("https://myn8n.seommerce.shop/webhook/curiosotech", {
+      const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -868,6 +886,60 @@ export default function Admin({ lang }: AdminProps) {
     } catch (err: any) {
       toast({
         title: "Erro de Conexão",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImprovePost = async (post: BlogPost) => {
+    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
+    if (!webhookUrl) {
+      toast({
+        title: "Webhook não configurado",
+        description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada no .env.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Enviando para IA redatora...",
+        description: `Enviando "${post.title}" para a IA recriar o assunto do zero.`,
+      });
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "improve_post",
+          id: post.id,
+          post_id: post.id,
+          title: post.title,
+          slug: post.slug,
+          category: post.category || post.tag,
+          excerpt: post.excerpt || post.description,
+          content: post.content || post.contentHtml,
+          lang: selectedLang,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Post enviado com sucesso!",
+          description: "A IA redatora está reescrevendo o assunto do zero.",
+        });
+      } else {
+        toast({
+          title: "Aviso no webhook",
+          description: `O webhook respondeu com status ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro ao enviar para IA redatora",
         description: err.message,
         variant: "destructive",
       });
@@ -1448,7 +1520,17 @@ export default function Admin({ lang }: AdminProps) {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2 self-end lg:self-start">
+                                  <div className="flex flex-wrap items-center gap-2 self-end lg:self-start">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-secondary/40 text-secondary hover:bg-secondary/15 font-semibold"
+                                      onClick={() => handleImprovePost(post)}
+                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                    >
+                                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                      Melhorar post
+                                    </Button>
                                     <Button
                                       variant={post.published ? "secondary" : "default"}
                                       size="sm"
