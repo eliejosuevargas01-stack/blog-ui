@@ -37,6 +37,7 @@ import {
   type BlogPost,
 } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
+import { triggerImprovePostAction } from "@/app/actions";
 export interface CustomPage {
   id?: string;
   slug: string;
@@ -893,54 +894,38 @@ export default function Admin({ lang }: AdminProps) {
   };
 
   const handleImprovePost = async (post: BlogPost) => {
-    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
-    if (!webhookUrl) {
-      toast({
-        title: "Webhook não configurado",
-        description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada no .env.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       toast({
         title: "Enviando para IA redatora...",
         description: `Enviando "${post.title}" para a IA recriar o assunto do zero.`,
       });
 
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "improve_post",
-          id: post.id,
-          post_id: post.id,
-          title: post.title,
-          slug: post.slug,
-          category: post.category || post.tag,
-          excerpt: post.excerpt || post.description,
-          content: post.content || post.contentHtml,
-          lang: selectedLang,
-        }),
+      const res = await triggerImprovePostAction({
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        category: post.category || post.tag,
+        excerpt: post.excerpt || post.description,
+        content: post.content || post.contentHtml,
+        lang: selectedLang,
       });
 
-      if (response.ok) {
+      if (res && res.error) {
         toast({
-          title: "Post enviado com sucesso!",
-          description: "A IA redatora está reescrevendo o assunto do zero.",
+          title: "Erro no webhook",
+          description: res.error,
+          variant: "destructive",
         });
       } else {
         toast({
-          title: "Aviso no webhook",
-          description: `O webhook respondeu com status ${response.status}`,
-          variant: "destructive",
+          title: "Post enviado com sucesso!",
+          description: "A IA redatora recebeu o post e está reescrevendo o assunto do zero.",
         });
       }
     } catch (err: any) {
       toast({
         title: "Erro ao enviar para IA redatora",
-        description: err.message,
+        description: err.message || "Erro de comunicação com o servidor.",
         variant: "destructive",
       });
     }

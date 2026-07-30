@@ -270,10 +270,51 @@ export async function deletePostAction(id: string) {
 
 // --- INTEGRAÇÃO COM N8N & NOTIFICAÇÕES ---
 
+export async function triggerImprovePostAction(data: {
+  id: string;
+  title: string;
+  slug: string;
+  category?: string;
+  excerpt?: string;
+  content?: string;
+  lang?: string;
+}) {
+  try {
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || "https://myn8n.seommerce.shop/webhook/curiosotech";
+
+    console.log(`[Server Action] Disparando webhook de IA Redatora para "${data.title}" -> ${webhookUrl}`);
+
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "improve_post",
+        id: data.id,
+        post_id: data.id,
+        title: data.title,
+        slug: data.slug,
+        category: data.category || "",
+        excerpt: data.excerpt || "",
+        content: data.content || "",
+        lang: data.lang || "pt",
+      }),
+    });
+
+    if (!res.ok) {
+      return { error: `Webhook respondeu com status HTTP ${res.status}` };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Erro ao disparar webhook no servidor:", error);
+    return { error: error.message || "Falha de conexão com o servidor." };
+  }
+}
+
 export async function triggerN8nWebhook(post: any) {
   try {
     const configPage = await prisma.page.findUnique({ where: { slug: "config" } });
-    let webhookUrl = process.env.N8N_WEBHOOK_URL || "";
+    let webhookUrl = process.env.N8N_WEBHOOK_URL || process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || "";
     
     if (configPage && configPage.content) {
       const content = typeof configPage.content === "string" ? JSON.parse(configPage.content) : configPage.content;
