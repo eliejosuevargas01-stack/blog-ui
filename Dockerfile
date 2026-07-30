@@ -28,13 +28,22 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Copy public files
+# Copiar arquivos estáticos públicos
 COPY --from=builder /app/public ./public
 
+# Criar pasta de uploads para persistência de arquivos (imagens, áudios, vídeos)
+RUN mkdir -p ./uploads
+
+# Volume persistente para uploads de mídia (mapear no Coolify / Docker Compose)
+VOLUME ["/app/uploads"]
+
+# Configurar diretório .next
+RUN mkdir -p .next
+
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 
