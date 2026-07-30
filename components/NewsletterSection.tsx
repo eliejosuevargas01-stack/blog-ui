@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 
 import { useToast } from "@/hooks/use-toast";
 import type { Translation } from "@/lib/i18n";
-import { sendWebhook } from "@/lib/webhook";
 
 interface NewsletterSectionProps {
   t: Translation;
@@ -25,10 +24,15 @@ export function NewsletterSection({ t }: NewsletterSectionProps) {
     }
     setNewsletterLoading(true);
     try {
-      await sendWebhook({
-        action: "new_subscriptor",
-        email,
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t.newsletter.errorDescription);
+      }
       toast({
         title: t.newsletter.successTitle,
         description: t.newsletter.successDescription,

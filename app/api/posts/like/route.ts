@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 
 export async function POST(req: Request) {
   try {
@@ -10,9 +10,9 @@ export async function POST(req: Request) {
     }
 
     // Verificar se o post existe no banco de dados
-    const existingPost = await prisma.post.findFirst({
+    const existingPost = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, lang: true, title: true, likes: true }
+      select: { id: true, title: true, likes: true }
     });
 
     if (!existingPost) {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     // Incrementar likes no banco de dados
     const updatedPost = await prisma.post.update({
-      where: { id_lang: { id: existingPost.id, lang: existingPost.lang } },
+      where: { id: postId },
       data: { likes: { increment: 1 } },
       select: { likes: true, title: true },
     });

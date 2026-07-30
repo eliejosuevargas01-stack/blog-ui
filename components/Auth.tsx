@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { translations, type Language } from "@/lib/i18n";
-import { sendWebhook } from "@/lib/webhook";
 
 interface AuthProps {
   lang: Language;
@@ -73,20 +72,18 @@ function AuthContent({ lang }: AuthProps) {
     event.preventDefault();
     setLoadingAction("login");
     try {
-      const response = await sendWebhook({
-        action: "login",
-        email: loginData.email,
-        password: loginData.password,
-        lang,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginData.email, password: loginData.password }),
       });
-      const responseMessage = extractWebhookMessage(response);
-      const isError = responseMessage
-        ? responseMessage.toLowerCase().includes("incorrect")
-        : false;
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t.auth.errorDescription);
+      }
       toast({
-        title: isError ? t.auth.errorTitle : t.auth.loginSuccessTitle,
-        description: responseMessage ?? t.auth.loginSuccessDescription,
-        variant: isError ? "destructive" : "default",
+        title: t.auth.loginSuccessTitle,
+        description: t.auth.loginSuccessDescription,
       });
     } catch (error) {
       toast({
@@ -104,13 +101,19 @@ function AuthContent({ lang }: AuthProps) {
     event.preventDefault();
     setLoadingAction("signup");
     try {
-      await sendWebhook({
-        action: "singin",
-        name: signupData.name,
-        email: signupData.email,
-        password: signupData.password,
-        lang,
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: signupData.name,
+          email: signupData.email,
+          password: signupData.password,
+        }),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t.auth.errorDescription);
+      }
       toast({
         title: t.auth.signupSuccessTitle,
         description: t.auth.signupSuccessDescription,

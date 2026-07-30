@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { languages, pageSlugs, translations, type Language, type PageKey } from "@/lib/i18n";
 import { normalizeTopicKey } from "@/lib/topics";
-import { getDbPostsForLang } from "@/lib/db";
-import { loadPagesForLang } from "@/lib/pages-db";
+import { getDbPostsForLang, loadPagesForLang } from "@/lib/db";
 import { redirect } from "next/navigation";
 
 // Import migrated components

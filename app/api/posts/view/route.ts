@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "../../../../lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
     }
 
     // Verificar se o post existe no banco de dados
-    const existingPost = await prisma.post.findFirst({
+    const existingPost = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, lang: true, views: true }
+      select: { id: true, views: true }
     });
 
     if (!existingPost) {
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     // Caso contrário, incrementar o número de visualizações reais do leitor
     const updatedPost = await prisma.post.update({
-      where: { id_lang: { id: existingPost.id, lang: existingPost.lang } },
+      where: { id: postId },
       data: { views: { increment: 1 } },
       select: { views: true },
     });

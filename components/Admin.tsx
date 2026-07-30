@@ -37,7 +37,18 @@ import {
   type BlogPost,
 } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
-import { type CustomPage } from "@/lib/pages-db";
+export interface CustomPage {
+  id?: string;
+  slug: string;
+  lang?: string;
+  title: string;
+  isStatic?: boolean;
+  content?: { bodyHtml?: string };
+  seoTitle?: string;
+  seoDescription?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
 
 const ADMIN_SESSION_KEY = "seommerce.admin.session";
 
@@ -210,8 +221,8 @@ const buildDraft = (post: BlogPost): PostDraft => ({
   metaTags: Array.isArray(post.metaTags)
     ? post.metaTags
         .map((tag) => {
-          const keys = Object.keys(tag) as Array<keyof typeof tag>;
-          const pairs = keys.map((key) => `${key}=${tag[key]}`);
+          const keys = Object.keys(tag);
+          const pairs = keys.map((key) => `${key}=${String((tag as any)[key])}`);
           return pairs.join("; ");
         })
         .join("\n")

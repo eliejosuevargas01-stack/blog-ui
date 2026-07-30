@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../lib/db";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "seommerce-blog-jwt-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET || "motonapratica-default-jwt-secret-key-123456";
 
 // GET: List comments for a post
 export async function GET(request: Request) {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     // Verify if the post exists
-    const post = await prisma.post.findFirst({
+    const post = await prisma.post.findUnique({
       where: { id: postId }
     });
 
@@ -76,7 +76,6 @@ export async function POST(request: Request) {
       data: {
         content: content.trim(),
         postId,
-        postLang: post.lang,
         userId: decoded.userId
       },
       include: {
@@ -88,22 +87,6 @@ export async function POST(request: Request) {
         }
       }
     });
-
-    // Registrar notificação no sistema para o Admin
-    try {
-      await prisma.notification.create({
-        data: {
-          type: "COMMENT",
-          message: `O leitor ${decoded.name} comentou no post "${post.title}": "${content.slice(0, 60)}${content.length > 60 ? '...' : ''}"`,
-          postId,
-          postTitle: post.title,
-          userEmail: decoded.email,
-          userName: decoded.name,
-        },
-      });
-    } catch (e) {
-      console.warn("Não foi possível criar a notificação de comentário", e);
-    }
 
     return NextResponse.json({ success: true, comment });
   } catch (error: any) {

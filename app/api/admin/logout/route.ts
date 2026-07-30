@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 export async function POST() {
-  cookies().delete("admin_token");
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete("admin_token");
+  return response;
 }
-export const dynamic = 'force-dynamic';

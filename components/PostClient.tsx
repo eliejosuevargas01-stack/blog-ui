@@ -212,10 +212,10 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
   const publishedDate = post?.publishedAt ?? post?.date;
   const updatedDate = post?.updatedAt ?? post?.date;
   const formattedPublishedDate = publishedDate
-    ? formatPostDate(publishedDate, lang)
+    ? formatPostDate(typeof publishedDate === "string" ? publishedDate : publishedDate.toISOString(), lang)
     : null;
   const formattedUpdatedDate = updatedDate
-    ? formatPostDate(updatedDate, lang)
+    ? formatPostDate(typeof updatedDate === "string" ? updatedDate : updatedDate.toISOString(), lang)
     : null;
   const coverImage = post?.image ?? post?.images?.[0] ?? null;
   const coverImageThumb = post?.imageThumb ?? coverImage;

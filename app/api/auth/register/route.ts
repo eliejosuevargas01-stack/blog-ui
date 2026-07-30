@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "seommerce-blog-jwt-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET || "motonapratica-default-jwt-secret-key-123456";
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json({ error: "Este e-mail já está cadastrado." }, { status: 400 });
+      return NextResponse.json({ error: "Este email já está cadastrado." }, { status: 400 });
     }
 
     // Hash the password
@@ -60,20 +60,6 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/"
     });
-
-    // Registrar notificação no sistema para o Admin acompanhar
-    try {
-      await prisma.notification.create({
-        data: {
-          type: "REGISTER",
-          message: `Novo leitor se cadastrou: ${user.name} (${user.email})`,
-          userEmail: user.email,
-          userName: user.name,
-        },
-      });
-    } catch (e) {
-      console.warn("Não foi possível criar a notificação de cadastro de usuário", e);
-    }
 
     return response;
   } catch (error: any) {

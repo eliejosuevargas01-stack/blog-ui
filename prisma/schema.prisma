@@ -8,11 +8,8 @@ generator client {
 }
 
 model Post {
-  id             String   @default(uuid())
-  slug           String
-  lang           String   @default("pt")
-  slugs          Json?    // Stores the slug mapping: { pt: "...", en: "...", es: "..." }
-  hn_id          String?  // Universal foreign key to associate different translation versions
+  id             String   @id @default(uuid())
+  slug           String   @unique
   tag            String   // Ex: Review, Manutenção, Rotas, Equipamentos
   category       String
   title          String
@@ -21,8 +18,9 @@ model Post {
   readTime       String   // Ex: "8 min"
   img            String   // Imagem destacada (URL ou caminho do upload local)
   imgFocalPoint  String   @default("center") // Ponto focal CSS da imagem (ex: "center", "top", "50% 50%")
+  audioUrl       String?  // URL do áudio de narração do post (MP3, WAV, etc.)
 
-  // Blocos dinâmicos de Texto/Imagem: [{ text: string, image: string, focalPoint: string, alt: string }]
+  // Blocos dinâmicos de Texto/Imagem: [{ text: string, image: string, focalPoint: string }]
   blocks         Json     
 
   // Campos de SEO customizados
@@ -30,22 +28,25 @@ model Post {
   seoDescription String?
   seoKeywords    String?
 
-  // Campos de ciclo de vida e automação (n8n)
-  published            Boolean  @default(false)
-  image_generation_sent Boolean @default(false)
-  image_status         Json?    // Ex: { "imagem_hero": true, "img-bloco-1": false, ... }
-  translation_status   Json?    // Ex: { "en": "pending", "es": "pending" }
-
   // Campos de engajamento
-  views                Int      @default(0)
-  likes                Int      @default(0)
+  views          Int      @default(0)
+  likes          Int      @default(0)
+
+  // Campos de internacionalização e CMS
+  lang                String?  @default("pt")
+  translationGroupId  String?  @map("translation_group_id")
+  published           Boolean  @default(true)
+  imageGenerationSent Boolean  @default(false) @map("image_generation_sent")
+
+  // Contador de citações em outros posts (Link Building interno)
+  mentions            Int      @default(0)
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   comments       Comment[]
 
-  @@id([id, lang])
-  @@unique([slug, lang])
+  @@index([translationGroupId], map: "idx_post_translation_group")
+  @@index([lang], map: "idx_post_lang")
 }
 
 model Page {
@@ -78,12 +79,11 @@ model Comment {
   id        String   @id @default(uuid())
   content   String   @db.Text
   postId    String
-  postLang  String   @default("pt")
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  post      Post     @relation(fields: [postId, postLang], references: [id, lang], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -105,4 +105,63 @@ model Subscriber {
   name      String?
   createdAt DateTime @default(now())
 }
+
+model CalendarioEventos {
+  id           Int      @id @default(autoincrement())
+  externalId   String   @unique @map("external_id") @db.VarChar(255)
+  championship String   @db.VarChar(100)
+  seasonYear   Int      @map("season_year")
+  eventName    String   @map("event_name") @db.VarChar(255)
+  circuitName  String?  @map("circuit_name") @db.VarChar(255)
+  countryCode  String?  @map("country_code") @db.VarChar(10)
+  dateStart    DateTime? @map("date_start") @db.Timestamptz
+  dateEnd      DateTime? @map("date_end") @db.Timestamptz
+  status       String   @default("UPCOMING") @db.VarChar(50)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  resultados   ResultadosEtapas[]
+
+  @@index([dateEnd, status], map: "idx_proxima_corrida")
+  @@map("calendario_eventos")
+}
+
+model RankingPilotos {
+  id           Int      @id @default(autoincrement())
+  championship String   @db.VarChar(100)
+  seasonYear   Int      @map("season_year")
+  position     Int
+  riderName    String   @map("rider_name") @db.VarChar(255)
+  teamName     String?  @map("team_name") @db.VarChar(255)
+  constructor  String?  @db.VarChar(100)
+  points       Int      @default(0)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([championship, seasonYear, riderName], name: "uq_ranking_piloto")
+  @@map("ranking_pilotos")
+}
+
+model ResultadosEtapas {
+  id              Int      @id @default(autoincrement())
+  eventExternalId String   @map("event_external_id") @db.VarChar(255)
+  riderExternalId String?  @map("rider_external_id") @db.VarChar(255)
+  sessionType     String   @map("session_type") @db.VarChar(100)
+  position        Int?
+  riderName       String   @map("rider_name") @db.VarChar(255)
+  riderNumber     Int?     @map("rider_number")
+  teamName        String?  @map("team_name") @db.VarChar(255)
+  constructorName String?  @map("constructor_name") @db.VarChar(100)
+  timeResult      String?  @map("time_result") @db.VarChar(50)
+  timeGap         String?  @map("time_gap") @db.VarChar(50)
+  pointsEarned    Int      @default(0) @map("points_earned")
+  totalLaps       Int?     @map("total_laps")
+  topSpeed        String?  @map("top_speed") @db.VarChar(50)
+  status          String?  @db.VarChar(50)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  event           CalendarioEventos @relation(fields: [eventExternalId], references: [externalId], onDelete: Cascade)
+
+  @@unique([eventExternalId, sessionType, riderName], name: "uq_resultado_piloto")
+  @@map("resultados_etapas")
+}
+
 

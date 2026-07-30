@@ -4,7 +4,17 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Seo } from "@/components/Seo";
 import { translations, type Language } from "@/lib/i18n";
-import type { CustomPage } from "@/lib/pages-db";
+
+export interface CustomPage {
+  id?: string;
+  slug: string;
+  title: string;
+  isStatic?: boolean;
+  content?: { bodyHtml?: string };
+  seoTitle?: string;
+  seoDescription?: string;
+  updatedAt?: string | Date;
+}
 
 interface DynamicPageProps {
   page: CustomPage;
@@ -31,7 +41,7 @@ export function DynamicPage({ page, lang }: DynamicPageProps) {
               {page.title}
             </h1>
             <p className="mt-3 text-xs text-foreground/40 font-mono">
-              Atualizado em {new Date(page.updatedAt).toLocaleDateString()}
+              Atualizado em {page.updatedAt ? new Date(page.updatedAt).toLocaleDateString() : new Date().toLocaleDateString()}
             </p>
           </header>
 

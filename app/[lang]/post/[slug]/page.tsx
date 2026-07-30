@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PostClient from "@/components/PostClient";
-import { getDbPostsForLang, prisma, mapDbPostToBlogPost } from "@/lib/db";
+import { getDbPostsForLang, getPostBySlug } from "@/lib/db";
 import { languages, translations, siteName, type Language } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -16,28 +16,7 @@ export async function generateMetadata({
     return {};
   }
   const decodedSlug = decodeURIComponent(slug);
-  
-  let post = null;
-  try {
-    const dbPost = await prisma.post.findUnique({
-      where: { slug_lang: { slug: decodedSlug, lang: lang } }
-    });
-    if (dbPost && dbPost.lang === lang) {
-      let slugs: Record<string, string> = {};
-      if (dbPost.hn_id) {
-        const translations = await prisma.post.findMany({
-          where: { hn_id: dbPost.hn_id },
-          select: { lang: true, slug: true }
-        });
-        translations.forEach(t => {
-          slugs[t.lang] = t.slug;
-        });
-      }
-      post = mapDbPostToBlogPost(dbPost, slugs);
-    }
-  } catch (error) {
-    // Ignore error
-  }
+  const post = await getPostBySlug(decodedSlug, lang);
 
   const t = translations[lang as Language];
   if (!post) {
@@ -63,7 +42,7 @@ export default async function PostPage({
     notFound();
   }
 
-  let initialPosts = [];
+  let initialPosts: any[] = [];
   try {
     initialPosts = await getDbPostsForLang(lang);
   } catch (error) {

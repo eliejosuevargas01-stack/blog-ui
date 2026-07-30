@@ -1,45 +1,46 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
-import { savePageForLang } from "@/lib/pages-db";
-import { languages, type Language } from "@/lib/i18n";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
-export async function POST(req: NextRequest) {
-  const token = cookies().get("admin_token")?.value;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const payload = await verifyToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const rootDir =
-    process.env.GENERATED_DIR?.trim() || "/app/html-storage/posts";
-
+export async function GET() {
   try {
-    const pageData = await req.json();
-    const lang = pageData.lang as Language;
-
-    if (!languages.includes(lang)) {
-      return NextResponse.json({ error: "Invalid language" }, { status: 400 });
-    }
-
-    if (!pageData.slug || !pageData.title) {
-      return NextResponse.json(
-        { error: "Slug and Title are required" },
-        { status: 400 }
-      );
-    }
-
-    const savedPage = await savePageForLang(rootDir, lang, pageData);
-    return NextResponse.json({ success: true, page: savedPage });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save page" },
-      { status: 500 }
-    );
+    const pages = await prisma.page.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+    return NextResponse.json(pages);
+  } catch (error: any) {
+    return NextResponse.json({ error: "Erro ao buscar páginas" }, { status: 500 });
   }
 }
-export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { slug, title, isStatic, content, seoTitle, seoDescription } = body;
+    if (!slug || !title) {
+      return NextResponse.json({ error: "Slug e título são obrigatórios." }, { status: 400 });
+    }
+
+    const page = await prisma.page.upsert({
+      where: { slug },
+      update: {
+        title,
+        isStatic: !!isStatic,
+        content: content || {},
+        seoTitle,
+        seoDescription,
+      },
+      create: {
+        slug,
+        title,
+        isStatic: !!isStatic,
+        content: content || {},
+        seoTitle,
+        seoDescription,
+      },
+    });
+
+    return NextResponse.json({ success: true, page });
+  } catch (error: any) {
+    return NextResponse.json({ error: "Erro ao salvar página" }, { status: 500 });
+  }
+}

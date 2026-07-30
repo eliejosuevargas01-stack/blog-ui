@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "seommerce-blog-jwt-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET || "motonapratica-default-jwt-secret-key-123456";
 
 export async function DELETE(
   request: Request,
