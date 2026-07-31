@@ -178,19 +178,38 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
   }, [guideCandidates, post]);
 
   const languagePaths = useMemo(() => {
-    if (!slugParam && !post) {
+    if (!post) {
       return undefined;
     }
     const paths: Partial<Record<Language, string>> = {};
+    const targetGroupId = post.translationGroupId || (post as any).translation_group_id;
+
     languages.forEach((language) => {
-      const fallbackSlug = language === lang ? slugParam : undefined;
-      const slug = resolvePostSlug(post, language, fallbackSlug);
-      if (slug) {
-        paths[language] = buildPostPath(language, slug);
+      if (post.slugs?.[language]) {
+        paths[language] = buildPostPath(language, post.slugs[language]);
+        return;
+      }
+
+      if (post.lang === language || (!post.lang && language === "pt")) {
+        paths[language] = buildPostPath(language, post.slug);
+        return;
+      }
+
+      if (targetGroupId) {
+        const match = posts.find((p) => {
+          const pGroupId = p.translationGroupId || (p as any).translation_group_id;
+          const pLang = p.lang || "pt";
+          return String(pGroupId) === String(targetGroupId) && pLang === language;
+        });
+        if (match && match.slug) {
+          paths[language] = buildPostPath(language, match.slug);
+          return;
+        }
       }
     });
+
     return Object.keys(paths).length > 0 ? paths : undefined;
-  }, [lang, post, slugParam]);
+  }, [lang, post, posts]);
 
   const canonicalSlug = resolvePostSlug(post, lang, slugParam);
   const canonicalPath = canonicalSlug ? buildPostPath(lang, canonicalSlug) : undefined;

@@ -166,10 +166,41 @@ export async function GET(req: Request) {
       take: limit,
     });
 
+    const groupIds = posts.map((p) => p.translationGroupId).filter(Boolean) as string[];
+    let groupMap: Record<string, Record<string, string>> = {};
+
+    if (groupIds.length > 0) {
+      const groupPosts = await prisma.post.findMany({
+        where: {
+          translationGroupId: { in: groupIds }
+        },
+        select: {
+          slug: true,
+          lang: true,
+          translationGroupId: true
+        }
+      });
+
+      groupPosts.forEach((gp) => {
+        if (gp.translationGroupId) {
+          const l = gp.lang || "pt";
+          if (!groupMap[gp.translationGroupId]) {
+            groupMap[gp.translationGroupId] = {};
+          }
+          groupMap[gp.translationGroupId][l] = gp.slug;
+        }
+      });
+    }
+
+    const postsWithSlugs = posts.map((p) => ({
+      ...p,
+      slugs: p.translationGroupId ? groupMap[p.translationGroupId] || {} : {},
+    }));
+
     return NextResponse.json({
       success: true,
-      count: posts.length,
-      posts
+      count: postsWithSlugs.length,
+      posts: postsWithSlugs
     });
   } catch (error: any) {
     return NextResponse.json({ error: "Erro ao buscar posts", details: error.message }, { status: 500 });

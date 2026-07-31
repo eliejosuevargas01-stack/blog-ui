@@ -36,6 +36,8 @@ export interface BlogPost {
   hnId?: string;
   translationStatus?: any;
   imageStatus?: any;
+  translationGroupId?: string | null;
+  translation_group_id?: string | null;
 }
 
 export function isGuidePost(post: BlogPost): boolean {
