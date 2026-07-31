@@ -560,6 +560,9 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                           <img
                             src={coverImageThumb ?? coverImage}
                             alt={coverImageAlt}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200";
+                            }}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             style={{ objectPosition: (post as any).imgFocalPoint || "center" }}
                           />
