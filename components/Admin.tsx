@@ -430,11 +430,11 @@ export default function Admin({ lang }: AdminProps) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [postsStatus, setPostsStatus] = useState<"idle" | "loading" | "error">("loading");
   const [postsQuery, setPostsQuery] = useState("");
-  const [editingPostId, setEditingPostId] = useState<string | null>(null);
-  const [postDrafts, setPostDrafts] = useState<Record<string, PostDraft>>({});
-  const [postSavingId, setPostSavingId] = useState<string | null>(null);
-  const [postDeletingId, setPostDeletingId] = useState<string | null>(null);
-  const [postDraftErrors, setPostDraftErrors] = useState<Record<string, string>>({});
+  const [editingPostId, setEditingPostId] = useState<number | string | null>(null);
+  const [postDrafts, setPostDrafts] = useState<Record<number | string, PostDraft>>({});
+  const [postSavingId, setPostSavingId] = useState<number | string | null>(null);
+  const [postDeletingId, setPostDeletingId] = useState<number | string | null>(null);
+  const [postDraftErrors, setPostDraftErrors] = useState<Record<number | string, string>>({});
 
   // Content language management
   const [selectedLang, setSelectedLang] = useState<Language>(lang);
@@ -461,7 +461,7 @@ export default function Admin({ lang }: AdminProps) {
   const [schedulerHour, setSchedulerHour] = useState<string>("07:00");
 
   const [batchModalOpen, setBatchModalOpen] = useState(false);
-  const [batchModalPostId, setBatchModalPostId] = useState<string | null>(null);
+  const [batchModalPostId, setBatchModalPostId] = useState<number | string | null>(null);
   const [batchSelectedSlots, setBatchSelectedSlots] = useState<Record<number, boolean>>({ 1: true });
 
   const router = useRouter();
@@ -611,14 +611,14 @@ export default function Admin({ lang }: AdminProps) {
     }));
   };
 
-  const handleCancelEditPost = (postId: string) => {
+  const handleCancelEditPost = (postId: number | string) => {
     setEditingPostId(null);
     setPostDraftErrors((prev) => {
       const next = { ...prev };
       delete next[postId];
       return next;
     });
-    if (postId.startsWith("temp-")) {
+    if (typeof postId === "string" && postId.startsWith("temp-")) {
       setPosts((prev) => prev.filter((p) => p.id !== postId));
     }
   };
@@ -654,7 +654,7 @@ export default function Admin({ lang }: AdminProps) {
     setEditingPostId(tempId);
   };
 
-  const getCurrentPostDraft = (postId: string) => {
+  const getCurrentPostDraft = (postId: number | string) => {
     const existing = postDrafts[postId];
     if (existing) {
       return existing;
@@ -691,7 +691,7 @@ export default function Admin({ lang }: AdminProps) {
         hero_focal_point: "center",
         hn_id: post.hnId || undefined,
         date: draft.date || post.date || new Date().toISOString(),
-        id: post.id && !post.id.startsWith("temp-") ? post.id : undefined,
+        id: post.id && (typeof post.id === "string" ? !post.id.startsWith("temp-") : true) ? post.id : undefined,
         published: !!draft.published,
         ...overrides,
       },
@@ -699,7 +699,7 @@ export default function Admin({ lang }: AdminProps) {
   };
 
   const handlePostBlockChange = (
-    postId: string,
+    postId: number | string,
     index: number,
     field: keyof PostBlockDraft,
     value: string,
@@ -724,7 +724,7 @@ export default function Admin({ lang }: AdminProps) {
     });
   };
 
-  const handleAddPostBlock = (postId: string) => {
+  const handleAddPostBlock = (postId: number | string) => {
     setPostDrafts((prev) => {
       const draft = prev[postId];
       if (!draft) {
@@ -740,7 +740,7 @@ export default function Admin({ lang }: AdminProps) {
     });
   };
 
-  const handleRemovePostBlock = (postId: string, index: number) => {
+  const handleRemovePostBlock = (postId: number | string, index: number) => {
     setPostDrafts((prev) => {
       const draft = prev[postId];
       if (!draft || draft.blocks.length <= DEFAULT_BLOCK_COUNT) {
@@ -757,7 +757,7 @@ export default function Admin({ lang }: AdminProps) {
     });
   };
 
-  const handleSavePost = async (postId: string) => {
+  const handleSavePost = async (postId: number | string) => {
     const draft = postDrafts[postId];
     const target = posts.find((p) => p.id === postId);
     if (!draft || !target) return;
@@ -794,7 +794,7 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
-  const handleGenerateSingleImage = async (postId: string, placeIndex: number, promptText?: string) => {
+  const handleGenerateSingleImage = async (postId: number | string, placeIndex: number, promptText?: string) => {
     const compoundId = `${postId}=${placeIndex}`;
     const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
     if (!webhookUrl) {
@@ -839,7 +839,7 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
-  const handleManualTranslate = async (postId: string) => {
+  const handleManualTranslate = async (postId: number | string) => {
     const draft = postDrafts[postId] || posts.find((p) => p.id === postId);
     if (!draft) return;
     const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
@@ -931,7 +931,7 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
-  const handleOpenBatchImageModal = (postId: string) => {
+  const handleOpenBatchImageModal = (postId: number | string) => {
     setBatchModalPostId(postId);
     const draft = postDrafts[postId];
     const initialSlots: Record<number, boolean> = { 1: true };
@@ -974,7 +974,7 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
+  const handleDeletePost = async (postId: number | string) => {
     if (!confirm(t.admin.confirmDelete)) return;
     const target = posts.find((p) => p.id === postId);
     if (!target) return;
@@ -1511,7 +1511,7 @@ export default function Admin({ lang }: AdminProps) {
                                       size="sm"
                                       className="border-secondary/40 text-secondary hover:bg-secondary/15 font-semibold"
                                       onClick={() => handleImprovePost(post)}
-                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                      disabled={isBusy || String(post.id).startsWith("temp-")}
                                     >
                                       <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                                       Melhorar post
@@ -1520,7 +1520,7 @@ export default function Admin({ lang }: AdminProps) {
                                       variant={post.published ? "secondary" : "default"}
                                       size="sm"
                                       onClick={() => handleTogglePublish(post)}
-                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                      disabled={isBusy || String(post.id).startsWith("temp-")}
                                     >
                                       {post.published ? "Despublicar" : "Publicar"}
                                     </Button>
@@ -1537,7 +1537,7 @@ export default function Admin({ lang }: AdminProps) {
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => handleDeletePost(post.id)}
-                                      disabled={isBusy || post.id.startsWith("temp-")}
+                                      disabled={isBusy || String(post.id).startsWith("temp-")}
                                     >
                                       <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                                       {isDeleting ? "Excluindo..." : "Excluir"}
@@ -1556,7 +1556,7 @@ export default function Admin({ lang }: AdminProps) {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <Field label="ID do Artigo">
-                                        <Input value={post.id.startsWith("temp-") ? "(Gerado ao salvar)" : post.id} readOnly className="bg-muted text-foreground/60" />
+                                        <Input value={String(post.id).startsWith("temp-") ? "(Gerado ao salvar)" : post.id} readOnly className="bg-muted text-foreground/60" />
                                       </Field>
                                       <Field label="Título">
                                         <Input

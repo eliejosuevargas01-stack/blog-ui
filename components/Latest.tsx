@@ -177,7 +177,7 @@ export default function Latest({ lang, initialPosts: propsInitialPosts }: Latest
             {!showLoading && !showError && !showEmpty && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {latestPosts.map((post) => {
-                  const postSlug = post.slug ?? post.id;
+                  const postSlug = String(post.slug ?? post.id);
                   const postPath = buildPostPath(lang, postSlug);
                   const postDate = formatDate(post.date);
                   const footerText = post.readTime ?? postDate;

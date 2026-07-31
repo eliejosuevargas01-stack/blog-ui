@@ -113,7 +113,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
 
   const post = useMemo(() => {
     return posts.find((item) => {
-      const candidate = item.slug ?? item.id;
+      const candidate = String(item.slug ?? item.id);
       if (!candidate) {
         return false;
       }
@@ -160,7 +160,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
   const canonicalSlug = resolvePostSlug(post, lang, slugParam);
   const canonicalPath = canonicalSlug ? buildPostPath(lang, canonicalSlug) : undefined;
   const guideSlug = guidePost
-    ? resolvePostSlug(guidePost, lang, guidePost.slug ?? guidePost.id)
+    ? resolvePostSlug(guidePost, lang, String(guidePost.slug ?? guidePost.id))
     : "";
   const guidePath = guideSlug ? buildPostPath(lang, guideSlug) : undefined;
   const seoTitle = post
@@ -624,7 +624,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                               const relatedSlug = resolvePostSlug(
                                 related,
                                 lang,
-                                related.slug ?? related.id,
+                                String(related.slug ?? related.id),
                               );
                               const relatedPath = relatedSlug
                                 ? buildPostPath(lang, relatedSlug)

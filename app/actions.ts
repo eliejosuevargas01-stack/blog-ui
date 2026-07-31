@@ -46,7 +46,7 @@ export async function logoutAction() {
 // --- CRUD DE POSTS ---
 
 export async function savePostAction(data: {
-  id?: string;
+  id?: number | string;
   slug: string;
   tag: string;
   category: string;
@@ -64,11 +64,13 @@ export async function savePostAction(data: {
   lang?: string;
 }) {
   try {
+    const numericId = data.id && !isNaN(parseInt(String(data.id), 10)) ? parseInt(String(data.id), 10) : undefined;
+
     // Validar slug
     const existing = await prisma.post.findFirst({
       where: {
         slug: data.slug,
-        id: data.id ? { not: data.id } : undefined
+        id: numericId ? { not: numericId } : undefined
       }
     });
 
@@ -81,9 +83,9 @@ export async function savePostAction(data: {
     const computedReadTime = calculateReadTime({ title: data.title, excerpt: data.excerpt, blocks: data.blocks });
     const finalReadTime = (data.readTime && data.readTime !== "5 min") ? data.readTime : computedReadTime;
 
-    if (data.id) {
+    if (numericId) {
       // Obter post atual para capturar translationGroupId
-      const currentPost = await prisma.post.findUnique({ where: { id: data.id } });
+      const currentPost = await prisma.post.findUnique({ where: { id: numericId } });
       const translationGroupId = currentPost?.translationGroupId;
 
       const targetAudio = data.audioUrlsByLang && data.audioUrlsByLang[lang] !== undefined
@@ -92,7 +94,7 @@ export async function savePostAction(data: {
 
       // Atualização do post alvo
       await prisma.post.update({
-        where: { id: data.id },
+        where: { id: numericId },
         data: {
           slug: data.slug,
           tag: data.tag,
@@ -117,7 +119,7 @@ export async function savePostAction(data: {
         const sisterPosts = await prisma.post.findMany({
           where: {
             translationGroupId,
-            id: { not: data.id }
+            id: { not: numericId }
           }
         });
 
@@ -236,9 +238,10 @@ export async function savePostAction(data: {
   }
 }
 
-export async function deletePostAction(id: string) {
+export async function deletePostAction(id: number | string) {
   try {
-    const post = await prisma.post.findUnique({ where: { id } });
+    const numericId = typeof id === "number" ? id : parseInt(String(id), 10);
+    const post = isNaN(numericId) ? null : await prisma.post.findUnique({ where: { id: numericId } });
     if (!post) {
       return { error: "Post não encontrado." };
     }
@@ -249,7 +252,7 @@ export async function deletePostAction(id: string) {
         where: { translationGroupId: post.translationGroupId }
       });
     } else {
-      await prisma.post.delete({ where: { id } });
+      await prisma.post.delete({ where: { id: numericId } });
     }
 
     revalidatePath("/");
@@ -271,7 +274,7 @@ export async function deletePostAction(id: string) {
 // --- INTEGRAÇÃO COM N8N & NOTIFICAÇÕES ---
 
 export async function triggerImprovePostAction(data: {
-  id: string;
+  id: number | string;
   title: string;
   slug: string;
   category?: string;
@@ -467,4 +470,3 @@ export async function deletePageAction(id: string) {
     return { error: "Erro ao deletar página." };
   }
 }
-

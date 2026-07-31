@@ -1,5 +1,5 @@
 export interface BlogPost {
-  id: string;
+  id: number | string;
   slug: string;
   title: string;
   excerpt?: string;
@@ -114,8 +114,8 @@ export async function editPost(payload: any, lang?: string): Promise<any> {
   return res.json();
 }
 
-export async function deletePost(target: string | BlogPost, lang?: string): Promise<any> {
-  const id = typeof target === "string" ? target : target.id;
+export async function deletePost(target: number | string | BlogPost, lang?: string): Promise<any> {
+  const id = typeof target === "object" ? target.id : target;
   const res = await fetch(`/api/posts?id=${id}`, {
     method: "DELETE",
     headers: {

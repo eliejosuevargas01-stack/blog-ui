@@ -154,7 +154,7 @@ export default function Index({ lang, initialPosts: propsInitialPosts }: IndexPr
     const highlightPost =
       rotatingPool.length > 0 ? rotatingPool[rotationIndex] : null;
 
-    const usedIds = new Set<string>();
+    const usedIds = new Set<string | number>();
     if (highlightPost) {
       usedIds.add(highlightPost.id);
     }
@@ -278,7 +278,7 @@ export default function Index({ lang, initialPosts: propsInitialPosts }: IndexPr
   const showEmpty = status === "idle" && posts.length === 0;
 
   const renderPostCard = (post: BlogPost, badge?: string) => {
-    const postSlug = post.slugs?.[lang] ?? post.slug ?? post.id;
+    const postSlug = String(post.slugs?.[lang] ?? post.slug ?? post.id);
     const postPath = buildPostPath(lang, postSlug);
     const postDate = formatDate(post.date);
     const footerText = post.readTime ?? postDate;
@@ -399,9 +399,11 @@ export default function Index({ lang, initialPosts: propsInitialPosts }: IndexPr
               <Link
                 href={buildPostPath(
                   lang,
-                  portal.highlightPost.slugs?.[lang] ??
-                    portal.highlightPost.slug ??
-                    portal.highlightPost.id,
+                  String(
+                    portal.highlightPost.slugs?.[lang] ??
+                      portal.highlightPost.slug ??
+                      portal.highlightPost.id,
+                  ),
                 )}
                 className="group grid gap-0 lg:grid-cols-[1fr_1.3fr] rounded-3xl border border-border/80 bg-card/90 overflow-hidden hover:border-secondary transition-all hover:shadow-2xl min-h-[440px]"
                 itemScope
@@ -509,10 +511,11 @@ export default function Index({ lang, initialPosts: propsInitialPosts }: IndexPr
                     );
                   }
 
-                  const postSlug =
+                  const postSlug = String(
                     topic.post.slugs?.[lang] ??
                     topic.post.slug ??
-                    topic.post.id;
+                    topic.post.id
+                  );
                   const postPath = buildPostPath(lang, postSlug);
 
                   return (
