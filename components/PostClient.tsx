@@ -502,13 +502,13 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                         </span>
                       )}
                       {formattedPublishedDate && (
-                        <span className="inline-flex items-center gap-2">
+                        <span suppressHydrationWarning className="inline-flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
                           {t.post.publishedLabel} {formattedPublishedDate}
                         </span>
                       )}
                       {formattedUpdatedDate && (
-                        <span className="inline-flex items-center gap-2">
+                        <span suppressHydrationWarning className="inline-flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
                           {t.post.updatedLabel} {formattedUpdatedDate}
                         </span>
@@ -520,7 +520,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                         </span>
                       )}
                       {post.views !== undefined && (
-                        <span className="inline-flex items-center gap-2">
+                        <span suppressHydrationWarning className="inline-flex items-center gap-2">
                           <Eye className="w-4 h-4 text-secondary" />
                           {post.views || 0} visualizações
                         </span>
@@ -535,16 +535,14 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                         <button
                           type="button"
                           onClick={() => openImage(coverImage, coverImageAlt)}
-                          className="group relative h-full w-full cursor-zoom-in"
+                          className="group relative h-full w-full cursor-zoom-in overflow-hidden"
                           aria-label="Open image"
                         >
-                          <Image
+                          <img
                             src={coverImageThumb ?? coverImage}
                             alt={coverImageAlt}
-                            width={1200}
-                            height={675}
-                            priority
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            style={{ objectPosition: (post as any).imgFocalPoint || "center" }}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                           <div className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">

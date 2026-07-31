@@ -81,9 +81,10 @@ export async function fetchLivePosts(lang?: string): Promise<BlogPost[]> {
     if (data.posts && Array.isArray(data.posts)) {
       return data.posts.map((p: any) => ({
         ...p,
+        img: p.img || p.image,
         image: p.img || p.image,
         description: p.excerpt || p.description,
-        date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : p.date,
+        date: p.createdAt ? (typeof p.createdAt === "string" ? p.createdAt : new Date(p.createdAt).toISOString()) : p.date,
         contentHtml: p.contentHtml || p.content || (Array.isArray(p.blocks) ? p.blocks.map((b: any) => b.text || "").join("\n") : ""),
       }));
     }

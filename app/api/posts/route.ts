@@ -164,19 +164,6 @@ export async function GET(req: Request) {
       },
       orderBy: { [orderByField]: order },
       take: limit,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        excerpt: true,
-        tag: true,
-        category: true,
-        lang: true,
-        mentions: true,
-        views: true,
-        likes: true,
-        createdAt: true,
-      }
     });
 
     return NextResponse.json({
