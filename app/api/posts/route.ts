@@ -650,12 +650,16 @@ export async function PATCH(req: Request) {
       }
     }
 
+    const targetIdInt = targetIdentifier && !isNaN(parseInt(String(targetIdentifier), 10)) ? parseInt(String(targetIdentifier), 10) : undefined;
+    const targetIdentifierStr = String(targetIdentifier);
+
     const initialPosts = await prisma.post.findMany({
       where: {
         OR: [
-          { id: targetIdentifier },
-          { slug: targetIdentifier },
-          { translationGroupId: targetIdentifier }
+          ...(targetIdInt ? [{ id: targetIdInt }] : []),
+          { slug: targetIdentifierStr },
+          { translationGroupId: targetIdentifierStr },
+          { translationGroupId: `group-${targetIdentifierStr}` }
         ]
       }
     });
