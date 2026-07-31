@@ -62,29 +62,29 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 p-4 my-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl backdrop-blur-md">
+    <div className="bg-card border border-border p-4 my-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl shadow-sm">
       <div className="flex items-center gap-3">
         <button
           onClick={handleLike}
           disabled={hasLiked}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-xl ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border ${
             hasLiked
-              ? "bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-rose-500/20"
-              : "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-pink-500/40"
+              ? "bg-secondary text-secondary-foreground border-secondary"
+              : "bg-muted hover:bg-muted/80 text-foreground border-border"
           }`}
         >
-          <Heart size={16} className={hasLiked ? "fill-white" : "text-pink-400"} />
+          <Heart size={16} className={hasLiked ? "fill-current text-secondary-foreground" : "text-secondary"} />
           <span>{hasLiked ? "Curtido" : "Curtir"}</span>
-          <span className="ml-1 bg-black/40 px-2 py-0.5 rounded-lg text-[11px] font-mono">{likes}</span>
+          <span className="ml-1 bg-background/50 px-2 py-0.5 rounded-lg text-[11px] font-mono">{likes}</span>
         </button>
-        <span className="text-xs text-slate-400 hidden sm:inline">
+        <span className="text-xs text-foreground/70 hidden sm:inline">
           Gostou do conteúdo? Deixe seu apoio!
         </span>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
-          <Share2 size={13} className="text-cyan-400" /> Compartilhar:
+        <span className="text-xs uppercase tracking-wider text-foreground/70 mr-1 flex items-center gap-1">
+          <Share2 size={13} className="text-secondary" /> Compartilhar:
         </span>
 
         <a
@@ -103,7 +103,7 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => handleSocialClick("X")}
-          className="p-2 bg-slate-800 text-slate-200 hover:bg-white hover:text-black transition-colors rounded-xl border border-slate-700"
+          className="p-2 bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors rounded-xl border border-border"
           title="Compartilhar no X (Twitter)"
         >
           <Twitter size={16} />
@@ -122,13 +122,13 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 text-xs text-slate-300 hover:text-white border border-slate-700 transition-colors rounded-xl"
+          className="flex items-center gap-1.5 px-3 py-2 bg-muted text-xs text-foreground/80 hover:text-foreground border border-border transition-colors rounded-xl"
           title="Copiar Link do Post"
         >
           {copied ? (
             <>
-              <Check size={14} className="text-emerald-400" />
-              <span className="text-emerald-400 font-semibold">Copiado!</span>
+              <Check size={14} className="text-emerald-500" />
+              <span className="text-emerald-500 font-semibold">Copiado!</span>
             </>
           ) : (
             <>

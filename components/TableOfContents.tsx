@@ -34,7 +34,7 @@ export default function TableOfContents({ blocks }: TableOfContentsProps) {
 
     blocks.forEach((block) => {
       let match;
-      while ((match = headingRegex.exec(block.text)) !== null) {
+      while ((match = headingRegex.exec(block.text || "")) !== null) {
         const level = match[1].toLowerCase() === "h2" ? 2 : 3;
         const rawText = match[2];
         const cleanText = rawText.replace(/<[^>]*>/g, "");
@@ -100,24 +100,24 @@ export default function TableOfContents({ blocks }: TableOfContentsProps) {
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 backdrop-blur-md shadow-lg transition-all duration-300">
+    <div className="bg-card border border-border rounded-2xl p-5 mb-8 shadow-sm transition-all duration-300">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between text-left outline-none"
       >
         <div className="flex items-center gap-2">
-          <List size={16} className="text-cyan-400" />
-          <span className="text-sm font-semibold uppercase tracking-wider text-slate-200">
+          <List size={16} className="text-secondary" />
+          <span className="text-sm font-semibold uppercase tracking-wider text-foreground">
             Índice de Tópicos
           </span>
         </div>
-        <div className="text-slate-400 hover:text-white transition-colors">
+        <div className="text-foreground/70 hover:text-foreground transition-colors">
           {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </button>
 
       {isOpen && (
-        <ul className="mt-4 space-y-2 border-t border-slate-800/80 pt-4 transition-all duration-300">
+        <ul className="mt-4 space-y-2 border-t border-border/70 pt-4 transition-all duration-300">
           {headings.map((h, idx) => {
             const isActive = activeId === h.id;
             return (
@@ -132,8 +132,8 @@ export default function TableOfContents({ blocks }: TableOfContentsProps) {
                   onClick={(e) => scrollToSection(e, h.id)}
                   className={`block text-xs leading-relaxed transition-all duration-200 border-l-2 pl-3 py-1 ${
                     isActive
-                      ? "border-cyan-400 text-cyan-400 font-semibold"
-                      : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                      ? "border-secondary text-secondary font-semibold"
+                      : "border-transparent text-foreground/70 hover:text-foreground hover:border-border"
                   }`}
                 >
                   {h.text}

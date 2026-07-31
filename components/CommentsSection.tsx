@@ -180,45 +180,45 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
   };
 
   return (
-    <div className="border-t border-slate-800 mt-14 pt-10">
+    <div className="border-t border-border mt-14 pt-10">
       <div className="flex items-center gap-3 mb-8">
-        <span className="block w-1.5 h-7 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full" />
-        <h3 className="text-2xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+        <span className="block w-1.5 h-6 bg-secondary rounded-full" />
+        <h3 className="text-xl font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
           Comentários ({comments.length})
         </h3>
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-10 backdrop-blur-md">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-10 shadow-sm">
         {user ? (
           <form onSubmit={handlePostComment} className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between text-xs text-foreground/70 border-b border-border pb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <span>Logado como <strong className="text-white">{user.name}</strong> ({user.email})</span>
+                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                <span>Logado como <strong className="text-foreground">{user.name}</strong> ({user.email})</span>
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex items-center gap-1 text-cyan-400 hover:underline uppercase tracking-wider font-bold"
+                className="flex items-center gap-1 text-secondary hover:underline uppercase tracking-wider font-bold"
               >
                 <LogOut size={12} /> Sair
               </button>
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Escreva seu comentário</label>
+              <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider">Escreva seu comentário</label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="O que você achou desse post? Deixe sua opinião..."
                 rows={4}
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl text-sm p-4 outline-none focus:border-cyan-500/50 text-slate-200 resize-none transition-colors"
+                className="w-full bg-muted/60 border border-border rounded-xl text-sm p-4 outline-none focus:border-secondary text-foreground resize-none transition-colors"
                 maxLength={1000}
               />
             </div>
 
             {commentError && (
-              <div className="text-pink-400 text-xs flex items-center gap-1.5 bg-pink-500/10 border border-pink-500/20 p-3 rounded-xl">
+              <div className="text-destructive text-xs flex items-center gap-1.5 bg-destructive/10 border border-destructive/20 p-3 rounded-xl">
                 <ShieldAlert size={14} /> {commentError}
               </div>
             )}
@@ -226,7 +226,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
             <button
               type="submit"
               disabled={loading || !content.trim()}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl transition-all shadow-md shadow-cyan-500/20 disabled:opacity-40"
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl transition-all shadow-sm disabled:opacity-40"
             >
               {loading ? "Enviando..." : "Publicar Comentário"}
             </button>
@@ -234,21 +234,21 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
         ) : (
           <div>
             <div className="text-center mb-6">
-              <h4 className="text-xl font-bold uppercase tracking-wide text-white mb-1">
+              <h4 className="text-lg font-bold uppercase tracking-wide text-foreground mb-1">
                 Participe da discussão
               </h4>
-              <p className="text-xs text-slate-400 max-w-[400px] mx-auto">
+              <p className="text-xs text-foreground/70 max-w-[400px] mx-auto">
                 Faça login ou cadastre-se rapidamente para enviar seu comentário.
               </p>
             </div>
 
-            <div className="flex border-b border-slate-800 mb-6">
+            <div className="flex border-b border-border mb-6">
               <button
                 onClick={() => { setAuthMode("login"); setAuthError(""); }}
                 className={`flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
                   authMode === "login" 
-                    ? "border-cyan-400 text-cyan-400" 
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    ? "border-secondary text-secondary" 
+                    : "border-transparent text-foreground/70 hover:text-foreground"
                 }`}
               >
                 Entrar
@@ -257,8 +257,8 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
                 onClick={() => { setAuthMode("register"); setAuthError(""); }}
                 className={`flex-1 py-2.5 text-center text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
                   authMode === "register" 
-                    ? "border-cyan-400 text-cyan-400" 
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    ? "border-secondary text-secondary" 
+                    : "border-transparent text-foreground/70 hover:text-foreground"
                 }`}
               >
                 Criar Conta
@@ -268,44 +268,44 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
             <form onSubmit={handleAuth} className="space-y-4 max-w-[380px] mx-auto">
               {authMode === "register" && (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">Nome</label>
+                  <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">Nome</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome"
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-cyan-500/50 text-slate-200 transition-colors"
+                    className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                   />
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">E-mail</label>
+                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">E-mail</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-cyan-500/50 text-slate-200 transition-colors"
+                  className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">Senha</label>
+                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">Senha</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Sua senha"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-cyan-500/50 text-slate-200 transition-colors"
+                  className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                 />
               </div>
 
               {authError && (
-                <div className="text-pink-400 text-xs flex items-center gap-1.5 bg-pink-500/10 border border-pink-500/20 p-2.5 rounded-xl">
+                <div className="text-destructive text-xs flex items-center gap-1.5 bg-destructive/10 border border-destructive/20 p-2.5 rounded-xl">
                   <ShieldAlert size={14} /> {authError}
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all shadow-md shadow-cyan-500/20"
+                className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all shadow-sm"
               >
                 {loading ? "Aguarde..." : authMode === "login" ? "Entrar e Comentar" : "Cadastrar e Comentar"}
               </button>
@@ -324,9 +324,9 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
 
       <div className="space-y-4">
         {comments.length === 0 ? (
-          <div className="text-center py-10 border border-dashed border-slate-800 rounded-2xl">
-            <MessageSquare size={32} className="text-slate-600 mx-auto mb-3" />
-            <p className="text-xs text-slate-400">Nenhum comentário por enquanto. Seja o primeiro a opinar!</p>
+          <div className="text-center py-10 border border-dashed border-border rounded-2xl">
+            <MessageSquare size={32} className="text-foreground/30 mx-auto mb-3" />
+            <p className="text-xs text-foreground/70">Nenhum comentário por enquanto. Seja o primeiro a opinar!</p>
           </div>
         ) : (
           comments.map((comment) => {
@@ -334,21 +334,21 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
             return (
               <div 
                 key={comment.id} 
-                className="flex items-start gap-4 p-5 border border-slate-800 bg-slate-900/60 rounded-2xl hover:border-slate-700 transition-all duration-300"
+                className="flex items-start gap-4 p-5 border border-border bg-card/60 rounded-2xl transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shrink-0 text-white font-bold shadow-md shadow-cyan-500/20">
+                <div className="w-10 h-10 rounded-full bg-secondary/20 border border-secondary/40 flex items-center justify-center shrink-0 text-secondary font-bold">
                   {getAvatarChar(comment.user?.name)}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-sm font-bold text-white">{comment.user?.name || "Usuário"}</span>
+                    <span className="text-sm font-bold text-foreground">{comment.user?.name || "Usuário"}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-slate-400">{formatCommentDate(comment.createdAt)}</span>
+                      <span className="text-[11px] text-foreground/70">{formatCommentDate(comment.createdAt)}</span>
                       {isOwner && (
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className="text-slate-400 hover:text-pink-400 transition-colors p-1"
+                          className="text-foreground/50 hover:text-destructive transition-colors p-1"
                           title="Excluir Comentário"
                         >
                           <Trash2 size={13} />
@@ -356,7 +356,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed break-words">
+                  <p className="text-sm text-foreground/80 leading-relaxed break-words">
                     {comment.content}
                   </p>
                 </div>
