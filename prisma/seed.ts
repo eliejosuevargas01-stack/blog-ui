@@ -735,7 +735,13 @@ async function main() {
       }
     });
   }
-  console.log("Ranking de Pilotos semeado!");
+  // 9. Sincronizar sequência autoincremental de IDs de posts no PostgreSQL
+  try {
+    await prisma.$executeRawUnsafe(`SELECT setval('post_id_seq', (SELECT MAX(id) FROM "Post"));`);
+    console.log("Sequência post_id_seq sincronizada com sucesso!");
+  } catch (e) {
+    console.warn("Aviso: Falha ao sincronizar post_id_seq:", e);
+  }
 
   console.log("Semeadura concluída com sucesso!");
 }
