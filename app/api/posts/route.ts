@@ -254,10 +254,20 @@ export async function POST(req: Request) {
         const langData = output[lang];
         if (!langData || !langData.title) continue;
 
-        // Se o post para este translationGroupId e idioma JÁ EXISTIR no banco, MANTÉM o slug original existente!
-        const existingPostForLang = translationGroupId ? await prisma.post.findFirst({
-          where: { translationGroupId, lang }
-        }) : null;
+        const targetIdRaw = langData.id || body.id || body.post_id || output.id || output.pt?.id || output.en?.id || output.es?.id;
+        const targetIdInt = targetIdRaw && !isNaN(parseInt(String(targetIdRaw), 10)) ? parseInt(String(targetIdRaw), 10) : undefined;
+
+        // Se o post para este id ou translationGroupId e idioma JÁ EXISTIR no banco, MANTÉM o slug original existente!
+        const existingPostForLang = await prisma.post.findFirst({
+          where: {
+            OR: [
+              ...(targetIdInt ? [{ id: targetIdInt }] : []),
+              ...(translationGroupId ? [{ translationGroupId: String(translationGroupId) }] : []),
+              ...(translationGroupId && !String(translationGroupId).startsWith("group-") ? [{ translationGroupId: `group-${translationGroupId}` }] : [])
+            ],
+            lang
+          }
+        });
 
         const finalSlug = existingPostForLang
           ? (langData.slug || existingPostForLang.slug)
