@@ -391,12 +391,13 @@ export async function POST(req: Request) {
           });
         }
 
+        const siteDomain = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://curiosotech.online").replace(/\/+$/, "");
         createdPosts.push({
           id: post.id,
           lang: post.lang,
           slug: post.slug,
           title: post.title,
-          url: `https://motonapratica.online${postUrlPath}`
+          url: `${siteDomain}${postUrlPath}`
         });
       }
 
@@ -564,6 +565,7 @@ export async function POST(req: Request) {
 
     const postUrlPath = lang === "en" ? `/en/post/${post.slug}` : lang === "es" ? `/es/post/${post.slug}` : `/post/${post.slug}`;
 
+    const siteDomain = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://curiosotech.online").replace(/\/+$/, "");
     return NextResponse.json({
       success: true,
       message: "Post salvo com sucesso!",
@@ -572,7 +574,7 @@ export async function POST(req: Request) {
         lang: post.lang,
         slug: post.slug,
         title: post.title,
-        url: `https://motonapratica.online${postUrlPath}`
+        url: `${siteDomain}${postUrlPath}`
       }
     });
   } catch (error: any) {
