@@ -15,8 +15,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "O parâmetro postId é obrigatório." }, { status: 400 });
     }
 
+    const numericPostId = parseInt(String(postId), 10);
+    if (isNaN(numericPostId)) {
+      return NextResponse.json({ comments: [] });
+    }
+
     const comments = await prisma.comment.findMany({
-      where: { postId },
+      where: { postId: numericPostId },
       include: {
         user: {
           select: {

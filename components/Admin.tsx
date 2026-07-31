@@ -901,7 +901,7 @@ export default function Admin({ lang }: AdminProps) {
       });
 
       const res = await triggerImprovePostAction({
-        id: post.id,
+        id: (post as any).translationGroupId || String(post.id),
         title: post.title,
         slug: post.slug,
         category: post.category || post.tag,
