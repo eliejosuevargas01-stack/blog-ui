@@ -639,20 +639,39 @@ export async function PATCH(req: Request) {
       }
     }
 
-    const imageUrl = typeof image === "string" ? image : (typeof img === "string" ? img : null);
-    if (!imageUrl && !finalAudioUrl) {
+    const rawImageInput = body.image || body.img;
+    let finalImageUrl: string | null = null;
+
+    if (rawImageInput) {
+      if (typeof rawImageInput === "string") {
+        if (rawImageInput.startsWith("data:image") || (rawImageInput.length > 200 && !rawImageInput.startsWith("http"))) {
+          try {
+            finalImageUrl = await processImageBase64(rawImageInput);
+          } catch (err: any) {
+            console.error("Erro ao processar Base64 na rota PATCH:", err);
+            return NextResponse.json({ error: "Falha ao processar imagem Base64.", details: err.message }, { status: 400 });
+          }
+        } else {
+          finalImageUrl = rawImageInput;
+        }
+      } else if (typeof rawImageInput === "object" && rawImageInput && "arrayBuffer" in rawImageInput) {
+        try {
+          const fileObj = rawImageInput as File;
+          const bytes = await fileObj.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const { saveOptimizedImageBuffer } = await import("@/lib/image-utils");
+          finalImageUrl = await saveOptimizedImageBuffer(buffer);
+        } catch (err: any) {
+          console.error("Erro ao processar arquivo de imagem na rota PATCH:", err);
+          return NextResponse.json({ error: "Falha ao processar arquivo de imagem.", details: err.message }, { status: 400 });
+        }
+      }
+    }
+
+    if (!finalImageUrl && !finalAudioUrl) {
       return NextResponse.json({ error: "É necessário fornecer uma imagem ('image') ou um áudio ('audio')." }, { status: 400 });
     }
 
-    let finalImageUrl = imageUrl;
-    if (typeof imageUrl === "string" && (imageUrl.startsWith("data:image") || (imageUrl.length > 200 && !imageUrl.startsWith("http")))) {
-      try {
-        finalImageUrl = await processImageBase64(imageUrl);
-      } catch (err: any) {
-        console.error("Erro ao processar Base64 na rota PATCH:", err);
-        return NextResponse.json({ error: "Falha ao processar imagem Base64.", details: err.message }, { status: 400 });
-      }
-    }
     if (typeof finalImageUrl === "string" && finalImageUrl.includes("/uploads/")) {
       const fname = finalImageUrl.split("/uploads/").pop()?.split("?")[0];
       if (fname) finalImageUrl = `/uploads/${fname}`;
