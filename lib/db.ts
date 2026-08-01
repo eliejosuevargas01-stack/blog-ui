@@ -21,44 +21,12 @@ export async function getDbPostsForLang(lang: string) {
       },
       orderBy: { createdAt: "desc" }
     });
-
-    // Mapear translationGroupIds para montar dicionario de slugs por idioma
-    const groupIds = posts.map((p) => p.translationGroupId).filter(Boolean) as string[];
-    let groupMap: Record<string, Record<string, string>> = {};
-
-    if (groupIds.length > 0) {
-      const groupPosts = await prisma.post.findMany({
-        where: {
-          translationGroupId: { in: groupIds }
-        },
-        select: {
-          slug: true,
-          lang: true,
-          translationGroupId: true
-        }
-      });
-
-      groupPosts.forEach((gp) => {
-        if (gp.translationGroupId) {
-          const l = gp.lang || "pt";
-          if (!groupMap[gp.translationGroupId]) {
-            groupMap[gp.translationGroupId] = {};
-          }
-          groupMap[gp.translationGroupId][l] = gp.slug;
-        }
-      });
-    }
-
-    return posts.map((p) => {
-      const slugsDict = p.translationGroupId ? groupMap[p.translationGroupId] || {} : {};
-      return {
-        ...p,
-        image: p.img,
-        description: p.excerpt,
-        date: p.createdAt.toISOString(),
-        slugs: slugsDict,
-      };
-    });
+    return posts.map((p) => ({
+      ...p,
+      image: p.img,
+      description: p.excerpt,
+      date: p.createdAt.toISOString(),
+    }));
   } catch (error) {
     console.error("Erro ao buscar posts para o idioma:", error);
     return [];
@@ -87,39 +55,10 @@ export async function loadPagesForLang(rootDir?: string, lang?: string) {
 
 export async function getPostBySlug(slug: string, lang?: string) {
   try {
-    let post = await prisma.post.findUnique({
+    const post = await prisma.post.findUnique({
       where: { slug }
     });
-
     if (!post) return null;
-
-    // Se um idioma especifico foi solicitado e o post encontrado pertence a outro idioma,
-    // tenta localizar a traducao no mesmo translationGroupId
-    if (lang && post.lang !== lang && post.translationGroupId) {
-      const translated = await prisma.post.findFirst({
-        where: {
-          translationGroupId: post.translationGroupId,
-          lang: lang
-        }
-      });
-      if (translated) {
-        post = translated;
-      }
-    }
-
-    // Carregar todas as traducoes do translationGroupId para montar a lista de slugs
-    let slugsDict: Record<string, string> = {};
-    if (post.translationGroupId) {
-      const groupPosts = await prisma.post.findMany({
-        where: { translationGroupId: post.translationGroupId },
-        select: { slug: true, lang: true }
-      });
-      groupPosts.forEach((gp) => {
-        const l = gp.lang || "pt";
-        slugsDict[l] = gp.slug;
-      });
-    }
-
     return {
       ...post,
       image: post.img,
@@ -127,7 +66,6 @@ export async function getPostBySlug(slug: string, lang?: string) {
       date: post.createdAt.toISOString(),
       metaTitle: post.seoTitle || post.title,
       metaDescription: post.seoDescription || post.excerpt,
-      slugs: slugsDict,
     };
   } catch (error) {
     console.error("Erro ao buscar post por slug:", error);

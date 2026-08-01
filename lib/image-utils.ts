@@ -4,14 +4,6 @@ import { createHash } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 
-export function getSiteBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_BASE_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/+$/, "");
-  }
-  return "https://curiosotech.online";
-}
-
 export async function saveOptimizedImageBuffer(inputBuffer: Buffer): Promise<string> {
   const optimizedBuffer = await sharp(inputBuffer)
     .rotate() // Corrigir orientação EXIF automaticamente
@@ -30,8 +22,7 @@ export async function saveOptimizedImageBuffer(inputBuffer: Buffer): Promise<str
     await writeFile(filePath, optimizedBuffer);
   }
 
-  const baseUrl = getSiteBaseUrl();
-  return `${baseUrl}/uploads/${filename}`;
+  return `/uploads/${filename}`;
 }
 
 export async function processImageBase64(base64Str: string): Promise<string> {
@@ -59,8 +50,7 @@ export async function saveAudioBuffer(inputBuffer: Buffer, extension: string = "
     await writeFile(filePath, inputBuffer);
   }
 
-  const baseUrl = getSiteBaseUrl();
-  return `${baseUrl}/uploads/${filename}`;
+  return `/uploads/${filename}`;
 }
 
 export function calculateReadTime(data: { title?: string; excerpt?: string; blocks?: any[]; text?: string }): string {
@@ -90,3 +80,4 @@ export function calculateReadTime(data: { title?: string; excerpt?: string; bloc
   const minutes = Math.max(1, Math.ceil(wordCount / 200));
   return `${minutes} min`;
 }
+

@@ -44,14 +44,18 @@ function cleanSlug(slug?: string): string {
 
 function extractImageUrl(imgField: any): string {
   if (!imgField) return "";
+  let url = "";
   if (typeof imgField === "string") {
-    if (imgField.startsWith("http")) return imgField;
-    return "";
+    url = imgField.trim();
+  } else if (typeof imgField === "object" && imgField.url) {
+    url = String(imgField.url).trim();
   }
-  if (typeof imgField === "object" && imgField.url) {
-    return imgField.url;
+  if (!url) return "";
+  if (url.includes("/uploads/")) {
+    const filename = url.split("/uploads/").pop()?.split("?")[0];
+    if (filename) return `/uploads/${filename}`;
   }
-  return "";
+  return url;
 }
 
 function normalizePostTag(rawTag?: string, title?: string): string {
@@ -164,43 +168,25 @@ export async function GET(req: Request) {
       },
       orderBy: { [orderByField]: order },
       take: limit,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        tag: true,
+        category: true,
+        lang: true,
+        mentions: true,
+        views: true,
+        likes: true,
+        createdAt: true,
+      }
     });
-
-    const groupIds = posts.map((p) => p.translationGroupId).filter(Boolean) as string[];
-    let groupMap: Record<string, Record<string, string>> = {};
-
-    if (groupIds.length > 0) {
-      const groupPosts = await prisma.post.findMany({
-        where: {
-          translationGroupId: { in: groupIds }
-        },
-        select: {
-          slug: true,
-          lang: true,
-          translationGroupId: true
-        }
-      });
-
-      groupPosts.forEach((gp) => {
-        if (gp.translationGroupId) {
-          const l = gp.lang || "pt";
-          if (!groupMap[gp.translationGroupId]) {
-            groupMap[gp.translationGroupId] = {};
-          }
-          groupMap[gp.translationGroupId][l] = gp.slug;
-        }
-      });
-    }
-
-    const postsWithSlugs = posts.map((p) => ({
-      ...p,
-      slugs: p.translationGroupId ? groupMap[p.translationGroupId] || {} : {},
-    }));
 
     return NextResponse.json({
       success: true,
-      count: postsWithSlugs.length,
-      posts: postsWithSlugs
+      count: posts.length,
+      posts
     });
   } catch (error: any) {
     return NextResponse.json({ error: "Erro ao buscar posts", details: error.message }, { status: 500 });
@@ -391,13 +377,12 @@ export async function POST(req: Request) {
           });
         }
 
-        const siteDomain = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://curiosotech.online").replace(/\/+$/, "");
         createdPosts.push({
           id: post.id,
           lang: post.lang,
           slug: post.slug,
           title: post.title,
-          url: `${siteDomain}${postUrlPath}`
+          url: `https://motonapratica.online${postUrlPath}`
         });
       }
 
@@ -565,7 +550,6 @@ export async function POST(req: Request) {
 
     const postUrlPath = lang === "en" ? `/en/post/${post.slug}` : lang === "es" ? `/es/post/${post.slug}` : `/post/${post.slug}`;
 
-    const siteDomain = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://curiosotech.online").replace(/\/+$/, "");
     return NextResponse.json({
       success: true,
       message: "Post salvo com sucesso!",
@@ -574,7 +558,7 @@ export async function POST(req: Request) {
         lang: post.lang,
         slug: post.slug,
         title: post.title,
-        url: `${siteDomain}${postUrlPath}`
+        url: `https://motonapratica.online${postUrlPath}`
       }
     });
   } catch (error: any) {
@@ -668,6 +652,10 @@ export async function PATCH(req: Request) {
         console.error("Erro ao processar Base64 na rota PATCH:", err);
         return NextResponse.json({ error: "Falha ao processar imagem Base64.", details: err.message }, { status: 400 });
       }
+    }
+    if (typeof finalImageUrl === "string" && finalImageUrl.includes("/uploads/")) {
+      const fname = finalImageUrl.split("/uploads/").pop()?.split("?")[0];
+      if (fname) finalImageUrl = `/uploads/${fname}`;
     }
 
     const targetIdInt = targetIdentifier && !isNaN(parseInt(String(targetIdentifier), 10)) ? parseInt(String(targetIdentifier), 10) : undefined;

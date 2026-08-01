@@ -250,12 +250,14 @@ export function optimizeUnsplashUrl(url: string, width: number, height?: number)
 
 export function optimizeImageUrl(url: string, width: number, height?: number): string {
   if (!url) return "";
+  if (url.includes("/uploads/")) {
+    const filename = url.split("/uploads/").pop()?.split("?")[0];
+    if (filename) {
+      return `/uploads/${filename}?w=${width}`;
+    }
+  }
   if (url.includes("images.unsplash.com")) {
     return optimizeUnsplashUrl(url, width, height);
-  }
-  if (url.includes("/uploads/")) {
-    const cleanUrl = url.split("?")[0];
-    return `${cleanUrl}?w=${width}`;
   }
   return url;
 }
