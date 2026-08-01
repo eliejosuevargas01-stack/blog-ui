@@ -25,7 +25,7 @@ async function generateUniqueSlug(title: string, existingId?: number | string): 
       select: { id: true }
     });
 
-    if (!existing || (strExistingId && String(existing.id) === strExistingId)) {
+    if (!existing || (strExistingId && existing.id === strExistingId)) {
       return slug;
     }
 
@@ -180,16 +180,6 @@ export async function GET(req: Request) {
         views: true,
         likes: true,
         createdAt: true,
-        updatedAt: true,
-        img: true,
-        imgFocalPoint: true,
-        audioUrl: true,
-        readTime: true,
-        blocks: true,
-        seoTitle: true,
-        seoDescription: true,
-        seoKeywords: true,
-        translationGroupId: true,
       }
     });
 
@@ -343,7 +333,7 @@ export async function POST(req: Request) {
               blocks,
               seoTitle: langData["meta-title"] || langData.title,
               seoDescription: langData["meta-description"] || langData.summary,
-              seoKeywords: langData["meta-tags"] || `${postTag}, CuriosoTech`,
+              seoKeywords: langData["meta-tags"] || `${postTag}, Moto na Prática`,
               translationGroupId,
               lang,
             }
@@ -361,7 +351,7 @@ export async function POST(req: Request) {
               blocks,
               seoTitle: langData["meta-title"] || langData.title,
               seoDescription: langData["meta-description"] || langData.summary,
-              seoKeywords: langData["meta-tags"] || `${postTag}, CuriosoTech`,
+              seoKeywords: langData["meta-tags"] || `${postTag}, Moto na Prática`,
               translationGroupId,
               lang,
             },
@@ -378,7 +368,7 @@ export async function POST(req: Request) {
               blocks,
               seoTitle: langData["meta-title"] || langData.title,
               seoDescription: langData["meta-description"] || langData.summary,
-              seoKeywords: langData["meta-tags"] || `${postTag}, CuriosoTech`,
+              seoKeywords: langData["meta-tags"] || `${postTag}, Moto na Prática`,
               translationGroupId,
               lang,
               date: new Date(),
@@ -386,13 +376,12 @@ export async function POST(req: Request) {
           });
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://curiosotech.online";
         createdPosts.push({
           id: post.id,
           lang: post.lang,
           slug: post.slug,
           title: post.title,
-          url: `${baseUrl}${postUrlPath}`
+          url: `https://motonapratica.online${postUrlPath}`
         });
       }
 
@@ -450,8 +439,8 @@ export async function POST(req: Request) {
     }
 
     const rawTargetId = body.id || body.post_id || body.postId;
-    const targetIdInt = rawTargetId && !isNaN(parseInt(String(rawTargetId), 10)) ? parseInt(String(rawTargetId), 10) : undefined;
-    const existingSinglePost = targetIdInt ? await prisma.post.findUnique({ where: { id: targetIdInt } }) : null;
+    const targetIdStr = rawTargetId ? String(rawTargetId).trim() : undefined;
+    const existingSinglePost = targetIdStr ? await prisma.post.findUnique({ where: { id: targetIdStr } }) : null;
 
     // Se o post já existir no banco, MANTÉM o slug original existente!
     const finalSlug = existingSinglePost
@@ -497,7 +486,7 @@ export async function POST(req: Request) {
           blocks: cleanedBlocks,
           seoTitle: seoTitle || title,
           seoDescription: seoDescription || excerpt,
-          seoKeywords: seoKeywords || `${finalTag}, CuriosoTech`,
+          seoKeywords: seoKeywords || `${finalTag}, Moto na Prática`,
           translationGroupId: finalTranslationGroupId || existingSinglePost.translationGroupId,
           lang,
         }
@@ -515,7 +504,7 @@ export async function POST(req: Request) {
           blocks: cleanedBlocks,
           seoTitle: seoTitle || title,
           seoDescription: seoDescription || excerpt,
-          seoKeywords: seoKeywords || `${finalTag}, CuriosoTech`,
+          seoKeywords: seoKeywords || `${finalTag}, Moto na Prática`,
           translationGroupId: finalTranslationGroupId,
           lang,
         },
@@ -532,7 +521,7 @@ export async function POST(req: Request) {
           blocks: cleanedBlocks,
           seoTitle: seoTitle || title,
           seoDescription: seoDescription || excerpt,
-          seoKeywords: seoKeywords || `${finalTag}, CuriosoTech`,
+          seoKeywords: seoKeywords || `${finalTag}, Moto na Prática`,
           translationGroupId: finalTranslationGroupId,
           lang,
           date: new Date(),
@@ -560,7 +549,6 @@ export async function POST(req: Request) {
 
     const postUrlPath = lang === "en" ? `/en/post/${post.slug}` : lang === "es" ? `/es/post/${post.slug}` : `/post/${post.slug}`;
 
-    const singleBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://curiosotech.online";
     return NextResponse.json({
       success: true,
       message: "Post salvo com sucesso!",
@@ -569,7 +557,7 @@ export async function POST(req: Request) {
         lang: post.lang,
         slug: post.slug,
         title: post.title,
-        url: `${singleBaseUrl}${postUrlPath}`
+        url: `https://motonapratica.online${postUrlPath}`
       }
     });
   } catch (error: any) {
@@ -690,10 +678,11 @@ export async function PATCH(req: Request) {
 
     const targetIdentifierStr = String(targetIdentifier).trim();
 
-    // O 'id' fornecido representa o ID do Grupo de Tradução (translationGroupId) ou o slug do post
+    // O 'id' fornecido representa o ID do Grupo de Tradução (translationGroupId), ID do post ou slug do post
     const initialPosts = await prisma.post.findMany({
       where: {
         OR: [
+          { id: targetIdentifierStr },
           { translationGroupId: targetIdentifierStr },
           { translationGroupId: `group-${targetIdentifierStr}` },
           { slug: targetIdentifierStr }

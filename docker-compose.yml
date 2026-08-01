@@ -15,4 +15,4 @@ services:
 
 volumes:
   uploads_data:
-    name: curiosotech_uploads_data
+    name: motonapratica_uploads_data
