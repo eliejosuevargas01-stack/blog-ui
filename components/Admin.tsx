@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
-import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search, Wand2, Sparkles, CheckSquare } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Pencil, Trash2, Plus, LogOut, FileText, Globe, AlertCircle, Search, Wand2, Sparkles, CheckSquare, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -18,6 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -464,6 +471,22 @@ export default function Admin({ lang }: AdminProps) {
   const [batchModalPostId, setBatchModalPostId] = useState<number | string | null>(null);
   const [batchSelectedSlots, setBatchSelectedSlots] = useState<Record<number, boolean>>({ 1: true });
 
+  // Popup / Modal de status de ações de Webhook
+  const [webhookModal, setWebhookModal] = useState<{
+    isOpen: boolean;
+    status: "loading" | "success" | "error";
+    title: string;
+    actionName: string;
+    postTitle?: string;
+    message?: string;
+    details?: string;
+  }>({
+    isOpen: false,
+    status: "loading",
+    title: "",
+    actionName: "",
+  });
+
   const router = useRouter();
 
   useEffect(() => {
@@ -797,7 +820,23 @@ export default function Admin({ lang }: AdminProps) {
   const handleGenerateSingleImage = async (postId: number | string, placeIndex: number, promptText?: string) => {
     const compoundId = `${postId}=${placeIndex}`;
     const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
+    
+    setWebhookModal({
+      isOpen: true,
+      status: "loading",
+      title: "Gerando Imagem de Bloco...",
+      actionName: "Imagem Única (action=generate_img)",
+      details: `CompoundId: ${compoundId}`,
+    });
+
     if (!webhookUrl) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Falha ao Executar Ação",
+        actionName: "Imagem Única",
+        message: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada no ambiente.",
+      });
       toast({
         title: "Webhook não configurado",
         description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada.",
@@ -805,11 +844,8 @@ export default function Admin({ lang }: AdminProps) {
       });
       return;
     }
+
     try {
-      toast({
-        title: "Solicitando imagem IA...",
-        description: `Enviando requisição de geração para '${compoundId}'`,
-      });
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -819,18 +855,40 @@ export default function Admin({ lang }: AdminProps) {
           prompt: promptText || "Imagem conceitual de tecnologia e mercado",
         }),
       });
+
       if (response.ok) {
+        setWebhookModal({
+          isOpen: true,
+          status: "success",
+          title: "Ação Executada com Êxito!",
+          actionName: "Imagem Única (action=generate_img)",
+          message: `O webhook do n8n foi acionado com sucesso para gerar a imagem do bloco (${compoundId}).`,
+        });
         toast({
           title: "Webhook acionado com sucesso!",
           description: `Disparo efetuado para compoundId: ${compoundId}`,
         });
       } else {
+        setWebhookModal({
+          isOpen: true,
+          status: "error",
+          title: "Falha ao Executar Ação",
+          actionName: "Imagem Única (action=generate_img)",
+          message: `O servidor do webhook respondeu com erro HTTP ${response.status}`,
+        });
         toast({
           title: "Aviso no webhook",
           description: `Webhook respondeu com status ${response.status}`,
         });
       }
     } catch (err: any) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Erro de Comunicação",
+        actionName: "Imagem Única",
+        message: err.message || "Não foi possível se conectar ao webhook do n8n.",
+      });
       toast({
         title: "Erro ao comunicar com webhook",
         description: err.message,
@@ -843,7 +901,24 @@ export default function Admin({ lang }: AdminProps) {
     const draft = postDrafts[postId] || posts.find((p) => p.id === postId);
     if (!draft) return;
     const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || "";
+
+    setWebhookModal({
+      isOpen: true,
+      status: "loading",
+      title: "Solicitando Tradução...",
+      actionName: "Tradução Automática (action=translate)",
+      postTitle: draft.title,
+    });
+
     if (!webhookUrl) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Falha ao Executar Ação",
+        actionName: "Tradução Automática",
+        postTitle: draft.title,
+        message: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada no ambiente.",
+      });
       toast({
         title: "Webhook não configurado",
         description: "A variável NEXT_PUBLIC_N8N_WEBHOOK_URL não está configurada.",
@@ -851,11 +926,8 @@ export default function Admin({ lang }: AdminProps) {
       });
       return;
     }
+
     try {
-      toast({
-        title: "Enviando para tradução...",
-        description: `Disparando webhook de tradução para '${draft.title}'`,
-      });
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -872,12 +944,29 @@ export default function Admin({ lang }: AdminProps) {
           })),
         }),
       });
+
       if (response.ok) {
+        setWebhookModal({
+          isOpen: true,
+          status: "success",
+          title: "Ação Executada com Êxito!",
+          actionName: "Tradução Automática (action=translate)",
+          postTitle: draft.title,
+          message: "O webhook do n8n recebeu o pedido de tradução com sucesso e iniciará o processamento.",
+        });
         toast({
           title: "Tradução Solicitada!",
           description: "Webhook do n8n acionado para tradução.",
         });
       } else {
+        setWebhookModal({
+          isOpen: true,
+          status: "error",
+          title: "Falha ao Executar Ação",
+          actionName: "Tradução Automática",
+          postTitle: draft.title,
+          message: `O webhook do n8n respondeu com erro HTTP ${response.status}`,
+        });
         toast({
           title: "Erro no Webhook",
           description: `Status ${response.status}`,
@@ -885,6 +974,14 @@ export default function Admin({ lang }: AdminProps) {
         });
       }
     } catch (err: any) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Erro de Comunicação",
+        actionName: "Tradução Automática",
+        postTitle: draft.title,
+        message: err.message || "Falha ao conectar com o servidor de webhook do n8n.",
+      });
       toast({
         title: "Erro de Conexão",
         description: err.message,
@@ -894,12 +991,15 @@ export default function Admin({ lang }: AdminProps) {
   };
 
   const handleImprovePost = async (post: BlogPost) => {
-    try {
-      toast({
-        title: "Enviando para IA redatora...",
-        description: `Enviando "${post.title}" para a IA recriar o assunto do zero.`,
-      });
+    setWebhookModal({
+      isOpen: true,
+      status: "loading",
+      title: "Reescrevendo Artigo...",
+      actionName: "IA Redatora (action=improve_post)",
+      postTitle: post.title,
+    });
 
+    try {
       const res = await triggerImprovePostAction({
         id: (post as any).translationGroupId || String(post.id),
         title: post.title,
@@ -911,18 +1011,42 @@ export default function Admin({ lang }: AdminProps) {
       });
 
       if (res && res.error) {
+        setWebhookModal({
+          isOpen: true,
+          status: "error",
+          title: "Falha ao Executar Ação",
+          actionName: "IA Redatora",
+          postTitle: post.title,
+          message: res.error,
+        });
         toast({
           title: "Erro no webhook",
           description: res.error,
           variant: "destructive",
         });
       } else {
+        setWebhookModal({
+          isOpen: true,
+          status: "success",
+          title: "Ação Executada com Êxito!",
+          actionName: "IA Redatora (action=improve_post)",
+          postTitle: post.title,
+          message: "A IA redatora recebeu a solicitação com sucesso e iniciou a reescrita do artigo.",
+        });
         toast({
           title: "Post enviado com sucesso!",
           description: "A IA redatora recebeu o post e está reescrevendo o assunto do zero.",
         });
       }
     } catch (err: any) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Erro de Conexão",
+        actionName: "IA Redatora",
+        postTitle: post.title,
+        message: err.message || "Erro de comunicação com o servidor de webhook.",
+      });
       toast({
         title: "Erro ao enviar para IA redatora",
         description: err.message || "Erro de comunicação com o servidor.",
@@ -935,12 +1059,15 @@ export default function Admin({ lang }: AdminProps) {
     const draft = postDrafts[post.id] || buildDraft(post);
     const translationGroupId = String((post as any).translationGroupId || (post as any).translation_group_id || post.id);
 
-    try {
-      toast({
-        title: "Melhorando com IA...",
-        description: `Enviando requisição (action=update) para '${draft.title}'`,
-      });
+    setWebhookModal({
+      isOpen: true,
+      status: "loading",
+      title: "Melhorando com IA...",
+      actionName: "Melhorar com IA (action=update)",
+      postTitle: draft.title,
+    });
 
+    try {
       const res = await improveWithAIAction({
         translationGroupId,
         title: draft.title || post.title,
@@ -949,18 +1076,42 @@ export default function Admin({ lang }: AdminProps) {
       });
 
       if (res && res.error) {
+        setWebhookModal({
+          isOpen: true,
+          status: "error",
+          title: "Falha ao Executar Ação",
+          actionName: "Melhorar com IA (action=update)",
+          postTitle: draft.title,
+          message: res.error,
+        });
         toast({
           title: "Erro no webhook",
           description: res.error,
           variant: "destructive",
         });
       } else {
+        setWebhookModal({
+          isOpen: true,
+          status: "success",
+          title: "Ação Executada com Êxito!",
+          actionName: "Melhorar com IA (action=update)",
+          postTitle: draft.title,
+          message: "A solicitação 'Melhorar com IA' foi processada e enviada com sucesso para o webhook do n8n.",
+        });
         toast({
           title: "Sucesso!",
           description: "Solicitação 'Melhorar com IA' enviada com sucesso ao webhook n8n.",
         });
       }
     } catch (err: any) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Erro de Conexão",
+        actionName: "Melhorar com IA",
+        postTitle: draft.title,
+        message: err.message || "Falha de conexão com o webhook n8n.",
+      });
       toast({
         title: "Erro de Conexão",
         description: err.message || "Falha ao enviar requisição",
@@ -973,12 +1124,15 @@ export default function Admin({ lang }: AdminProps) {
     const draft = postDrafts[post.id] || buildDraft(post);
     const translationGroupId = String((post as any).translationGroupId || (post as any).translation_group_id || post.id);
 
-    try {
-      toast({
-        title: "Gerando Imagens com IA...",
-        description: `Enviando post parseado sem HTML (action=img) para '${draft.title}'`,
-      });
+    setWebhookModal({
+      isOpen: true,
+      status: "loading",
+      title: "Gerando Imagens com IA...",
+      actionName: "Gerar Imagens (action=img)",
+      postTitle: draft.title,
+    });
 
+    try {
       const blocks = (draft.blocks || []).map((b, idx) => ({
         blockIndex: idx + 1,
         text: b.contentHtml || "",
@@ -1000,18 +1154,42 @@ export default function Admin({ lang }: AdminProps) {
       });
 
       if (res && res.error) {
+        setWebhookModal({
+          isOpen: true,
+          status: "error",
+          title: "Falha ao Executar Ação",
+          actionName: "Gerar Imagens (action=img)",
+          postTitle: draft.title,
+          message: res.error,
+        });
         toast({
           title: "Erro no webhook",
           description: res.error,
           variant: "destructive",
         });
       } else {
+        setWebhookModal({
+          isOpen: true,
+          status: "success",
+          title: "Ação Executada com Êxito!",
+          actionName: "Gerar Imagens (action=img)",
+          postTitle: draft.title,
+          message: "Solicitação 'Gerar Imagens' enviada com sucesso para o webhook do n8n com todo o conteúdo parseado sem HTML.",
+        });
         toast({
           title: "Imagens Solicitadas!",
           description: "Solicitação 'Gerar Imagens' enviada com sucesso ao webhook n8n com conteúdo sem HTML.",
         });
       }
     } catch (err: any) {
+      setWebhookModal({
+        isOpen: true,
+        status: "error",
+        title: "Erro de Conexão",
+        actionName: "Gerar Imagens",
+        postTitle: draft.title,
+        message: err.message || "Falha ao comunicar com o webhook do n8n.",
+      });
       toast({
         title: "Erro de Conexão",
         description: err.message || "Falha ao enviar requisição",
@@ -2436,6 +2614,78 @@ export default function Admin({ lang }: AdminProps) {
           </div>
         );
       })()}
+
+      {/* MODAL POPUP ESTILIZADO DE STATUS DE WEBHOOK */}
+      <Dialog
+        open={webhookModal.isOpen}
+        onOpenChange={(open) => setWebhookModal((prev) => ({ ...prev, isOpen: open }))}
+      >
+        <DialogContent className="sm:max-w-md border border-border/80 bg-card/95 backdrop-blur-xl rounded-2xl p-6 shadow-2xl">
+          <DialogHeader className="flex flex-col items-center text-center space-y-3">
+            {webhookModal.status === "loading" && (
+              <div className="w-16 h-16 rounded-full bg-secondary/15 border border-secondary/30 flex items-center justify-center animate-pulse">
+                <Loader2 className="w-8 h-8 text-secondary animate-spin" />
+              </div>
+            )}
+            {webhookModal.status === "success" && (
+              <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                <CheckCircle2 className="w-9 h-9" />
+              </div>
+            )}
+            {webhookModal.status === "error" && (
+              <div className="w-16 h-16 rounded-full bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                <XCircle className="w-9 h-9" />
+              </div>
+            )}
+
+            <DialogTitle className="text-xl font-bold text-foreground">
+              {webhookModal.title}
+            </DialogTitle>
+
+            {webhookModal.actionName && (
+              <Badge variant="outline" className="text-[11px] uppercase tracking-wider font-semibold px-3 py-0.5 border-secondary/40 text-secondary bg-secondary/10">
+                {webhookModal.actionName}
+              </Badge>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-3 my-2 text-center">
+            {webhookModal.postTitle && (
+              <p className="text-xs text-foreground/70 font-medium">
+                Artigo: <strong className="text-foreground">{webhookModal.postTitle}</strong>
+              </p>
+            )}
+            {webhookModal.message && (
+              <div className={`p-4 rounded-xl border text-xs leading-relaxed text-left ${
+                webhookModal.status === "success"
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                  : webhookModal.status === "error"
+                  ? "bg-destructive/10 border-destructive/20 text-destructive-foreground"
+                  : "bg-muted/50 border-border text-foreground/80"
+              }`}>
+                {webhookModal.message}
+              </div>
+            )}
+            {webhookModal.details && (
+              <p className="text-[11px] font-mono text-foreground/50 truncate">
+                {webhookModal.details}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-center mt-2">
+            <Button
+              type="button"
+              variant={webhookModal.status === "error" ? "destructive" : "default"}
+              className="w-full sm:w-auto px-8 font-semibold rounded-xl"
+              onClick={() => setWebhookModal((prev) => ({ ...prev, isOpen: false }))}
+              disabled={webhookModal.status === "loading"}
+            >
+              {webhookModal.status === "loading" ? "Aguardando..." : "Entendido"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer lang={lang} t={t} />
     </div>
