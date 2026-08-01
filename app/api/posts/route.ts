@@ -17,7 +17,7 @@ async function generateUniqueSlug(title: string, existingId?: number | string): 
   const baseSlug = generateSlug(title) || `post-${Date.now()}`;
   let slug = baseSlug;
   let counter = 1;
-  const numExistingId = existingId ? parseInt(String(existingId), 10) : undefined;
+  const strExistingId = existingId ? String(existingId) : undefined;
 
   while (true) {
     const existing = await prisma.post.findUnique({
@@ -25,7 +25,7 @@ async function generateUniqueSlug(title: string, existingId?: number | string): 
       select: { id: true }
     });
 
-    if (!existing || (numExistingId && existing.id === numExistingId)) {
+    if (!existing || (strExistingId && existing.id === strExistingId)) {
       return slug;
     }
 
@@ -42,7 +42,7 @@ function cleanSlug(slug?: string): string {
     .replace(/^\/+/, "");
 }
 
-function extractImageUrl(imgField: any): string {
+async function extractImageUrl(imgField: any): Promise<string> {
   if (!imgField) return "";
   let url = "";
   if (typeof imgField === "string") {
@@ -51,10 +51,23 @@ function extractImageUrl(imgField: any): string {
     url = String(imgField.url).trim();
   }
   if (!url) return "";
+
   if (url.includes("/uploads/")) {
     const filename = url.split("/uploads/").pop()?.split("?")[0];
     if (filename) return `/uploads/${filename}`;
   }
+
+  // Se a string não começar com protocolo http://, https:// ou caminho /uploads/, é uma string Base64!
+  if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/uploads/")) {
+    try {
+      const savedUrl = await processImageBase64(url);
+      return savedUrl;
+    } catch (e) {
+      console.error("Erro ao converter Base64 em extractImageUrl:", e);
+      return "";
+    }
+  }
+
   return url;
 }
 
@@ -108,42 +121,29 @@ function cleanBlockHtml(html: string): string {
     .trim();
 }
 
-function processImagePlaceholdersInHtml(htmlText: string, langData: any): string {
+async function processImagePlaceholdersInHtml(htmlText: string, langData: any): Promise<string> {
   if (!htmlText) return "";
 
-  let processed = htmlText
-    // Suporte ao formato {id=1}, {id=2}, [id=1], [id=2], {img=1}, [img=1], {image=1}
-    .replace(/[\{\[]\s*(?:id|img|image)\s*=\s*(\d+)\s*[\}\]]/gi, (match, orderStr) => {
-      const orderNum = parseInt(orderStr, 10);
-      const imgKey = `img-${orderNum}`;
-      const imgUrl = extractImageUrl(langData[imgKey]);
-      if (imgUrl) {
-        const altText = langData[`alt-${orderNum}`] || langData[`alt_${orderNum}`] || langData[`img-${orderNum}-alt`] || `Imagem ${orderNum}`;
-        const captionText = langData[`caption-${orderNum}`] || langData[`caption_${orderNum}`] || langData[`legenda-${orderNum}`] || "";
+  const matches = Array.from(htmlText.matchAll(/[\{\[]\s*(?:id|img|image)\s*=\s*(\d+)\s*[\}\]]/gi));
+  let processed = htmlText;
 
-        if (captionText) {
-          return `<figure class="my-6 text-center"><img src="${imgUrl}" alt="${altText}" class="w-full h-auto object-cover border border-border rounded-sm mx-auto" loading="lazy" /><figcaption class="text-xs text-muted-foreground mt-2 italic">${captionText}</figcaption></figure>`;
-        }
-        return `<img src="${imgUrl}" alt="${altText}" class="w-full h-auto object-cover border border-border rounded-sm my-4" loading="lazy" />`;
-      }
-      return "";
-    })
-    // Suporte ao formato com legenda {Legenda}=2{Alt}
-    .replace(/\{([^}]*)\}=(\d+)\{([^}]*)\}/gi, (match, captionText, orderStr, altText) => {
-      const orderNum = parseInt(orderStr, 10);
-      const imgKey = `img-${orderNum}`;
-      const imgUrl = extractImageUrl(langData[imgKey]);
+  for (const match of matches) {
+    const orderNum = parseInt(match[1], 10);
+    const imgKey = `img-${orderNum}`;
+    const imgUrl = await extractImageUrl(langData[imgKey]);
+    if (imgUrl) {
+      const altText = langData[`alt-${orderNum}`] || langData[`alt_${orderNum}`] || langData[`img-${orderNum}-alt`] || `Imagem ${orderNum}`;
+      const captionText = langData[`caption-${orderNum}`] || langData[`caption_${orderNum}`] || langData[`legenda-${orderNum}`] || "";
 
-      if (imgUrl) {
-        const cleanAlt = altText ? altText.trim() : (langData[`alt-${orderNum}`] || "Imagem do artigo");
-        const cleanCaption = captionText ? captionText.trim() : (langData[`caption-${orderNum}`] || "");
-        if (cleanCaption) {
-          return `<figure class="my-6 text-center"><img src="${imgUrl}" alt="${cleanAlt}" class="w-full h-auto object-cover border border-border rounded-sm mx-auto" loading="lazy" /><figcaption class="text-xs text-muted-foreground mt-2 italic">${cleanCaption}</figcaption></figure>`;
-        }
-        return `<img src="${imgUrl}" alt="${cleanAlt}" class="w-full h-auto object-cover border border-border rounded-sm my-4" loading="lazy" />`;
-      }
-      return "";
-    });
+      const figureHtml = captionText
+        ? `<figure class="my-6 text-center"><img src="${imgUrl}" alt="${altText}" class="w-full h-auto object-cover border border-border rounded-sm mx-auto" loading="lazy" /><figcaption class="text-xs text-muted-foreground mt-2 italic">${captionText}</figcaption></figure>`
+        : `<img src="${imgUrl}" alt="${altText}" class="w-full h-auto object-cover border border-border rounded-sm my-4" loading="lazy" />`;
+
+      processed = processed.replace(match[0], figureHtml);
+    } else {
+      processed = processed.replace(match[0], "");
+    }
+  }
 
   return cleanBlockHtml(processed);
 }
@@ -259,13 +259,13 @@ export async function POST(req: Request) {
         if (!langData || !langData.title) continue;
 
         const targetIdRaw = langData.id || body.id || body.post_id || output.id || output.pt?.id || output.en?.id || output.es?.id;
-        const targetIdInt = targetIdRaw && !isNaN(parseInt(String(targetIdRaw), 10)) ? parseInt(String(targetIdRaw), 10) : undefined;
+        const targetIdStr = targetIdRaw ? String(targetIdRaw) : undefined;
 
         // Se o post para este id ou translationGroupId e idioma JÁ EXISTIR no banco, MANTÉM o slug original existente!
         const existingPostForLang = await prisma.post.findFirst({
           where: {
             OR: [
-              ...(targetIdInt ? [{ id: targetIdInt }] : []),
+              ...(targetIdStr ? [{ id: targetIdStr }] : []),
               ...(translationGroupId ? [{ translationGroupId: String(translationGroupId) }] : []),
               ...(translationGroupId && !String(translationGroupId).startsWith("group-") ? [{ translationGroupId: `group-${translationGroupId}` }] : [])
             ],
@@ -278,10 +278,10 @@ export async function POST(req: Request) {
           : await generateUniqueSlug(langData.title, existingPostForLang?.id);
 
         const featuredImg =
-          extractImageUrl(langData["img-1"]) ||
-          extractImageUrl(output.pt?.["img-1"]) ||
-          extractImageUrl(output.en?.["img-1"]) ||
-          extractImageUrl(output.es?.["img-1"]) ||
+          (await extractImageUrl(langData["img-1"])) ||
+          (await extractImageUrl(output.pt?.["img-1"])) ||
+          (await extractImageUrl(output.en?.["img-1"])) ||
+          (await extractImageUrl(output.es?.["img-1"])) ||
           dbRealFeaturedImg ||
           "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200";
 
@@ -293,12 +293,12 @@ export async function POST(req: Request) {
           const foundSlugs = extractMentionedSlugsFromHtml(rawBlockText, finalSlug);
           foundSlugs.forEach(s => extractedMentionedSlugs.add(s));
 
-          const processedBlockText = processImagePlaceholdersInHtml(rawBlockText, langData);
+          const processedBlockText = await processImagePlaceholdersInHtml(rawBlockText, langData);
           const rawBlockImg =
-            extractImageUrl(langData[`img-${i + 1}`]) ||
-            extractImageUrl(output.pt?.[`img-${i + 1}`]) ||
-            extractImageUrl(output.en?.[`img-${i + 1}`]) ||
-            extractImageUrl(output.es?.[`img-${i + 1}`]) ||
+            (await extractImageUrl(langData[`img-${i + 1}`])) ||
+            (await extractImageUrl(output.pt?.[`img-${i + 1}`])) ||
+            (await extractImageUrl(output.en?.[`img-${i + 1}`])) ||
+            (await extractImageUrl(output.es?.[`img-${i + 1}`])) ||
             dbRealBlockImgs[i - 1] || "";
 
           const hasImgTagInText = processedBlockText.includes("<img");
@@ -440,8 +440,8 @@ export async function POST(req: Request) {
     }
 
     const rawTargetId = body.id || body.post_id || body.postId;
-    const targetIdInt = rawTargetId && !isNaN(parseInt(String(rawTargetId), 10)) ? parseInt(String(rawTargetId), 10) : undefined;
-    const existingSinglePost = targetIdInt ? await prisma.post.findUnique({ where: { id: targetIdInt } }) : null;
+    const targetIdStr = rawTargetId ? String(rawTargetId).trim() : undefined;
+    const existingSinglePost = targetIdStr ? await prisma.post.findUnique({ where: { id: targetIdStr } }) : null;
 
     // Se o post já existir no banco, MANTÉM o slug original existente!
     const finalSlug = existingSinglePost
@@ -677,13 +677,12 @@ export async function PATCH(req: Request) {
       if (fname) finalImageUrl = `/uploads/${fname}`;
     }
 
-    const targetIdInt = targetIdentifier && !isNaN(parseInt(String(targetIdentifier), 10)) ? parseInt(String(targetIdentifier), 10) : undefined;
-    const targetIdentifierStr = String(targetIdentifier);
+    const targetIdentifierStr = String(targetIdentifier).trim();
 
     const initialPosts = await prisma.post.findMany({
       where: {
         OR: [
-          ...(targetIdInt ? [{ id: targetIdInt }] : []),
+          { id: targetIdentifierStr },
           { slug: targetIdentifierStr },
           { translationGroupId: targetIdentifierStr },
           { translationGroupId: `group-${targetIdentifierStr}` }
@@ -707,7 +706,7 @@ export async function PATCH(req: Request) {
 
     // Se o parâmetro 'lang' for informado (ex: 'pt', 'en', 'es'), filtrar posts para aplicar a essa língua específica
     const targetLang = lang ? String(lang).trim().toLowerCase() : null;
-    if (targetLang && finalAudioUrl && !imageUrl) {
+    if (targetLang && finalAudioUrl && !finalImageUrl) {
       const langFiltered = postsToUpdate.filter(p => p.lang === targetLang);
       if (langFiltered.length > 0) {
         postsToUpdate = langFiltered;
@@ -732,7 +731,7 @@ export async function PATCH(req: Request) {
       const updateData: any = {};
       if (finalAudioUrl) updateData.audioUrl = finalAudioUrl;
 
-      if (!imageUrl && finalAudioUrl) {
+      if (!finalImageUrl && finalAudioUrl) {
         const updated = await prisma.post.update({
           where: { id: post.id },
           data: updateData
@@ -805,7 +804,7 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: finalAudioUrl && !imageUrl
+      message: finalAudioUrl && !finalImageUrl
         ? `Áudio de narração anexado com sucesso a ${updatedPostsInfo.length} post(s)!`
         : `Conteúdo anexado com sucesso a ${updatedPostsInfo.length} post(s)!`,
       audioUrl: finalAudioUrl,
