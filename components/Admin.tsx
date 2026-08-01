@@ -37,7 +37,7 @@ import {
   type BlogPost,
 } from "@/lib/posts";
 import { formatPostDate } from "@/lib/utils";
-import { triggerImprovePostAction } from "@/app/actions";
+import { generateImagesAction, improveWithAIAction, triggerImprovePostAction } from "@/app/actions";
 export interface CustomPage {
   id?: string;
   slug: string;
@@ -931,6 +931,95 @@ export default function Admin({ lang }: AdminProps) {
     }
   };
 
+  const handleImproveWithAI = async (post: BlogPost) => {
+    const draft = postDrafts[post.id] || buildDraft(post);
+    const translationGroupId = String((post as any).translationGroupId || (post as any).translation_group_id || post.id);
+
+    try {
+      toast({
+        title: "Melhorando com IA...",
+        description: `Enviando requisição (action=update) para '${draft.title}'`,
+      });
+
+      const res = await improveWithAIAction({
+        translationGroupId,
+        title: draft.title || post.title,
+        excerpt: draft.excerpt || post.excerpt || draft.description || post.description || "",
+        lang: selectedLang,
+      });
+
+      if (res && res.error) {
+        toast({
+          title: "Erro no webhook",
+          description: res.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sucesso!",
+          description: "Solicitação 'Melhorar com IA' enviada com sucesso ao webhook n8n.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro de Conexão",
+        description: err.message || "Falha ao enviar requisição",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGenerateImages = async (post: BlogPost) => {
+    const draft = postDrafts[post.id] || buildDraft(post);
+    const translationGroupId = String((post as any).translationGroupId || (post as any).translation_group_id || post.id);
+
+    try {
+      toast({
+        title: "Gerando Imagens com IA...",
+        description: `Enviando post parseado sem HTML (action=img) para '${draft.title}'`,
+      });
+
+      const blocks = (draft.blocks || []).map((b, idx) => ({
+        blockIndex: idx + 1,
+        text: b.contentHtml || "",
+        image: b.image || "",
+      }));
+
+      const res = await generateImagesAction({
+        translationGroupId,
+        title: draft.title || post.title,
+        excerpt: draft.excerpt || post.excerpt || "",
+        category: draft.category || post.category || "",
+        tag: draft.tag || post.tag || "",
+        readTime: draft.readTime || post.readTime || "",
+        lang: selectedLang,
+        seoTitle: draft.metaTitle || (post as any).seoTitle || draft.title || post.title,
+        seoDescription: draft.metaDescription || (post as any).seoDescription || draft.excerpt || post.excerpt || "",
+        seoKeywords: draft.tags || (post as any).seoKeywords || "",
+        blocks,
+      });
+
+      if (res && res.error) {
+        toast({
+          title: "Erro no webhook",
+          description: res.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Imagens Solicitadas!",
+          description: "Solicitação 'Gerar Imagens' enviada com sucesso ao webhook n8n com conteúdo sem HTML.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro de Conexão",
+        description: err.message || "Falha ao enviar requisição",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleOpenBatchImageModal = (postId: number | string) => {
     setBatchModalPostId(postId);
     const draft = postDrafts[postId];
@@ -1506,16 +1595,26 @@ export default function Admin({ lang }: AdminProps) {
                                   </div>
 
                                   <div className="flex flex-wrap items-center gap-2 self-end lg:self-start">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="border-secondary/40 text-secondary hover:bg-secondary/15 font-semibold"
-                                      onClick={() => handleImprovePost(post)}
-                                      disabled={isBusy || String(post.id).startsWith("temp-")}
-                                    >
-                                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                                      Melhorar post
-                                    </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       className="border-purple-500/40 text-purple-400 hover:bg-purple-500/15 font-semibold"
+                                       onClick={() => handleImproveWithAI(post)}
+                                       disabled={isBusy || String(post.id).startsWith("temp-")}
+                                     >
+                                       <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                       Melhorar com IA
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/15 font-semibold"
+                                       onClick={() => handleGenerateImages(post)}
+                                       disabled={isBusy || String(post.id).startsWith("temp-")}
+                                     >
+                                       <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
+                                       Gerar Imagens
+                                     </Button>
                                     <Button
                                       variant={post.published ? "secondary" : "default"}
                                       size="sm"
@@ -1792,15 +1891,33 @@ export default function Admin({ lang }: AdminProps) {
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => handleOpenBatchImageModal(post.id)}
-                                        className="gap-2 text-xs"
-                                      >
-                                        <Wand2 className="w-3.5 h-3.5 text-secondary" />
-                                        Criar Imagens
-                                      </Button>
+                                       <Button
+                                         type="button"
+                                         variant="outline"
+                                         onClick={() => handleImproveWithAI(post)}
+                                         className="gap-2 text-xs border-purple-500/40 text-purple-400 hover:bg-purple-500/15 font-semibold"
+                                       >
+                                         <Sparkles className="w-3.5 h-3.5" />
+                                         Melhorar com IA
+                                       </Button>
+                                       <Button
+                                         type="button"
+                                         variant="outline"
+                                         onClick={() => handleGenerateImages(post)}
+                                         className="gap-2 text-xs border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/15 font-semibold"
+                                       >
+                                         <ImageIcon className="w-3.5 h-3.5" />
+                                         Gerar Imagens
+                                       </Button>
+                                       <Button
+                                         type="button"
+                                         variant="outline"
+                                         onClick={() => handleOpenBatchImageModal(post.id)}
+                                         className="gap-2 text-xs"
+                                       >
+                                         <Wand2 className="w-3.5 h-3.5 text-secondary" />
+                                         Criar Lote de Fotos
+                                       </Button>
                                       <Button
                                         type="button"
                                         variant="outline"

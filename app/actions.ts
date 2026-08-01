@@ -273,6 +273,112 @@ export async function deletePostAction(id: number | string) {
 
 // --- INTEGRAÇÃO COM N8N & NOTIFICAÇÕES ---
 
+export async function improveWithAIAction(data: {
+  translationGroupId: string;
+  title: string;
+  excerpt: string;
+  lang?: string;
+}) {
+  try {
+    const webhookBaseUrl = process.env.N8N_WEBHOOK_URL || process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || "https://myn8n.seommerce.shop/webhook/curiosotech";
+    const apiKey = process.env.API_SECRET_KEY || process.env.NEXT_PUBLIC_API_SECRET_KEY || "motonapratica-secret-key-2026";
+    const url = `${webhookBaseUrl}?action=update&api_key=${encodeURIComponent(apiKey)}`;
+
+    console.log(`[Server Action] Disparando "Melhorar com IA" para translationGroupId="${data.translationGroupId}" -> ${url}`);
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        translationGroupId: data.translationGroupId,
+        translation_group_id: data.translationGroupId,
+        title: data.title,
+        excerpt: data.excerpt,
+        summary: data.excerpt,
+        lang: data.lang || "pt",
+      }),
+    });
+
+    if (!res.ok) {
+      return { error: `Webhook respondeu com status HTTP ${res.status}` };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Erro ao disparar 'Melhorar com IA':", error);
+    return { error: error.message || "Falha de conexão com o servidor." };
+  }
+}
+
+export async function generateImagesAction(data: {
+  translationGroupId: string;
+  title: string;
+  excerpt: string;
+  category?: string;
+  tag?: string;
+  readTime?: string;
+  lang?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
+  blocks: Array<{ blockIndex?: number; text: string; image?: string }>;
+}) {
+  try {
+    const webhookBaseUrl = process.env.N8N_WEBHOOK_URL || process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || "https://myn8n.seommerce.shop/webhook/curiosotech";
+    const apiKey = process.env.API_SECRET_KEY || process.env.NEXT_PUBLIC_API_SECRET_KEY || "motonapratica-secret-key-2026";
+    const url = `${webhookBaseUrl}?action=img&api_key=${encodeURIComponent(apiKey)}`;
+
+    console.log(`[Server Action] Disparando "Gerar Imagens" para translationGroupId="${data.translationGroupId}" -> ${url}`);
+
+    const stripHtml = (html: string) => {
+      if (!html) return "";
+      return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    };
+
+    const parsedBlocks = (data.blocks || []).map((b, idx) => ({
+      blockIndex: b.blockIndex || idx + 1,
+      text: stripHtml(b.text),
+      image: b.image || "",
+    }));
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        translationGroupId: data.translationGroupId,
+        translation_group_id: data.translationGroupId,
+        title: stripHtml(data.title),
+        excerpt: stripHtml(data.excerpt),
+        summary: stripHtml(data.excerpt),
+        category: data.category || "",
+        tag: data.tag || "",
+        readTime: data.readTime || "",
+        lang: data.lang || "pt",
+        seoTitle: stripHtml(data.seoTitle || data.title),
+        seoDescription: stripHtml(data.seoDescription || data.excerpt),
+        seoKeywords: data.seoKeywords || "",
+        blocks: parsedBlocks,
+        parsedContent: parsedBlocks.map((b) => b.text).join("\n\n"),
+      }),
+    });
+
+    if (!res.ok) {
+      return { error: `Webhook respondeu com status HTTP ${res.status}` };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Erro ao disparar 'Gerar Imagens':", error);
+    return { error: error.message || "Falha de conexão com o servidor." };
+  }
+}
+
 export async function triggerImprovePostAction(data: {
   id: number | string;
   title: string;
