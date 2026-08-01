@@ -87,6 +87,7 @@ export async function fetchLivePosts(lang?: string): Promise<BlogPost[]> {
         image: p.img || p.image,
         description: p.excerpt || p.description,
         date: p.createdAt ? (typeof p.createdAt === "string" ? p.createdAt : new Date(p.createdAt).toISOString()) : p.date,
+        blocks: Array.isArray(p.blocks) ? p.blocks : (typeof p.blocks === "string" ? JSON.parse(p.blocks) : []),
         contentHtml: p.contentHtml || p.content || (Array.isArray(p.blocks) ? p.blocks.map((b: any) => b.text || "").join("\n") : ""),
       }));
     }

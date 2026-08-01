@@ -25,7 +25,7 @@ async function generateUniqueSlug(title: string, existingId?: number | string): 
       select: { id: true }
     });
 
-    if (!existing || (strExistingId && existing.id === strExistingId)) {
+    if (!existing || (strExistingId && String(existing.id) === strExistingId)) {
       return slug;
     }
 
@@ -180,6 +180,16 @@ export async function GET(req: Request) {
         views: true,
         likes: true,
         createdAt: true,
+        updatedAt: true,
+        img: true,
+        imgFocalPoint: true,
+        audioUrl: true,
+        readTime: true,
+        blocks: true,
+        seoTitle: true,
+        seoDescription: true,
+        seoKeywords: true,
+        translationGroupId: true,
       }
     });
 
@@ -376,12 +386,13 @@ export async function POST(req: Request) {
           });
         }
 
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://curiosotech.online";
         createdPosts.push({
           id: post.id,
           lang: post.lang,
           slug: post.slug,
           title: post.title,
-          url: `https://motonapratica.online${postUrlPath}`
+          url: `${baseUrl}${postUrlPath}`
         });
       }
 
@@ -549,6 +560,7 @@ export async function POST(req: Request) {
 
     const postUrlPath = lang === "en" ? `/en/post/${post.slug}` : lang === "es" ? `/es/post/${post.slug}` : `/post/${post.slug}`;
 
+    const singleBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://curiosotech.online";
     return NextResponse.json({
       success: true,
       message: "Post salvo com sucesso!",
@@ -557,7 +569,7 @@ export async function POST(req: Request) {
         lang: post.lang,
         slug: post.slug,
         title: post.title,
-        url: `https://motonapratica.online${postUrlPath}`
+        url: `${singleBaseUrl}${postUrlPath}`
       }
     });
   } catch (error: any) {

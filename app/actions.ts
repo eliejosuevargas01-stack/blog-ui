@@ -207,7 +207,7 @@ export async function savePostAction(data: {
         activePlugins = contentObj.activePlugins || {};
       }
       if (activePlugins["googleIndexing"]) {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://motonapratica.online";
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://curiosotech.online";
         const postUrl = `${baseUrl}/post/${data.slug}`;
         notifyGoogleIndexing(postUrl).then((res) => {
           if (res.success) {
@@ -328,7 +328,7 @@ export async function triggerN8nWebhook(post: any) {
 
     if (!webhookUrl) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://motonapratica.online";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://curiosotech.online";
     
     await fetch(webhookUrl, {
       method: "POST",

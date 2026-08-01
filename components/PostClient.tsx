@@ -26,6 +26,7 @@ import PostViewTracker from "@/components/PostViewTracker";
 import {
   buildPath,
   buildPostPath,
+  getLocalizedCategory,
   languages,
   siteName,
   translations,
@@ -123,7 +124,22 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
         if (!isMounted) {
           return;
         }
-        setPosts(response);
+        setPosts((prevPosts) => {
+          if (!response || response.length === 0) return prevPosts;
+          return response.map((newPost: any) => {
+            const existing = prevPosts.find(
+              (p) => String(p.id) === String(newPost.id) || p.slug === newPost.slug
+            );
+            if (!existing) return newPost;
+            return {
+              ...existing,
+              ...newPost,
+              blocks: (newPost.blocks && newPost.blocks.length > 0) ? newPost.blocks : existing.blocks,
+              img: newPost.img || existing.img,
+              image: newPost.img || newPost.image || existing.image,
+            };
+          });
+        });
         setStatus("idle");
       } catch (error) {
         if (!isMounted) {
@@ -483,7 +499,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                   <header className="rounded-3xl border border-border/70 bg-card/80 p-8 shadow-sm">
                     {(post.category || post.tag) && (
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-secondary/15 text-secondary text-xs font-semibold uppercase tracking-wide">
-                        {post.category || post.tag}
+                        {getLocalizedCategory(post.category || post.tag, lang)}
                       </span>
                     )}
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mt-4 mb-4">
@@ -541,7 +557,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                       {post.views !== undefined && (
                         <span suppressHydrationWarning className="inline-flex items-center gap-2">
                           <Eye className="w-4 h-4 text-secondary" />
-                          {post.views || 0} visualizações
+                          {post.views || 0} {t.post.viewsLabel ?? (lang === "en" ? "views" : lang === "es" ? "visitas" : "visualizações")}
                         </span>
                       )}
                     </div>
@@ -561,7 +577,11 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                             src={coverImageThumb ?? coverImage}
                             alt={coverImageAlt}
                             onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=1200";
+                              const target = e.currentTarget as HTMLImageElement;
+                              if (!target.dataset.fallbackApplied) {
+                                target.dataset.fallbackApplied = "true";
+                                target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200";
+                              }
                             }}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             style={{ objectPosition: (post as any).imgFocalPoint || "center" }}
@@ -619,7 +639,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                   <AudioNarrationPlayer audioUrl={post.audioUrl} title={post.title} lang={lang} />
 
                   {/* BARRA DE CURTIDAS E COMPARTILHAMENTO */}
-                  <PostActionsBar postId={post.id} postTitle={post.title} initialLikes={post.likes || 0} />
+                  <PostActionsBar postId={post.id} postTitle={post.title} initialLikes={post.likes || 0} lang={lang} />
 
                   {/* ÍNDICE DE TÓPICOS (TABLE OF CONTENTS) */}
                   <TableOfContents blocks={parsedBlocks} />
@@ -701,7 +721,7 @@ export default function Post({ lang, initialPosts: propsInitialPosts }: PostProp
                   </div>
 
                   {/* SEÇÃO DE COMENTÁRIOS */}
-                  <CommentsSection postId={post.id} />
+                  <CommentsSection postId={post.id} lang={lang} />
 
                   {/* GUIAS E POSTS RELACIONADOS */}
                   {guidePost && guidePath && relatedPosts.length >= 2 && (

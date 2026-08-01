@@ -181,6 +181,36 @@ export function buildPostPath(lang: Language, slug: string): string {
   return `/${lang}/${postRouteSegment[lang]}/${normalizePostSlug(slug)}`;
 }
 
+export function getLocalizedCategory(rawCategory?: string, lang: Language = "pt"): string {
+  if (!rawCategory) return lang === "en" ? "AI & Real Life" : lang === "es" ? "IA y Vida Real" : "IA & Vida Real";
+
+  const clean = rawCategory.trim();
+
+  if (clean === "IA & Vida Real" || clean.toLowerCase().includes("vida real") || clean.toLowerCase().includes("real life")) {
+    return lang === "en" ? "AI & Real Life" : lang === "es" ? "IA y Vida Real" : "IA & Vida Real";
+  }
+  if (clean === "Tecnologia Invisível" || clean.toLowerCase().includes("invisí") || clean.toLowerCase().includes("invisi")) {
+    return lang === "en" ? "Invisible Technology" : lang === "es" ? "Tecnología Invisible" : "Tecnologia Invisível";
+  }
+  if (clean === "Curiosidades Tecnológicas" || clean.toLowerCase().includes("curiosi")) {
+    return lang === "en" ? "Tech Curiosities" : lang === "es" ? "Curiosidades Tecnológicas" : "Curiosidades Tecnológicas";
+  }
+  if (clean === "Automação & Negócios" || clean.toLowerCase().includes("automa") || clean.toLowerCase().includes("negóci") || clean.toLowerCase().includes("business")) {
+    return lang === "en" ? "Automation & Business" : lang === "es" ? "Automatización y Negocios" : "Automação & Negócios";
+  }
+  if (clean === "Futuro Próximo" || clean.toLowerCase().includes("futuro") || clean.toLowerCase().includes("future") || clean.toLowerCase().includes("near")) {
+    return lang === "en" ? "Near Future" : lang === "es" ? "Futuro Próximo" : "Futuro Próximo";
+  }
+  if (clean === "Guias Fundamentais" || clean.toLowerCase().includes("guia") || clean.toLowerCase().includes("guide")) {
+    return lang === "en" ? "Fundamental Guides" : lang === "es" ? "Guías Fundamentales" : "Guias Fundamentais";
+  }
+  if (clean.toLowerCase().includes("review")) {
+    return lang === "en" ? "Analysis & Insights" : lang === "es" ? "Análisis y Reseñas" : "Análises & Reviews";
+  }
+
+  return clean;
+}
+
 export function getLanguageFromPath(pathname: string): Language | null {
   const segment = pathname.split("/").filter(Boolean)[0];
   if (segment === "pt" || segment === "en" || segment === "es") {
@@ -573,6 +603,7 @@ export interface Translation {
     updatedLabel: string;
     guideTitle: string;
     relatedTitle: string;
+    viewsLabel: string;
   };
   notFound: {
     title: string;
@@ -1064,6 +1095,7 @@ export const translations: Record<Language, Translation> = {
       updatedLabel: "Atualizado em",
       guideTitle: "Guia fundamental",
       relatedTitle: "Posts relacionados",
+      viewsLabel: "visualizações",
     },
     notFound: {
       title: "Página não encontrada",
@@ -1546,6 +1578,7 @@ export const translations: Record<Language, Translation> = {
       updatedLabel: "Updated",
       guideTitle: "Fundamental guide",
       relatedTitle: "Related posts",
+      viewsLabel: "views",
     },
     notFound: {
       title: "Page not found",
@@ -2032,6 +2065,7 @@ export const translations: Record<Language, Translation> = {
       updatedLabel: "Actualizado",
       guideTitle: "Guía fundamental",
       relatedTitle: "Posts relacionados",
+      viewsLabel: "visitas",
     },
     notFound: {
       title: "Página no encontrada",

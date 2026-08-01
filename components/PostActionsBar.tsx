@@ -3,21 +3,56 @@
 import { useState } from "react";
 import { Heart, Share2, Copy, Check, MessageCircle, Twitter, Facebook } from "lucide-react";
 
+import { type Language } from "@/lib/i18n";
+
 interface PostActionsBarProps {
   postId: number | string;
   postTitle: string;
   initialLikes?: number;
+  lang?: Language;
 }
 
-export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: PostActionsBarProps) {
+const actionTranslations = {
+  pt: {
+    like: "Curtir",
+    liked: "Curtido",
+    support: "Gostou do conteúdo? Deixe seu apoio!",
+    share: "Compartilhar:",
+    copy: "Copiar Link",
+    copied: "Copiado!",
+    shareMsg: "Confira este post no CuriosoTech: ",
+  },
+  en: {
+    like: "Like",
+    liked: "Liked",
+    support: "Liked the content? Leave your support!",
+    share: "Share:",
+    copy: "Copy Link",
+    copied: "Copied!",
+    shareMsg: "Check out this post on CuriosoTech: ",
+  },
+  es: {
+    like: "Me gusta",
+    liked: "Te gusta",
+    support: "¿Te gustó el contenido? ¡Deja tu apoyo!",
+    share: "Compartir:",
+    copy: "Copiar Enlace",
+    copied: "¡Copiado!",
+    shareMsg: "Echa un vistazo a este post en CuriosoTech: ",
+  },
+};
+
+export default function PostActionsBar({ postId, postTitle, initialLikes = 0, lang = "pt" }: PostActionsBarProps) {
   const [likes, setLikes] = useState(initialLikes);
   const [hasLiked, setHasLiked] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loadingLike, setLoadingLike] = useState(false);
 
+  const t = actionTranslations[lang] ?? actionTranslations.pt;
+
   const currentUrl = typeof window !== "undefined" ? window.location.href : "";
   const encodedUrl = encodeURIComponent(currentUrl);
-  const encodedText = encodeURIComponent(`Confira este post no CuriosoTech: "${postTitle}"`);
+  const encodedText = encodeURIComponent(`${t.shareMsg}"${postTitle}"`);
 
   const handleLike = async () => {
     if (hasLiked || loadingLike) return;
@@ -74,17 +109,17 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
           }`}
         >
           <Heart size={16} className={hasLiked ? "fill-current text-secondary-foreground" : "text-secondary"} />
-          <span>{hasLiked ? "Curtido" : "Curtir"}</span>
+          <span>{hasLiked ? t.liked : t.like}</span>
           <span className="ml-1 bg-background/50 px-2 py-0.5 rounded-lg text-[11px] font-mono">{likes}</span>
         </button>
         <span className="text-xs text-foreground/70 hidden sm:inline">
-          Gostou do conteúdo? Deixe seu apoio!
+          {t.support}
         </span>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs uppercase tracking-wider text-foreground/70 mr-1 flex items-center gap-1">
-          <Share2 size={13} className="text-secondary" /> Compartilhar:
+          <Share2 size={13} className="text-secondary" /> {t.share}
         </span>
 
         <a
@@ -93,7 +128,7 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
           rel="noopener noreferrer"
           onClick={() => handleSocialClick("WhatsApp")}
           className="p-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-colors rounded-xl border border-[#25D366]/20"
-          title="Compartilhar no WhatsApp"
+          title="WhatsApp"
         >
           <MessageCircle size={16} />
         </a>
@@ -104,7 +139,7 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
           rel="noopener noreferrer"
           onClick={() => handleSocialClick("X")}
           className="p-2 bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors rounded-xl border border-border"
-          title="Compartilhar no X (Twitter)"
+          title="X (Twitter)"
         >
           <Twitter size={16} />
         </a>
@@ -115,7 +150,7 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
           rel="noopener noreferrer"
           onClick={() => handleSocialClick("Facebook")}
           className="p-2 bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-colors rounded-xl border border-[#1877F2]/20"
-          title="Compartilhar no Facebook"
+          title="Facebook"
         >
           <Facebook size={16} />
         </a>
@@ -123,17 +158,17 @@ export default function PostActionsBar({ postId, postTitle, initialLikes = 0 }: 
         <button
           onClick={handleCopyLink}
           className="flex items-center gap-1.5 px-3 py-2 bg-muted text-xs text-foreground/80 hover:text-foreground border border-border transition-colors rounded-xl"
-          title="Copiar Link do Post"
+          title={t.copy}
         >
           {copied ? (
             <>
               <Check size={14} className="text-emerald-500" />
-              <span className="text-emerald-500 font-semibold">Copiado!</span>
+              <span className="text-emerald-500 font-semibold">{t.copied}</span>
             </>
           ) : (
             <>
               <Copy size={14} />
-              <span>Copiar Link</span>
+              <span>{t.copy}</span>
             </>
           )}
         </button>

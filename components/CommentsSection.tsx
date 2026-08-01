@@ -23,11 +23,92 @@ interface User {
   email: string;
 }
 
+import { type Language } from "@/lib/i18n";
+
 interface CommentsSectionProps {
   postId: number | string;
+  lang?: Language;
 }
 
-export default function CommentsSection({ postId }: CommentsSectionProps) {
+const commentTranslations = {
+  pt: {
+    title: "Comentários",
+    loggedInAs: "Logado como",
+    logout: "Sair",
+    writeLabel: "Escreva seu comentário",
+    placeholder: "O que você achou desse post? Deixe sua opinião...",
+    submitting: "Enviando...",
+    publish: "Publicar Comentário",
+    joinTitle: "Participe da discussão",
+    joinSub: "Faça login ou cadastre-se rapidamente para enviar seu comentário.",
+    loginTab: "Entrar",
+    registerTab: "Criar Conta",
+    nameLabel: "Nome",
+    emailLabel: "E-mail",
+    passwordLabel: "Senha",
+    namePlaceholder: "Seu nome",
+    emailPlaceholder: "seu@email.com",
+    passwordPlaceholder: "Sua senha",
+    loginSubmit: "Entrar e Comentar",
+    registerSubmit: "Cadastrar e Comentar",
+    pleaseWait: "Aguarde...",
+    empty: "Nenhum comentário por enquanto. Seja o primeiro a opinar!",
+    deleteConfirm: "Deseja deletar seu comentário?",
+    userFallback: "Usuário",
+  },
+  en: {
+    title: "Comments",
+    loggedInAs: "Logged in as",
+    logout: "Log out",
+    writeLabel: "Write your comment",
+    placeholder: "What did you think of this post? Share your thoughts...",
+    submitting: "Submitting...",
+    publish: "Post Comment",
+    joinTitle: "Join the discussion",
+    joinSub: "Log in or sign up quickly to post your comment.",
+    loginTab: "Log In",
+    registerTab: "Sign Up",
+    nameLabel: "Name",
+    emailLabel: "Email",
+    passwordLabel: "Password",
+    namePlaceholder: "Your name",
+    emailPlaceholder: "your@email.com",
+    passwordPlaceholder: "Your password",
+    loginSubmit: "Log In & Comment",
+    registerSubmit: "Sign Up & Comment",
+    pleaseWait: "Please wait...",
+    empty: "No comments yet. Be the first to share your opinion!",
+    deleteConfirm: "Do you want to delete your comment?",
+    userFallback: "User",
+  },
+  es: {
+    title: "Comentarios",
+    loggedInAs: "Conectado como",
+    logout: "Cerrar sesión",
+    writeLabel: "Escribe tu comentario",
+    placeholder: "¿Qué te pareció este post? Deja tu opinión...",
+    submitting: "Enviando...",
+    publish: "Publicar Comentario",
+    joinTitle: "Únete a la conversación",
+    joinSub: "Inicia sesión o regístrate para enviar tu comentario.",
+    loginTab: "Iniciar Sesión",
+    registerTab: "Crear Cuenta",
+    nameLabel: "Nombre",
+    emailLabel: "Correo electrónico",
+    passwordLabel: "Contraseña",
+    namePlaceholder: "Tu nombre",
+    emailPlaceholder: "tu@email.com",
+    passwordPlaceholder: "Tu contraseña",
+    loginSubmit: "Iniciar Sesión y Comentar",
+    registerSubmit: "Registrarse y Comentar",
+    pleaseWait: "Espere por favor...",
+    empty: "¡Sin comentarios por ahora. Sé el primero en opinar!",
+    deleteConfirm: "¿Deseas eliminar tu comentario?",
+    userFallback: "Usuario",
+  },
+};
+
+export default function CommentsSection({ postId, lang = "pt" }: CommentsSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [content, setContent] = useState("");
@@ -39,6 +120,8 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const t = commentTranslations[lang] ?? commentTranslations.pt;
 
   useEffect(() => {
     fetchSession();
@@ -144,7 +227,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("Deseja deletar seu comentário?")) return;
+    if (!confirm(t.deleteConfirm)) return;
 
     try {
       const res = await fetch(`/api/comments/${commentId}`, {
@@ -167,7 +250,8 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
 
   const formatCommentDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString("pt-BR", {
+      const locale = lang === "en" ? "en-US" : lang === "es" ? "es-ES" : "pt-BR";
+      return new Date(dateStr).toLocaleString(locale, {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -184,7 +268,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
       <div className="flex items-center gap-3 mb-8">
         <span className="block w-1.5 h-6 bg-secondary rounded-full" />
         <h3 className="text-xl font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-          Comentários ({comments.length})
+          {t.title} ({comments.length})
         </h3>
       </div>
 
@@ -194,23 +278,23 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
             <div className="flex items-center justify-between text-xs text-foreground/70 border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                <span>Logado como <strong className="text-foreground">{user.name}</strong> ({user.email})</span>
+                <span>{t.loggedInAs} <strong className="text-foreground">{user.name}</strong> ({user.email})</span>
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
                 className="flex items-center gap-1 text-secondary hover:underline uppercase tracking-wider font-bold"
               >
-                <LogOut size={12} /> Sair
+                <LogOut size={12} /> {t.logout}
               </button>
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider">Escreva seu comentário</label>
+              <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider">{t.writeLabel}</label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="O que você achou desse post? Deixe sua opinião..."
+                placeholder={t.placeholder}
                 rows={4}
                 className="w-full bg-muted/60 border border-border rounded-xl text-sm p-4 outline-none focus:border-secondary text-foreground resize-none transition-colors"
                 maxLength={1000}
@@ -228,17 +312,17 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
               disabled={loading || !content.trim()}
               className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl transition-all shadow-sm disabled:opacity-40"
             >
-              {loading ? "Enviando..." : "Publicar Comentário"}
+              {loading ? t.submitting : t.publish}
             </button>
           </form>
         ) : (
           <div>
             <div className="text-center mb-6">
               <h4 className="text-lg font-bold uppercase tracking-wide text-foreground mb-1">
-                Participe da discussão
+                {t.joinTitle}
               </h4>
               <p className="text-xs text-foreground/70 max-w-[400px] mx-auto">
-                Faça login ou cadastre-se rapidamente para enviar seu comentário.
+                {t.joinSub}
               </p>
             </div>
 
@@ -251,7 +335,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
                     : "border-transparent text-foreground/70 hover:text-foreground"
                 }`}
               >
-                Entrar
+                {t.loginTab}
               </button>
               <button
                 onClick={() => { setAuthMode("register"); setAuthError(""); }}
@@ -261,19 +345,19 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
                     : "border-transparent text-foreground/70 hover:text-foreground"
                 }`}
               >
-                Criar Conta
+                {t.registerTab}
               </button>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-4 max-w-[380px] mx-auto">
               {authMode === "register" && (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">Nome</label>
+                  <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">{t.nameLabel}</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome"
+                    placeholder={t.namePlaceholder}
                     required
                     className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                   />
@@ -281,24 +365,24 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
               )}
 
               <div className="space-y-1">
-                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">E-mail</label>
+                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">{t.emailLabel}</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
+                  placeholder={t.emailPlaceholder}
                   required
                   className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">Senha</label>
+                <label className="text-[11px] text-foreground/70 uppercase font-bold tracking-wider block">{t.passwordLabel}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Sua senha"
+                  placeholder={t.passwordPlaceholder}
                   required
                   className="w-full bg-muted/60 border border-border rounded-xl text-sm px-3.5 py-2.5 outline-none focus:border-secondary text-foreground transition-colors"
                 />
@@ -315,7 +399,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
                 disabled={loading}
                 className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all shadow-sm"
               >
-                {loading ? "Aguarde..." : authMode === "login" ? "Entrar e Comentar" : "Cadastrar e Comentar"}
+                {loading ? t.pleaseWait : authMode === "login" ? t.loginSubmit : t.registerSubmit}
               </button>
             </form>
           </div>
@@ -326,7 +410,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
         {comments.length === 0 ? (
           <div className="text-center py-10 border border-dashed border-border rounded-2xl">
             <MessageSquare size={32} className="text-foreground/30 mx-auto mb-3" />
-            <p className="text-xs text-foreground/70">Nenhum comentário por enquanto. Seja o primeiro a opinar!</p>
+            <p className="text-xs text-foreground/70">{t.empty}</p>
           </div>
         ) : (
           comments.map((comment) => {
@@ -342,7 +426,7 @@ export default function CommentsSection({ postId }: CommentsSectionProps) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-sm font-bold text-foreground">{comment.user?.name || "Usuário"}</span>
+                    <span className="text-sm font-bold text-foreground">{comment.user?.name || t.userFallback}</span>
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] text-foreground/70">{formatCommentDate(comment.createdAt)}</span>
                       {isOwner && (
