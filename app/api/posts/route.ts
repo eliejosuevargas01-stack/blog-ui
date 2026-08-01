@@ -227,7 +227,7 @@ export async function POST(req: Request) {
 
     // SUPORTE A POST MULTI-IDIOMA (OUTPUT DE AUTOMACÃO N8N)
     if (output && typeof output === "object") {
-      const translationGroupId = output.id || output.pt?.id || output.en?.id || output.es?.id || body.id || body.translationGroupId || `group-${Date.now()}`;
+      const translationGroupId = String(output.id || output.pt?.id || output.en?.id || output.es?.id || body.id || body.post_id || body.translationGroupId || body.group_id || body.groupId || `group-${Date.now()}`).trim();
       const createdPosts: any[] = [];
       const extractedMentionedSlugs: Set<string> = new Set(explicitMentionedSlugs);
 
@@ -235,7 +235,11 @@ export async function POST(req: Request) {
 
       // Buscar posts existentes do mesmo translationGroupId para aproveitar imagens reais já cadastradas
       const existingGroupPosts = translationGroupId ? await prisma.post.findMany({
-        where: { translationGroupId },
+        where: {
+          translationGroupId: {
+            in: [translationGroupId, `group-${translationGroupId}`]
+          }
+        },
         select: { img: true, blocks: true }
       }) : [];
 
@@ -258,18 +262,12 @@ export async function POST(req: Request) {
         const langData = output[lang];
         if (!langData || !langData.title) continue;
 
-        const targetIdRaw = langData.id || body.id || body.post_id || output.id || output.pt?.id || output.en?.id || output.es?.id;
-        const targetIdInt = targetIdRaw && !isNaN(parseInt(String(targetIdRaw), 10)) ? parseInt(String(targetIdRaw), 10) : undefined;
-        const targetGroupIdStr = translationGroupId ? String(translationGroupId).trim() : (targetIdRaw ? String(targetIdRaw).trim() : null);
-
-        // Se o post para este id ou translationGroupId e idioma JÁ EXISTIR no banco, MANTÉM o slug original existente!
+        // O 'id' fornecido representa o ID do Grupo de Tradução (translationGroupId)
         const existingPostForLang = await prisma.post.findFirst({
           where: {
-            OR: [
-              ...(targetIdInt ? [{ id: targetIdInt }] : []),
-              ...(targetGroupIdStr ? [{ translationGroupId: targetGroupIdStr }] : []),
-              ...(targetGroupIdStr && !targetGroupIdStr.startsWith("group-") ? [{ translationGroupId: `group-${targetGroupIdStr}` }] : [])
-            ],
+            translationGroupId: {
+              in: [translationGroupId, `group-${translationGroupId}`]
+            },
             lang
           }
         });
@@ -679,15 +677,14 @@ export async function PATCH(req: Request) {
     }
 
     const targetIdentifierStr = String(targetIdentifier).trim();
-    const targetIdInt = !isNaN(parseInt(targetIdentifierStr, 10)) ? parseInt(targetIdentifierStr, 10) : undefined;
 
+    // O 'id' fornecido representa o ID do Grupo de Tradução (translationGroupId) ou o slug do post
     const initialPosts = await prisma.post.findMany({
       where: {
         OR: [
-          ...(targetIdInt ? [{ id: targetIdInt }] : []),
-          { slug: targetIdentifierStr },
           { translationGroupId: targetIdentifierStr },
-          { translationGroupId: `group-${targetIdentifierStr}` }
+          { translationGroupId: `group-${targetIdentifierStr}` },
+          { slug: targetIdentifierStr }
         ]
       }
     });
