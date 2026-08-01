@@ -259,15 +259,16 @@ export async function POST(req: Request) {
         if (!langData || !langData.title) continue;
 
         const targetIdRaw = langData.id || body.id || body.post_id || output.id || output.pt?.id || output.en?.id || output.es?.id;
-        const targetIdStr = targetIdRaw ? String(targetIdRaw) : undefined;
+        const targetIdInt = targetIdRaw && !isNaN(parseInt(String(targetIdRaw), 10)) ? parseInt(String(targetIdRaw), 10) : undefined;
+        const targetGroupIdStr = translationGroupId ? String(translationGroupId).trim() : (targetIdRaw ? String(targetIdRaw).trim() : null);
 
         // Se o post para este id ou translationGroupId e idioma JÁ EXISTIR no banco, MANTÉM o slug original existente!
         const existingPostForLang = await prisma.post.findFirst({
           where: {
             OR: [
-              ...(targetIdStr ? [{ id: targetIdStr }] : []),
-              ...(translationGroupId ? [{ translationGroupId: String(translationGroupId) }] : []),
-              ...(translationGroupId && !String(translationGroupId).startsWith("group-") ? [{ translationGroupId: `group-${translationGroupId}` }] : [])
+              ...(targetIdInt ? [{ id: targetIdInt }] : []),
+              ...(targetGroupIdStr ? [{ translationGroupId: targetGroupIdStr }] : []),
+              ...(targetGroupIdStr && !targetGroupIdStr.startsWith("group-") ? [{ translationGroupId: `group-${targetGroupIdStr}` }] : [])
             ],
             lang
           }
@@ -440,8 +441,8 @@ export async function POST(req: Request) {
     }
 
     const rawTargetId = body.id || body.post_id || body.postId;
-    const targetIdStr = rawTargetId ? String(rawTargetId).trim() : undefined;
-    const existingSinglePost = targetIdStr ? await prisma.post.findUnique({ where: { id: targetIdStr } }) : null;
+    const targetIdInt = rawTargetId && !isNaN(parseInt(String(rawTargetId), 10)) ? parseInt(String(rawTargetId), 10) : undefined;
+    const existingSinglePost = targetIdInt ? await prisma.post.findUnique({ where: { id: targetIdInt } }) : null;
 
     // Se o post já existir no banco, MANTÉM o slug original existente!
     const finalSlug = existingSinglePost
@@ -678,11 +679,12 @@ export async function PATCH(req: Request) {
     }
 
     const targetIdentifierStr = String(targetIdentifier).trim();
+    const targetIdInt = !isNaN(parseInt(targetIdentifierStr, 10)) ? parseInt(targetIdentifierStr, 10) : undefined;
 
     const initialPosts = await prisma.post.findMany({
       where: {
         OR: [
-          { id: targetIdentifierStr },
+          ...(targetIdInt ? [{ id: targetIdInt }] : []),
           { slug: targetIdentifierStr },
           { translationGroupId: targetIdentifierStr },
           { translationGroupId: `group-${targetIdentifierStr}` }
