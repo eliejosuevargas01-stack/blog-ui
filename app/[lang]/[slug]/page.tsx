@@ -97,7 +97,7 @@ export default async function CatchAllPage({
 }) {
   const { lang, slug } = params;
   if (lang === "uploads") {
-    redirect(`/api/serve-upload/${slug}`);
+    redirect(`/uploads/${slug}`);
   }
   if (!languages.includes(lang as Language)) {
     notFound();
